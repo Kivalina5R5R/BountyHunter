@@ -51,6 +51,9 @@ namespace BountyHunter.Thieves
         // Thieves in the open are never closer than this (centre to centre), about one body width,
         // so they never walk over each other.
         [SerializeField, Min(0.1f)] private float personalSpace = 0.7f;
+        // Thieves try to stay at least this far from each other: wanderers steer clear and pick spots
+        // away from the others, fleeing thieves mind it less, and one running to a bush hardly at all.
+        [SerializeField, Min(0.1f)] private float comfortDistance = 1.4f;
 
         [Header("Senses")]
         // A player closer than this makes the thief run.
@@ -267,6 +270,8 @@ namespace BountyHunter.Thieves
             Vector3 heading = velocity.sqrMagnitude > 0.0001f ? velocity.normalized : lastMoveDirection;
             Vector3 wanted = toTarget / distance;
             if (fleeing) wanted = AvoidPlayers(position, wanted);
+            // Steering clear fades out on the last stretch, so it can still reach its goal.
+            wanted = AvoidThieves(position, wanted, CrowdWeight() * Mathf.Clamp01(distance / 0.5f));
             heading = Vector3.RotateTowards(heading, wanted, turn * Mathf.Deg2Rad * dt, 0f);
             float currentSpeed = Mathf.MoveTowards(velocity.magnitude, speed, acceleration * (fleeing ? 3f : 1f) * dt);
             velocity = heading * currentSpeed;
@@ -454,6 +459,8 @@ namespace BountyHunter.Thieves
                 float closest = float.MaxValue;
                 foreach (Vector3 player in playerPositions) closest = Mathf.Min(closest, SpawnerPlayerLocator.FlatDistance(ahead, player));
                 float score = Mathf.Min(closest, 3f) + room * 1.5f + Vector3.Dot(direction, preferred) * 0.6f + Vector3.Dot(direction, lastMoveDirection) * 0.3f;
+                // Running into another thief is worth avoiding, but much less than running into a player.
+                score -= Crowding(ahead) * 0.8f;
                 if (score <= bestScore) continue;
                 bestScore = score;
                 best = direction;
@@ -485,6 +492,63 @@ namespace BountyHunter.Thieves
             }
 
             return (heading + bend * 2f).normalized;
+        }
+
+        // How much keeping away from other thieves matters right now: fully while wandering, less while
+        // fleeing in the open, and little when running for a bush, where passing close may be needed.
+        private float CrowdWeight()
+        {
+            if (state == ThiefState.Wander) return 1.2f;
+            return targetBush != null ? 0.3f : 0.7f;
+        }
+
+        // Bends a heading away from other thieves in the open inside comfortDistance, most for those
+        // ahead; one straight ahead is passed on the side it is already leaning to.
+        private Vector3 AvoidThieves(Vector3 position, Vector3 heading, float weight)
+        {
+            if (crowd == null || weight <= 0f) return heading;
+
+            var right = new Vector3(heading.z, 0f, -heading.x);
+            Vector3 bend = Vector3.zero;
+            foreach (ThiefController other in crowd.Thieves)
+            {
+                if (!InTheOpen(other)) continue;
+
+                Vector3 away = position - other.transform.position;
+                away.y = 0f;
+                float distance = away.magnitude;
+                if (distance >= comfortDistance || distance < 0.0001f) continue;
+
+                away /= distance;
+                float closeness = 1f - distance / comfortDistance;
+                float ahead = Mathf.Clamp01(Vector3.Dot(heading, -away));
+                bend += away * closeness * (0.4f + ahead);
+                bend += right * (Vector3.Dot(right, away) >= 0f ? 1f : -1f) * closeness * ahead;
+            }
+
+            if (bend.sqrMagnitude < 0.000001f) return heading;
+            return (heading + bend * weight).normalized;
+        }
+
+        // 0 when no other thief in the open is within comfortDistance of the point, up to 1 on top of one.
+        private float Crowding(Vector3 point)
+        {
+            if (crowd == null) return 0f;
+
+            float crowding = 0f;
+            foreach (ThiefController other in crowd.Thieves)
+            {
+                if (!InTheOpen(other)) continue;
+                float distance = SpawnerPlayerLocator.FlatDistance(point, other.transform.position);
+                crowding = Mathf.Max(crowding, 1f - distance / comfortDistance);
+            }
+
+            return crowding;
+        }
+
+        private bool InTheOpen(ThiefController other)
+        {
+            return other != null && other != this && !other.IsHidden && other.State != ThiefState.Caught;
         }
 
         // Moves this thief out of any other thief in the open closer than personalSpace, at once
@@ -523,8 +587,8 @@ namespace BountyHunter.Thieves
             foreach (ThiefController other in crowd.Thieves)
             {
                 if (other == null || other == this || other.IsHidden) continue;
-                if (SpawnerPlayerLocator.FlatDistance(point, other.transform.position) < personalSpace * 1.5f) return true;
-                if (other.hasTarget && SpawnerPlayerLocator.FlatDistance(point, other.target) < personalSpace * 1.5f) return true;
+                if (SpawnerPlayerLocator.FlatDistance(point, other.transform.position) < comfortDistance) return true;
+                if (other.hasTarget && SpawnerPlayerLocator.FlatDistance(point, other.target) < comfortDistance) return true;
             }
 
             return false;

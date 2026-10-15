@@ -1,14 +1,15 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
 namespace BountyHunter.Thieves
 {
-    // Plays a green-screen video loop on the wall (the rabbit and the sloth typing) in place of a
-    // still picture. The video is keyed by the chroma key shader, so only the character and desk
-    // show. The still picture stays until the first video frame is ready, then hides, so the two
-    // never show at once. Sits on a RawImage sized to the whole video frame, left clear in the scene
-    // so the still picture shows while editing.
+    // Plays a green-screen video loop on the wall (the rabbit and the sloth typing, the player dogs'
+    // idles) in place of a still picture. The video is keyed by the chroma key shader, so only the
+    // character (and desk) show. The still picture stays until the first video frame is ready, then
+    // hides, so the two never show at once. Sits on a RawImage sized to the whole video frame, left
+    // clear in the scene so the still picture shows while editing.
     [RequireComponent(typeof(RawImage))]
     public sealed class WallVideo : MonoBehaviour
     {
@@ -23,6 +24,10 @@ namespace BountyHunter.Thieves
         private RenderTexture target;
         private Material material;
 
+        // The video frame once it is playing, else null. Raised with the frame when playback starts.
+        public RenderTexture Frame { get; private set; }
+        public event Action<WallVideo> Playing;
+
         private void Awake()
         {
             image = GetComponent<RawImage>();
@@ -30,7 +35,7 @@ namespace BountyHunter.Thieves
             image.enabled = false;
             if (clip == null || chromaKeyShader == null) return;
 
-            target = new RenderTexture((int)clip.width, (int)clip.height, 0) { name = $"{name} Video" };
+            target = new RenderTexture((int)clip.width, (int)clip.height, 0) { name = $"{name} Video", wrapMode = TextureWrapMode.Clamp };
             material = new Material(chromaKeyShader) { name = $"{name} Chroma Key" };
             image.texture = target;
             image.material = material;
@@ -63,6 +68,8 @@ namespace BountyHunter.Thieves
             image.enabled = true;
             image.color = Color.white;
             if (stillPicture != null) stillPicture.enabled = false;
+            Frame = target;
+            Playing?.Invoke(this);
         }
 
         private void OnDestroy()

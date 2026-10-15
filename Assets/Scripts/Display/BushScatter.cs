@@ -5,19 +5,24 @@ using Random = UnityEngine.Random;
 
 namespace Fortal.Display
 {
-    // One bush on the floor: its transform and the radius of the leaves a player can stand inside.
+    // One bush on the floor: its transform, the radius of the leaves a player can stand inside and
+    // how far the bush reaches from its centre at any turn.
     public readonly struct ScatteredBush
     {
-        public ScatteredBush(Transform transform, float radius)
+        public ScatteredBush(Transform transform, float radius, float reach)
         {
             Transform = transform;
             Radius = radius;
+            Reach = reach;
         }
 
         public Transform Transform { get; }
 
         // Half of the narrowest side of the visible leaves.
         public float Radius { get; }
+
+        // Half of the longest side, which covers the bush at any tilt.
+        public float Reach { get; }
     }
 
     // Scatters bush sprites flat on the floor at random spots when Play starts. Bushes keep a
@@ -46,6 +51,9 @@ namespace Fortal.Display
         // Bush centres; Vector2.y is world Z. Defaults keep whole bushes inside the 11 x 5.26 floor.
         [SerializeField] private Vector2 areaMin = new Vector2(-4.5f, -1.65f);
         [SerializeField] private Vector2 areaMax = new Vector2(4.5f, 1.65f);
+        // The floor, centred on the arena. Every bush keeps its whole size plus Edge Margin inside it.
+        [SerializeField] private Vector2 floorSize = new Vector2(11f, 5.26f);
+        [SerializeField, Min(0f)] private float edgeMargin = 0.35f;
 
         [Header("Look")]
         // Each bush turns by a random angle up to this many degrees either way (180 = any angle).
@@ -59,10 +67,6 @@ namespace Fortal.Display
         private readonly List<ScatteredBush> bushes = new List<ScatteredBush>();
 
         public IReadOnlyList<ScatteredBush> Bushes => bushes;
-
-        // The rectangle bush centres stay in (Vector2.y is world Z); moving bushes should keep to it too.
-        public Vector2 AreaMin => areaMin;
-        public Vector2 AreaMax => areaMax;
 
         // Raised after every new layout, including Scatter Again.
         public event Action Scattered;
@@ -107,16 +111,29 @@ namespace Fortal.Display
                 float scale = Random.Range(MinimumSize, MaximumSize) / Mathf.Max(0.0001f, Mathf.Min(leaves.x, leaves.y));
                 // Half of the longest side covers the bush at any tilt.
                 float reach = Mathf.Max(leaves.x, leaves.y) * scale * 0.5f;
-                var position = new Vector2(Random.Range(areaMin.x, areaMax.x), Random.Range(areaMin.y, areaMax.y));
+                CentreLimits(reach, out Vector2 low, out Vector2 high);
+                var position = new Vector2(Random.Range(low.x, high.x), Random.Range(low.y, high.y));
                 if (TooClose(position, reach, placed)) continue;
 
                 placed.Add((position, reach));
                 Transform bush = SpawnBush(sprite, position, scale, placed.Count);
-                bushes.Add(new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f));
+                bushes.Add(new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f, reach));
             }
 
             if (seed > 0) Random.state = previousState;
             Scattered?.Invoke();
+        }
+
+        // Where the centre of a bush reaching this far may go: inside the bush area, and far enough in
+        // that the whole bush stays Edge Margin away from the floor's edges. Moving bushes use it too.
+        public void CentreLimits(float reach, out Vector2 min, out Vector2 max)
+        {
+            Vector2 inside = floorSize * 0.5f - Vector2.one * (reach + edgeMargin);
+            min = Vector2.Max(areaMin, -inside);
+            max = Vector2.Min(areaMax, inside);
+            // A bush too big for the room left sits on the middle line instead.
+            if (min.x > max.x) min.x = max.x = (min.x + max.x) * 0.5f;
+            if (min.y > max.y) min.y = max.y = (min.y + max.y) * 0.5f;
         }
 
         // Never lets a bush shrink below the player's size, whatever the Inspector says.

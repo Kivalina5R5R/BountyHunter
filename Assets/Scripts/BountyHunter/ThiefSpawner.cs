@@ -143,7 +143,8 @@ namespace BountyHunter.Thieves
                 if (reaction == null) bush.gameObject.AddComponent<BushReaction>().Initialize(leafSprites);
                 BushWalker walker = bush.GetComponent<BushWalker>();
                 if (walker == null) walker = bush.gameObject.AddComponent<BushWalker>();
-                walker.Initialize(players, hidingBushes, bushScatter.AreaMin, bushScatter.AreaMax);
+                bushScatter.CentreLimits(scattered.Reach, out Vector2 moveMin, out Vector2 moveMax);
+                walker.Initialize(players, hidingBushes, moveMin, moveMax);
                 hidingBushes.Add(bush);
             }
 
