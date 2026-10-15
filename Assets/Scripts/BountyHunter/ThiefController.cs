@@ -57,6 +57,8 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float fleeRadius = 2.2f;
         // A player whose centre comes this close to the thief's centre catches it.
         [SerializeField, Min(0.05f)] private float catchDistance = 0.45f;
+        // A caught thief stays this long, until the fight cloud has popped up over it, then vanishes.
+        [SerializeField, Min(0f)] private float vanishAfterCatchSeconds = 0.12f;
 
         [Header("Hiding")]
         // While hidden with no player near, the thief sneaks out after a random time in this range.
@@ -65,7 +67,7 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.5f)] private float maxHideSeconds = 5f;
         // For this long after coming out of a bush (flushed, sneaking out or time up) the thief
         // cannot be caught, so it gets a fair head start.
-        [SerializeField, Min(0f)] private float exitGraceSeconds = 2f;
+        [SerializeField, Min(0f)] private float exitGraceSeconds = 1f;
 
         private IPlayerLocator players;
         private IHidingSpots hidingSpots;
@@ -400,7 +402,7 @@ namespace BountyHunter.Thieves
             ReleaseTargetBush();
             Debug.Log($"[Thief] {name} ({typeName}) was CAUGHT at {transform.position.x:0.00}, {transform.position.z:0.00}", this);
             Caught?.Invoke(this);
-            Destroy(gameObject);
+            Destroy(gameObject, vanishAfterCatchSeconds);
         }
 
         private void BeginWander()

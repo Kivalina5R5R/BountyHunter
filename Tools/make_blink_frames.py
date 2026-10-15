@@ -24,7 +24,8 @@ OUTLINE = (40, 26, 24)    # dark line colour of the art
 LINE_WIDTH = 9
 MIN_EYE = 40              # smallest eye width and height, in pixels
 # Eye ovals on <Name>Walk_00.png for the tracked mode (left, top, right, bottom).
-TRACKED_EYES = {'Cat': [(207, 247, 317, 345), (395, 237, 520, 340)]}
+TRACKED_EYES = {'Cat': [(207, 247, 317, 345), (395, 237, 520, 340)],
+                'Rat': [(404, 280, 584, 425), (247, 270, 374, 408)]}
 TRACK_SEARCH = 40         # pixels searched each way when following the head
 
 
@@ -160,6 +161,8 @@ def blink_tracked(img, eyes, closed):
         # The cat's upper lid is the fur-coloured top part inside the eye outline.
         colour = median_colour(img, (x0 + w // 4, y0 + h // 8, x1 - w // 4, y0 + h // 3),
                                lambda p: 330 < sum(p) < 690, (210, 147, 116))
+        if NAME == 'Rat':
+            colour = (114, 76, 69)
         inset = 6
         cover = Image.new('L', img.size)
         ImageDraw.Draw(cover).ellipse((x0 + inset, y0 + inset, x1 - inset, y1 - inset), fill=255)

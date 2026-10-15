@@ -259,4 +259,4 @@ MonoBehaviour:
   catchDistance: 0.45
   sneakOutSeconds: {x: 3, y: 5}
   maxHideSeconds: 5
-  exitGraceSeconds: 2
+  exitGraceSeconds: 1

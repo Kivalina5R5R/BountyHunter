@@ -63,7 +63,7 @@ MonoBehaviour:
   catchDistance: 0.45
   sneakOutSeconds: {x: 3, y: 5}
   maxHideSeconds: 5
-  exitGraceSeconds: 2
+  exitGraceSeconds: 1
 --- !u!1 &8013598296821956262
 GameObject:
   m_ObjectHideFlags: 0

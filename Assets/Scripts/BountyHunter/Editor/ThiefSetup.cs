@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BountyHunter.Editor
 {
-    // Builds one prefab per thief kind (Chicken, Cat, Crow) from the frames cut out of each video
+    // Builds one prefab per thief kind (Chicken, Cat, Crow, Rat) from the frames cut out of each video
     // (Tools/extract_thief_video.py, Tools/make_blink_frames.py) and adds Map/Arena/Thieves
     // (ThiefSpawner) to the open game scene with every kind in its Thief Types list. Runs by itself
     // after imports and is also on the menu. A new kind needs its frames and one line in Kinds.
@@ -16,8 +16,9 @@ namespace BountyHunter.Editor
     {
         private const string ScenePath = "Assets/Scenes/BountyHunter.unity";
         private const string PrefabFolder = "Assets/Prefabs/Thieves";
-        private const string LeafFolder = "Assets/ART/BG/Leaf";
+        private const string LeafFolder = "Assets/ART/BG/Map1/Leaf";
         private const string DustFolder = "Assets/ART/FX/Dust";
+        private const string BrawlFolder = "Assets/ART/FX/Brawl";
 
         // Every kind's pixels-per-unit makes its walking height this many units, and the body is
         // then scaled so that is ThiefHeight in the game: a little shorter than the player marker
@@ -27,14 +28,15 @@ namespace BountyHunter.Editor
 
         private sealed class ThiefKind
         {
-            public string Name;
+            public string Name { get; set; }
             // Folder name of the standing breath frames: Sit for the chicken, Idle for the others.
-            public string IdleName;
+            public string IdleName { get; set; }
             // Measured walking height in pixels / ReferenceUnits.
-            public float PixelsPerUnit;
+            public float PixelsPerUnit { get; set; }
             // World distance of one walk cycle: video cycle seconds x the 0.6 units/s walk.
-            public float CycleLength;
-            public int Count;
+            public float CycleLength { get; set; }
+            public int Count { get; set; }
+            public bool ArtFacesRight { get; set; }
 
             public string Folder => $"Assets/ART/Thif/{Name}";
             public string PrefabPath => $"{PrefabFolder}/{Name}.prefab";
@@ -45,6 +47,7 @@ namespace BountyHunter.Editor
             new ThiefKind { Name = "Chicken", IdleName = "Sit", PixelsPerUnit = 66.94f, CycleLength = 0.56f, Count = 3 },
             new ThiefKind { Name = "Cat", IdleName = "Idle", PixelsPerUnit = 62.68f, CycleLength = 0.5f, Count = 2 },
             new ThiefKind { Name = "Crow", IdleName = "Idle", PixelsPerUnit = 66.2f, CycleLength = 0.48f, Count = 2 },
+            new ThiefKind { Name = "Rat", IdleName = "Idle", PixelsPerUnit = 65.8f, CycleLength = 0.42f, Count = 2 },
         };
 
         static ThiefSetup()
@@ -57,6 +60,23 @@ namespace BountyHunter.Editor
                 if (existing == null) Setup();
                 else UpdateSpawner(existing.GetComponent<ThiefSpawner>());
             };
+        }
+
+        // Wires effect art (such as the catch brawl) as soon as it is imported, without a menu click.
+        private sealed class EffectArtWatcher : AssetPostprocessor
+        {
+            private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+            {
+                foreach (string path in imported)
+                {
+                    if (!path.StartsWith("Assets/ART/FX/") || !path.EndsWith(".png")) continue;
+                    EditorApplication.delayCall += () =>
+                    {
+                        if (!EditorApplication.isPlayingOrWillChangePlaymode) Setup();
+                    };
+                    return;
+                }
+            }
         }
 
         [MenuItem("Tools/Bounty Hunter/Setup Thieves")]
@@ -95,6 +115,12 @@ namespace BountyHunter.Editor
 
             AssignIfMissing(spawner, "leafSprites", LoadSprites(LeafFolder, "Leaf_"), "leaf sprites to the bush burst");
             AssignIfMissing(spawner, "dustSprites", LoadSprites(DustFolder, "Dust_"), "dust sprites to the running dust");
+            AssignIfMissing(spawner, "catchBrawl.clouds", LoadSprites(BrawlFolder, "Brawl_Cloud_"), "fight clouds to the catch brawl");
+            AssignIfMissing(spawner, "catchBrawl.puffs", LoadSprites(BrawlFolder, "Brawl_Puff_"), "puffs to the catch brawl");
+            AssignIfMissing(spawner, "catchBrawl.limbs", Limbs(), "paws and handcuffs to the catch brawl");
+            AssignIfMissing(spawner, "catchBrawl.stars", LoadSprites(BrawlFolder, "Brawl_Star_"), "stars to the catch brawl");
+            AssignIfMissing(spawner, "catchBrawl.words", LoadSprites(BrawlFolder, "Brawl_Word_"), "POW / BAM words to the catch brawl");
+            AssignIfMissing(spawner, "catchBrawl.swooshes", LoadSprites(BrawlFolder, "Brawl_Swoosh"), "swooshes to the catch brawl");
 
             var data = new SerializedObject(spawner);
             SerializedProperty types = data.FindProperty("thiefTypes");
@@ -115,6 +141,15 @@ namespace BountyHunter.Editor
             if (!changed) return;
             data.ApplyModifiedProperties();
             EditorSceneManager.MarkSceneDirty(spawner.gameObject.scene);
+        }
+
+        private static Sprite[] Limbs()
+        {
+            var limbs = new System.Collections.Generic.List<Sprite>();
+            limbs.AddRange(LoadSprites(BrawlFolder, "Brawl_DogPaw"));
+            limbs.AddRange(LoadSprites(BrawlFolder, "Brawl_CatPaw"));
+            limbs.AddRange(LoadSprites(BrawlFolder, "Brawl_Cuffs"));
+            return limbs.ToArray();
         }
 
         private static bool HasType(SerializedProperty types, ThiefController prefab)
@@ -141,7 +176,7 @@ namespace BountyHunter.Editor
 
         // Loads the sprites named prefix* in folder, converting textures to sprites if needed.
         // pixelsPerUnit above zero is applied too.
-        private static Sprite[] LoadSprites(string folder, string prefix, float pixelsPerUnit = 0f)
+        internal static Sprite[] LoadSprites(string folder, string prefix, float pixelsPerUnit = 0f)
         {
             if (!AssetDatabase.IsValidFolder(folder)) return new Sprite[0];
 
@@ -217,6 +252,12 @@ namespace BountyHunter.Editor
                 body.sprite = stand;
                 body.transform.localScale = Vector3.one * (ThiefHeight / ReferenceUnits);
                 data.FindProperty("cycleLength").floatValue = kind.CycleLength;
+                // Rat's idle looks behind; immediately face forward when it starts moving.
+                if (kind.Name == "Rat")
+                {
+                    data.FindProperty("crossfadeSeconds").floatValue = 0f;
+                    data.FindProperty("idleFramesPerSecond").floatValue = 12f;
+                }
                 SetSprites(runFrames, frames);
                 SetSprites(halfFrames, half);
                 SetSprites(closedFrames, closed);
@@ -247,8 +288,9 @@ namespace BountyHunter.Editor
             var data = new SerializedObject(root.GetComponent<ThiefController>());
             data.FindProperty("typeName").stringValue = kind.Name;
             data.FindProperty("body").objectReferenceValue = spriteRenderer;
-            // All thieves are drawn walking toward the left.
-            data.FindProperty("artFacesRight").boolValue = false;
+            data.FindProperty("artFacesRight").boolValue = kind.ArtFacesRight;
+            // Give the rat time to finish checking both sides before it walks again.
+            if (kind.Name == "Rat") data.FindProperty("wanderPauseSeconds").vector2Value = new Vector2(3f, 4f);
             data.ApplyModifiedPropertiesWithoutUndo();
 
             PrefabUtility.SaveAsPrefabAsset(root, kind.PrefabPath);

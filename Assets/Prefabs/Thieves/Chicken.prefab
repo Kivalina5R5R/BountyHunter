@@ -61,7 +61,7 @@ MonoBehaviour:
   sneakOutSeconds: {x: 6, y: 12}
   maxHideSeconds: 5
   flushedBushCooldown: 4
-  exitGraceSeconds: 2
+  exitGraceSeconds: 1
 --- !u!1 &3556280895923871829
 GameObject:
   m_ObjectHideFlags: 0

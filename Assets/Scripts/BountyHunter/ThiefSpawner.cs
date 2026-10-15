@@ -46,6 +46,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private Sprite[] leafSprites;
 
         [Header("Thieves")]
+        // The cartoon scuffle played where a thief is caught; leave the clouds empty for none.
+        [SerializeField] private CatchBrawl.Art catchBrawl;
         // Dust puffs kicked up under running thieves; leave empty for no dust.
         [SerializeField] private Sprite[] dustSprites;
 
@@ -66,7 +68,7 @@ namespace BountyHunter.Thieves
                 RegisterBushes();
             }
 
-            SpawnAll();
+            SpawnThieves();
         }
 
         private void OnDestroy()
@@ -148,7 +150,31 @@ namespace BountyHunter.Thieves
             Debug.Log($"[ThiefSpawner] {hidingBushes.Count} bushes ready for hiding ({secondsToFlushBush:0.#}s on a bush flushes its thief)", this);
         }
 
-        private void SpawnAll()
+        // Sprites thrown out of hiding spots registered from now on (leaves for bushes, trash for bins).
+        public void UseBurstSprites(Sprite[] sprites)
+        {
+            leafSprites = sprites;
+        }
+
+        // Removes every thief, hidden or not, without any exit effects; used when the map changes.
+        public void RemoveThieves()
+        {
+            foreach (HidingBush bush in hidingBushes)
+            {
+                if (bush != null && bush.Occupant != null) bush.Leave(bush.Occupant);
+            }
+
+            foreach (ThiefController thief in thieves)
+            {
+                if (thief == null) continue;
+                thief.Caught -= OnThiefCaught;
+                Destroy(thief.gameObject);
+            }
+
+            thieves.Clear();
+        }
+
+        public void SpawnThieves()
         {
             if (thiefTypes == null) return;
 
@@ -215,6 +241,7 @@ namespace BountyHunter.Thieves
 
         private void OnThiefCaught(ThiefController thief)
         {
+            CatchBrawl.Play(thief.transform.position, catchBrawl, transform);
             thieves.Remove(thief);
             Debug.Log($"[ThiefSpawner] {thief.name} caught, {thieves.Count} thieves left", this);
             if (thieves.Count == 0) Debug.Log("[ThiefSpawner] ALL THIEVES CAUGHT", this);

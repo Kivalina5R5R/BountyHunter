@@ -75,6 +75,16 @@ namespace Fortal.Display
             Scatter();
         }
 
+        // Swaps the art used for the next layout (bushes on one map, bins on another). Upright art
+        // such as bins wants no tilt; top-down bushes can turn any way. sizeRange is the same as
+        // Size Vs Player. Call Scatter to apply.
+        public void UseSprites(Sprite[] sprites, float tiltDegrees, Vector2 sizeRange)
+        {
+            bushSprites = sprites;
+            maxTiltDegrees = Mathf.Clamp(tiltDegrees, 0f, 180f);
+            sizeVsPlayer = sizeRange;
+        }
+
         // Replaces the current bushes with a new random layout.
         [ContextMenu("Scatter Again (Play Mode)")]
         public void Scatter()
