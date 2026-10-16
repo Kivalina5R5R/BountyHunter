@@ -72,6 +72,24 @@ namespace BountyHunter.Thieves
             Refresh();
         }
 
+        // False once the tag is taken off the wall because nobody plays its character.
+        public bool InPlay { get; private set; } = true;
+
+        // Gives the tag to this player, keeping its own colour.
+        public void AssignPlayer(int number)
+        {
+            InPlay = true;
+            gameObject.SetActive(true);
+            SetPlayer(number, playerColor);
+        }
+
+        // Nobody plays this character: the tag leaves the wall and scores for no one.
+        public void Unassign()
+        {
+            InPlay = false;
+            gameObject.SetActive(false);
+        }
+
         public void SetScore(int value)
         {
             int gained = Mathf.Max(0, value) - currentScore;

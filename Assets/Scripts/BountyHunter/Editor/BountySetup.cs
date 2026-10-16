@@ -45,7 +45,9 @@ namespace BountyHunter.Editor
 
             var scene = EditorSceneManager.GetActiveScene();
             GameObject arena = GameObject.Find("Map/Arena");
-            GameObject posts = GameObject.Find("Map/SideDisplay/Post");
+            // Found by its WantedBoard once set up, so the posters can be moved around the hierarchy.
+            WantedBoard existingBoard = Object.FindFirstObjectByType<WantedBoard>(FindObjectsInactive.Include);
+            GameObject posts = existingBoard != null ? existingBoard.gameObject : GameObject.Find("Map/SideDisplay/Post");
             if (!scene.isLoaded || scene.path != ScenePath || arena == null || posts == null) return;
 
             bool wasDirty = scene.isDirty;

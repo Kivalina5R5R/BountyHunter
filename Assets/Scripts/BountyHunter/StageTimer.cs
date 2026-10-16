@@ -5,8 +5,10 @@ using UnityEngine;
 namespace BountyHunter.Thieves
 {
     // The stage banner on the wall: "STAGE 1-1" over a mm:ss countdown. Counts down from Play
-    // (stage 1) and restarts whenever a new stage or round begins (BountyRounds calls StartStage);
-    // the title rolls up to the new number. Stops at 00:00 and raises TimeUp. The last seconds turn the time red so the players notice.
+    // (stage 1); BountyRounds calls StartStage for every new round and the title rolls up to the
+    // new number, but the clock only starts over when the stage number itself changes (1-3 to 2-1),
+    // so the rounds of a stage share one countdown. Stops at 00:00 and raises TimeUp. The last
+    // seconds turn the time red so the players notice.
     public sealed class StageTimer : MonoBehaviour
     {
         [SerializeField] private TMP_Text title;
@@ -21,6 +23,8 @@ namespace BountyHunter.Thieves
 
         private float remaining;
         private bool running;
+        // The stage the clock is counting for; 0 before the first.
+        private int clockStage;
         private int shownSeconds = -1;
         private Color normalColor;
         private bool normalColorRead;
@@ -39,6 +43,10 @@ namespace BountyHunter.Thieves
         public void StartStage(int stage, int round = 1)
         {
             if (title != null) RollingLabel.On(title).Roll(string.Format(titleFormat, stage, round), titleRollSeconds);
+            // A new round of the same stage keeps the clock going.
+            if (stage == clockStage) return;
+
+            clockStage = stage;
             remaining = stageSeconds;
             running = true;
             shownSeconds = -1;

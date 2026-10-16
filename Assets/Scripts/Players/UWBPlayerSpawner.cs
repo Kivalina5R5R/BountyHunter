@@ -62,6 +62,8 @@ namespace Fortal.Players
         [SerializeField] private bool disableOfflinePlayersInSerial = true;
 
         private readonly List<UWBPlayerController> spawnedPlayers = new List<UWBPlayerController>();
+        // Once the game has started, only these players may come online; null while anyone may join.
+        private HashSet<int> roster;
         private UWBManager uwbManager;
         private bool standaloneSimulationMode;
 
@@ -159,6 +161,14 @@ namespace Fortal.Players
             }
         }
 
+        // Closes the game to newcomers: from now on only these players show when their tag is online
+        // (they may still drop out and come back). Others stay hidden even if their tag connects.
+        public void LockRoster(IEnumerable<int> playerIds)
+        {
+            roster = new HashSet<int>(playerIds);
+            Debug.Log($"[UWBPlayerSpawner] Players locked in: {string.Join(", ", roster)}", this);
+        }
+
         public bool TryGetPlayer(int playerId, out UWBPlayerController player)
         {
             for (int i = 0; i < spawnedPlayers.Count; i++)
@@ -222,9 +232,12 @@ namespace Fortal.Players
                 }
 
                 bool online = uwbManager.IsTagOnline(player.TagId);
-                if (player.gameObject.activeSelf != online)
+                bool allowed = roster == null || roster.Contains(player.PlayerId);
+                bool show = online && allowed;
+                if (player.gameObject.activeSelf != show)
                 {
-                    player.gameObject.SetActive(online);
+                    player.gameObject.SetActive(show);
+                    if (show && roster == null) Debug.Log($"[UWBPlayerSpawner] Player {player.PlayerId} (tag {player.TagId}) connected", this);
                 }
             }
         }

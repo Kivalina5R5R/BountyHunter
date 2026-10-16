@@ -39,12 +39,29 @@ namespace BountyHunter.Thieves
         private readonly Dictionary<ThiefController, WantedPoster> wanted = new Dictionary<ThiefController, WantedPoster>();
         private int stage = 1;
         private int round;
+        // Set by IntroSequence: nothing starts until it calls Begin.
+        private bool waitingForIntro;
 
         private void Start()
         {
             if (spawner != null) spawner.ThiefCaught += OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed += OnPlayerBombed;
-            if (round == 0) StartStage(stage);
+            if (round == 0 && !waitingForIntro) StartStage(stage);
+        }
+
+        // Keeps the first round from starting until Begin; called by the intro before Start.
+        public void WaitForIntro()
+        {
+            waitingForIntro = true;
+        }
+
+        // Starts the first round once the intro is over.
+        public void Begin()
+        {
+            if (!waitingForIntro) return;
+
+            waitingForIntro = false;
+            StartStage(stage);
         }
 
         private void OnDestroy()
@@ -57,6 +74,9 @@ namespace BountyHunter.Thieves
         public void StartStage(int stageNumber)
         {
             stage = stageNumber;
+            // A map switch during the intro only picks the stage the game will start on.
+            if (waitingForIntro) return;
+
             CancelInvoke(nameof(NextRound));
             StartRound(1);
         }
@@ -141,7 +161,7 @@ namespace BountyHunter.Thieves
 
             foreach (PlayerScoreTag tag in scoreTags)
             {
-                if (tag != null && tag.PlayerNumber == player.PlayerId) return tag;
+                if (tag != null && tag.InPlay && tag.PlayerNumber == player.PlayerId) return tag;
             }
 
             return null;
