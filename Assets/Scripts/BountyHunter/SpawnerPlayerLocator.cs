@@ -17,22 +17,31 @@ namespace BountyHunter.Thieves
 
         public bool TryGetNearest(Vector3 from, out Vector3 position, out float distance)
         {
-            position = default;
-            distance = float.MaxValue;
+            bool found = TryGetNearestPlayer(from, out UWBPlayerController player);
+            position = found ? player.transform.position : default;
+            distance = found ? FlatDistance(from, position) : float.MaxValue;
+            return found;
+        }
+
+        // The closest active player itself, for when it matters who it is (such as who made a catch).
+        public bool TryGetNearestPlayer(Vector3 from, out UWBPlayerController nearest)
+        {
+            nearest = null;
             if (spawner == null) return false;
 
+            float best = float.MaxValue;
             foreach (UWBPlayerController player in spawner.SpawnedPlayers)
             {
                 if (player == null || !player.isActiveAndEnabled) continue;
 
                 float candidate = FlatDistance(from, player.transform.position);
-                if (candidate >= distance) continue;
+                if (candidate >= best) continue;
 
-                distance = candidate;
-                position = player.transform.position;
+                best = candidate;
+                nearest = player;
             }
 
-            return distance < float.MaxValue;
+            return nearest != null;
         }
 
         public bool TryGetWithin(Vector3 center, float radius, out Vector3 position)
@@ -48,6 +57,18 @@ namespace BountyHunter.Thieves
             foreach (UWBPlayerController player in spawner.SpawnedPlayers)
             {
                 if (player != null && player.isActiveAndEnabled) positions.Add(player.transform.position);
+            }
+        }
+
+        // Fills players with every active player within radius of the centre (clears it first).
+        public void GetPlayersWithin(Vector3 center, float radius, List<UWBPlayerController> players)
+        {
+            players.Clear();
+            if (spawner == null) return;
+
+            foreach (UWBPlayerController player in spawner.SpawnedPlayers)
+            {
+                if (player != null && player.isActiveAndEnabled && FlatDistance(center, player.transform.position) <= radius) players.Add(player);
             }
         }
 

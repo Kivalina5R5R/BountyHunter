@@ -7,36 +7,27 @@ using Random = UnityEngine.Random;
 
 namespace BountyHunter.Thieves
 {
-    // Spawns the thieves at random spots on the floor when Play starts and turns every bush from
-    // BushScatter into a hiding spot that rustles, shakes and throws leaves (BushReaction) and
-    // creeps away from players while a thief is inside (BushWalker). Any number of thief types can be listed, each a prefab
-    // with a ThiefController and its own count. Console lines start with [ThiefSpawner].
+    // Spawns thieves at random spots on the floor when asked (BountyRounds asks for one per WANTED
+    // poster) and turns every bush from BushScatter into a hiding spot that rustles, shakes and
+    // throws leaves (BushReaction) and creeps away from players while a thief is inside (BushWalker).
+    // Reports each catch with the player who made it. Console lines start with [ThiefSpawner].
     // Runs after the player spawner so spawn points can keep away from players already placed.
     [DefaultExecutionOrder(10)]
     public sealed class ThiefSpawner : MonoBehaviour, IHidingSpots, IThiefCrowd
     {
-        [Serializable]
-        private sealed class ThiefType
-        {
-            [SerializeField] private ThiefController prefab;
-            [SerializeField, Min(0)] private int count = 3;
-
-            public ThiefController Prefab => prefab;
-            public int Count => count;
-        }
-
         [SerializeField] private UWBPlayerSpawner playerSpawner;
         [SerializeField] private BushScatter bushScatter;
-        [SerializeField] private ThiefType[] thiefTypes;
 
         [Header("Floor (world X/Z)")]
         // Vector2.y is world Z. Thieves spawn and move inside this area.
         [SerializeField] private Vector2 areaMin = new Vector2(-5.15f, -2.3f);
         [SerializeField] private Vector2 areaMax = new Vector2(5.15f, 2.3f);
         [SerializeField, Min(0f)] private float spawnClearanceFromPlayers = 2f;
-        [SerializeField, Min(0f)] private float spawnClearanceFromBushes = 0.3f;
-        [SerializeField, Min(0f)] private float spawnClearanceFromThieves = 0.9f;
         [SerializeField] private float height = 0.04f;
+        // With no free hiding spot to start in, a thief walks in from this far beyond the floor edge
+        // to this far inside it.
+        [SerializeField, Min(0f)] private float walkInFromOutside = 1f;
+        [SerializeField, Min(0f)] private float walkInToInside = 0.7f;
 
         [Header("Bushes")]
         [SerializeField, Min(0.1f)] private float secondsToFlushBush = 2f;
@@ -51,12 +42,28 @@ namespace BountyHunter.Thieves
         // Dust puffs kicked up under running thieves; leave empty for no dust.
         [SerializeField] private Sprite[] dustSprites;
 
+        // One way a thief can come in: out of a hiding spot, or walking in over a floor edge.
+        private struct Entrance
+        {
+            public Vector3 Point;
+            public HidingBush Bush;
+            // Edges only: the way onto the floor.
+            public Vector3 Inward;
+        }
+
         private readonly List<HidingBush> hidingBushes = new List<HidingBush>();
+        // Where thieves came in this round and last round, so entrances spread out and change.
+        private readonly List<Vector3> roundEntrances = new List<Vector3>();
+        private readonly List<Vector3> lastRoundEntrances = new List<Vector3>();
+        private bool lastEntranceWasBush;
         private readonly List<ThiefController> thieves = new List<ThiefController>();
-        private IPlayerLocator players;
+        private SpawnerPlayerLocator players;
 
         public IReadOnlyList<ThiefController> Thieves => thieves;
         public IReadOnlyList<HidingBush> Bushes => hidingBushes;
+
+        // A thief was caught; the player is the one nearest to it, or null when none is on the floor.
+        public event Action<ThiefController, UWBPlayerController> ThiefCaught;
 
         private void Start()
         {
@@ -67,8 +74,6 @@ namespace BountyHunter.Thieves
                 bushScatter.Scattered += RegisterBushes;
                 RegisterBushes();
             }
-
-            SpawnThieves();
         }
 
         private void OnDestroy()
@@ -173,79 +178,122 @@ namespace BountyHunter.Thieves
             }
 
             thieves.Clear();
+            if (roundEntrances.Count == 0) return;
+
+            lastRoundEntrances.Clear();
+            lastRoundEntrances.AddRange(roundEntrances);
+            roundEntrances.Clear();
         }
 
-        public void SpawnThieves()
+        // Adds one thief of this kind, unseen, and returns it. After entranceDelay seconds it sneaks out
+        // of a free hiding spot or walks in over a floor edge, whichever entrance is best spread out
+        // (see PickEntrance), so the players cannot guess where the next one appears.
+        public ThiefController SpawnThief(ThiefController prefab, float entranceDelay)
         {
-            if (thiefTypes == null) return;
-
-            foreach (ThiefType type in thiefTypes)
-            {
-                if (type == null || type.Prefab == null) continue;
-
-                for (int i = 0; i < type.Count; i++)
-                {
-                    Spawn(type.Prefab, i + 1);
-                }
-            }
-
-            Debug.Log($"[ThiefSpawner] Spawned {thieves.Count} thieves", this);
-        }
-
-        private void Spawn(ThiefController prefab, int number)
-        {
-            Vector3 position = FindSpawnPoint();
+            Entrance entrance = PickEntrance();
+            roundEntrances.Add(entrance.Point);
+            lastEntranceWasBush = entrance.Bush != null;
+            HidingBush bush = entrance.Bush;
+            Vector3 inside = entrance.Point + entrance.Inward * walkInToInside;
+            Vector3 position = bush != null ? entrance.Point : entrance.Point - entrance.Inward * walkInFromOutside;
             ThiefController thief = Instantiate(prefab, position, Quaternion.identity, transform);
-            thief.name = $"{prefab.TypeName}{number:00}";
+            thief.name = prefab.TypeName;
             thief.Initialize(players, this, this, areaMin, areaMax);
+            if (bush != null) thief.StartHiddenIn(bush, entranceDelay);
+            else thief.WalkIn(inside, entranceDelay);
             thief.gameObject.AddComponent<DustTrail>().Initialize(dustSprites, thief.Body);
             thief.Caught += OnThiefCaught;
             thieves.Add(thief);
-            Debug.Log($"[ThiefSpawner] Spawned {thief.name} at {position.x:0.00}, {position.z:0.00}", this);
+            string where = bush != null ? $"hidden in {bush.name}" : "off the floor edge";
+            Debug.Log($"[ThiefSpawner] Spawned {thief.name} {where}", this);
+            return thief;
         }
 
-        // Tries random spots that are away from players and not on a bush; falls back to the last try.
-        private Vector3 FindSpawnPoint()
+        // Scores every free hiding spot (none with a player close by) and a few spots along the floor
+        // edges, and takes the best: far from where the other thieves of this round came in, not where
+        // they came in last round, the other way in than the last thief (a bush after an edge and the
+        // other way round), and away from the players, with a little chance mixed in.
+        private Entrance PickEntrance()
         {
-            Vector3 point = Vector3.zero;
-            for (int attempt = 0; attempt < 60; attempt++)
-            {
-                point = new Vector3(Random.Range(areaMin.x, areaMax.x), height, Random.Range(areaMin.y, areaMax.y));
-                if (players.TryGetWithin(point, spawnClearanceFromPlayers, out _)) continue;
-                if (OnABush(point)) continue;
-                if (NearAThief(point)) continue;
-                return point;
-            }
-
-            return point;
-        }
-
-        private bool NearAThief(Vector3 point)
-        {
-            foreach (ThiefController thief in thieves)
-            {
-                if (thief != null && SpawnerPlayerLocator.FlatDistance(point, thief.transform.position) < spawnClearanceFromThieves) return true;
-            }
-
-            return false;
-        }
-
-        private bool OnABush(Vector3 point)
-        {
+            var candidates = new List<Entrance>();
             foreach (HidingBush bush in hidingBushes)
             {
-                if (bush != null && SpawnerPlayerLocator.FlatDistance(point, bush.Center) < bush.Radius + spawnClearanceFromBushes) return true;
+                if (bush == null || bush.Occupant != null || bush.ReservedBy != null) continue;
+                if (players.TryGetWithin(bush.Center, spawnClearanceFromPlayers, out _)) continue;
+                candidates.Add(new Entrance { Point = new Vector3(bush.Center.x, height, bush.Center.z), Bush = bush });
             }
 
-            return false;
+            for (int i = 0; i < 8; i++)
+            {
+                candidates.Add(EdgeSpot());
+            }
+
+            Entrance best = candidates[0];
+            float bestScore = float.MinValue;
+            foreach (Entrance candidate in candidates)
+            {
+                float score = EntranceScore(candidate);
+                if (score <= bestScore) continue;
+                bestScore = score;
+                best = candidate;
+            }
+
+            return best;
+        }
+
+        private float EntranceScore(Entrance candidate)
+        {
+            float score = Random.Range(0f, 1f);
+            if (roundEntrances.Count > 0)
+            {
+                score += NearestOf(candidate.Point, roundEntrances, 12f);
+                if ((candidate.Bush != null) != lastEntranceWasBush) score += 2f;
+            }
+
+            score += NearestOf(candidate.Point, lastRoundEntrances, 4f) * 0.5f;
+            score += (players.TryGetNearest(candidate.Point, out _, out float player) ? Mathf.Min(player, 4f) : 4f) * 0.3f;
+            return score;
+        }
+
+        // Distance to the closest of points, at most cap (also when there are none).
+        private static float NearestOf(Vector3 point, List<Vector3> points, float cap)
+        {
+            float nearest = cap;
+            foreach (Vector3 other in points)
+            {
+                nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other));
+            }
+
+            return nearest;
+        }
+
+        // A random spot on one of the floor edges, mostly the long left and right ends.
+        private Entrance EdgeSpot()
+        {
+            float sign = Random.value < 0.5f ? -1f : 1f;
+            if (Random.value < 0.65f)
+            {
+                return new Entrance
+                {
+                    Point = new Vector3(sign < 0f ? areaMin.x : areaMax.x, height, Random.Range(areaMin.y * 0.7f, areaMax.y * 0.7f)),
+                    Inward = new Vector3(-sign, 0f, 0f)
+                };
+            }
+
+            return new Entrance
+            {
+                Point = new Vector3(Random.Range(areaMin.x * 0.8f, areaMax.x * 0.8f), height, sign < 0f ? areaMin.y : areaMax.y),
+                Inward = new Vector3(0f, 0f, -sign)
+            };
         }
 
         private void OnThiefCaught(ThiefController thief)
         {
             CatchBrawl.Play(thief.transform.position, catchBrawl, transform);
             thieves.Remove(thief);
-            Debug.Log($"[ThiefSpawner] {thief.name} caught, {thieves.Count} thieves left", this);
-            if (thieves.Count == 0) Debug.Log("[ThiefSpawner] ALL THIEVES CAUGHT", this);
+            players.TryGetNearestPlayer(thief.transform.position, out UWBPlayerController catcher);
+            Debug.Log($"[ThiefSpawner] {thief.name} caught by {(catcher != null ? catcher.name : "nobody")}, {thieves.Count} thieves left", this);
+            ThiefCaught?.Invoke(thief, catcher);
         }
 
 #if UNITY_EDITOR

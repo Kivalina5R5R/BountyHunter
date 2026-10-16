@@ -103,7 +103,6 @@ namespace BountyHunter.Editor
             changed |= SetIfEmpty(data.FindProperty("floorImage"), FindComponent<RawImage>(arena, "FloorDisplay/Background"));
             changed |= SetIfEmpty(data.FindProperty("hidingSpots"), FindComponent<BushScatter>(arena, "Bushes"));
             changed |= SetIfEmpty(data.FindProperty("thieves"), FindComponent<ThiefSpawner>(arena, "Thieves"));
-            changed |= SetIfEmpty(data.FindProperty("timer"), Object.FindFirstObjectByType<StageTimer>(FindObjectsInactive.Include));
 
             SerializedProperty list = data.FindProperty("maps");
             if (list.arraySize < Maps.Length)

@@ -27,7 +27,7 @@ namespace BountyHunter.Thieves
         // Below this speed (units per second) it counts as standing.
         [SerializeField, Min(0f)] private float standSpeed = 0.05f;
         // Brief stops shorter than this keep the current frame, so turning does not flicker.
-        [SerializeField, Min(0f)] private float stopDelay = 0.12f;
+        [SerializeField, Min(0f)] private float stopDelay = 0.25f;
         // How long the old pose fades out when switching between running and standing.
         [SerializeField, Min(0f)] private float crossfadeSeconds = 0.15f;
 

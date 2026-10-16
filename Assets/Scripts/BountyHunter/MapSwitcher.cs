@@ -8,8 +8,7 @@ namespace BountyHunter.Thieves
 {
     // Switches between maps with the N key: each map has its own floor painting, hiding spot art
     // (bushes, bins, ...) and the bits thrown out when a thief dives in (leaves, trash). A switch
-    // lays out new hiding spots and starts a fresh round with every thief back and the stage timer
-    // restarted. The first map is applied before anything spawns, so it decides what Play starts with.
+    // lays out new hiding spots and starts the next stage from round 1 (BountyRounds). The first map is applied before anything spawns, so it decides what Play starts with.
     [DefaultExecutionOrder(-100)]
     public sealed class MapSwitcher : MonoBehaviour
     {
@@ -37,8 +36,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private RawImage floorImage;
         [SerializeField] private BushScatter hidingSpots;
         [SerializeField] private ThiefSpawner thieves;
-        // The STAGE / countdown banner on the wall; restarted for every new stage.
-        [SerializeField] private StageTimer timer;
+        // Puts up the posters, spawns their thieves and restarts the timer for every new stage.
+        [SerializeField] private BountyRounds rounds;
         [SerializeField] private MapTheme[] maps;
 
         private int current;
@@ -63,8 +62,7 @@ namespace BountyHunter.Thieves
             if (thieves != null) thieves.RemoveThieves();
             Apply(map);
             if (hidingSpots != null) hidingSpots.Scatter();
-            if (thieves != null) thieves.SpawnThieves();
-            if (timer != null) timer.StartStage(current + 1);
+            if (rounds != null) rounds.StartStage(current + 1);
             Debug.Log($"[MapSwitcher] Switched to {map.Name}", this);
         }
 

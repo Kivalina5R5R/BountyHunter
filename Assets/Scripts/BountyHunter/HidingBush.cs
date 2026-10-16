@@ -70,12 +70,18 @@ namespace BountyHunter.Thieves
 
         public void Enter(ThiefController thief, Vector3 fromSide)
         {
+            Occupy(thief);
+            ThiefEntered?.Invoke(this, fromSide);
+        }
+
+        // Puts the thief inside without the jump-in reaction, for a thief that starts the round hidden.
+        public void Occupy(ThiefController thief)
+        {
             Occupant = thief;
             ReservedBy = null;
             standSeconds = 0f;
             offSeconds = 0f;
             playerOnBush = false;
-            ThiefEntered?.Invoke(this, fromSide);
         }
 
         // The thief comes out toward a side; plays the bush's exit reaction.

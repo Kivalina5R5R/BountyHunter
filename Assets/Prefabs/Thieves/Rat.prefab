@@ -264,5 +264,5 @@ MonoBehaviour:
   blinkSeconds: 0.18
   cycleLength: 0.42
   standSpeed: 0.05
-  stopDelay: 0.12
+  stopDelay: 0.25
   crossfadeSeconds: 0

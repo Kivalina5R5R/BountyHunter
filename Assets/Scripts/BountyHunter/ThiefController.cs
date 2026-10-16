@@ -33,7 +33,7 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(10f)] private float fleeTurnDegrees = 720f;
 
         [Header("Wandering")]
-        [SerializeField] private Vector2 wanderPauseSeconds = new Vector2(1f, 2.5f);
+        [SerializeField] private Vector2 wanderPauseSeconds = new Vector2(1.5f, 3f);
         // How far each trip goes from where it stands.
         [SerializeField] private Vector2 tripDistance = new Vector2(1.2f, 3f);
         // Gap kept from the leaves of a bush when lurking beside it.
@@ -46,6 +46,13 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float avoidRadius = 1.3f;
         // Distance from the floor edge where the thief starts turning away from it.
         [SerializeField, Min(0.05f)] private float edgeMargin = 0.6f;
+        // Corners are dead ends where a thief is easily caught: spots this close to one count as
+        // dangerous, both when fleeing and when picking where to wander.
+        [SerializeField, Min(0.1f)] private float cornerRadius = 1.8f;
+        // A fleeing thief only calms down once no player has been within calmRadius for calmSeconds,
+        // so it does not stop and start again every time a player steps in and out of fleeRadius.
+        [SerializeField, Min(0.1f)] private float calmRadius = 3.2f;
+        [SerializeField, Min(0f)] private float calmSeconds = 1.2f;
 
         [Header("Crowd")]
         // Thieves in the open are never closer than this (centre to centre), about one body width,
@@ -94,6 +101,11 @@ namespace BountyHunter.Thieves
         private Vector3 lastMoveDirection = Vector3.back;
         private Vector3 velocity;
         private float tripSpeed;
+        private float lastAlarmAt = float.MinValue;
+        // Walking in from off the floor at the start of a round; it moves straight in, unclamped.
+        private bool entering;
+        private float enterAt;
+        private Vector3 entryPoint;
 
         public ThiefState State => state;
         public string TypeName => typeName;
@@ -116,6 +128,28 @@ namespace BountyHunter.Thieves
             BeginWander();
         }
 
+        // Starts the round unseen inside the bush and sneaks out after seconds (a player nearby
+        // makes it wait a little longer). Call right after Initialize.
+        public void StartHiddenIn(HidingBush bush, float seconds)
+        {
+            bush.Occupy(this);
+            hiddenIn = bush;
+            state = ThiefState.Hidden;
+            sneakOutAt = Time.time + seconds;
+            mustLeaveAt = sneakOutAt + maxHideSeconds;
+            SetVisible(false);
+        }
+
+        // Starts the round unseen where it was placed, off the floor, and after seconds walks
+        // straight in to inside before wandering as usual. Call right after Initialize.
+        public void WalkIn(Vector3 inside, float seconds)
+        {
+            entering = true;
+            enterAt = Time.time + seconds;
+            entryPoint = new Vector3(inside.x, transform.position.y, inside.z);
+            SetVisible(false);
+        }
+
         // Called by a bush when a player stood on it long enough; runs away from that player.
         public void FlushOut(Vector3 threat)
         {
@@ -132,6 +166,11 @@ namespace BountyHunter.Thieves
         private void Update()
         {
             if (players == null || state == ThiefState.Caught) return;
+            if (entering)
+            {
+                UpdateWalkIn();
+                return;
+            }
 
             bool threatened = players.TryGetNearest(transform.position, out Vector3 threat, out float threatDistance) &&
                 threatDistance <= fleeRadius;
@@ -153,13 +192,33 @@ namespace BountyHunter.Thieves
             }
 
             players.GetAll(playerPositions);
+            if (threatDistance <= calmRadius) lastAlarmAt = Time.time;
+            bool calm = Time.time - lastAlarmAt >= calmSeconds;
             if (threatened && (state != ThiefState.Flee || Time.time >= nextReplanAt || !TargetStillSafe())) Flee(threat, false);
-            else if (!threatened && state == ThiefState.Flee && targetBush == null) BeginWander();
+            else if (calm && state == ThiefState.Flee && targetBush == null) BeginWander();
 
             // While running in the open, the run direction is steered every frame.
             if (state == ThiefState.Flee && targetBush == null) SetTarget(transform.position + EscapeDirection() * 1.5f);
             Move();
             KeepApart();
+        }
+
+        private void UpdateWalkIn()
+        {
+            if (Time.time < enterAt) return;
+
+            SetVisible(true);
+            Vector3 position = transform.position;
+            Vector3 next = Vector3.MoveTowards(position, entryPoint, wanderSpeed * 1.3f * Time.deltaTime);
+            Face(next.x - position.x);
+            if ((next - position).sqrMagnitude > 0.000001f) lastMoveDirection = (next - position).normalized;
+            transform.position = next;
+            if ((entryPoint - next).sqrMagnitude > 0.0001f) return;
+
+            entering = false;
+            Debug.Log($"[Thief] {name} walked onto the floor", this);
+            BeginWander();
+            StartTrip();
         }
 
         private void UpdateHidden(bool threatened)
@@ -337,6 +396,7 @@ namespace BountyHunter.Thieves
                 score += UnityEngine.Random.Range(0f, 0.6f);
                 // Spots another thief is standing on or heading to are crowded.
                 if (Crowded(candidate)) score -= 3f;
+                score -= CornerCloseness(candidate) * 3f;
 
                 if (score <= bestScore) continue;
                 bestScore = score;
@@ -461,12 +521,24 @@ namespace BountyHunter.Thieves
                 float score = Mathf.Min(closest, 3f) + room * 1.5f + Vector3.Dot(direction, preferred) * 0.6f + Vector3.Dot(direction, lastMoveDirection) * 0.3f;
                 // Running into another thief is worth avoiding, but much less than running into a player.
                 score -= Crowding(ahead) * 0.8f;
+                // A corner traps it, so heading toward one is bad even when it is still a little way off.
+                Vector3 further = ClampToArea(position + direction * 2.4f);
+                score -= CornerCloseness(ahead) * 3f + CornerCloseness(further) * 1.5f;
                 if (score <= bestScore) continue;
                 bestScore = score;
                 best = direction;
             }
 
             return best;
+        }
+
+        // 0 when the point is at least cornerRadius from every floor corner, up to 1 in a corner.
+        private float CornerCloseness(Vector3 point)
+        {
+            float x = Mathf.Min(point.x - areaMin.x, areaMax.x - point.x);
+            float z = Mathf.Min(point.z - areaMin.y, areaMax.y - point.z);
+            float distance = Mathf.Sqrt(x * x + z * z);
+            return Mathf.Clamp01(1f - distance / cornerRadius);
         }
 
         // Points inward when close to a floor edge, stronger the closer it gets.

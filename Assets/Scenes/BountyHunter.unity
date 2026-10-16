@@ -287,6 +287,68 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 23398929}
   m_CullTransparentMesh: 1
+--- !u!1 &156425233
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 156425234}
+  - component: {fileID: 156425235}
+  m_Layer: 0
+  m_Name: Bounty
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &156425234
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 658267707}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &156425235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dd659ca7f9cdee46b8959574072adb9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BountyRounds
+  spawner: {fileID: 1226030214}
+  board: {fileID: 1435788370}
+  timer: {fileID: 1445836966812051384}
+  scoreTags:
+  - {fileID: 1077542171}
+  - {fileID: 354115127}
+  - {fileID: 1804798657}
+  - {fileID: 879857161}
+  bombs: {fileID: 1898598048}
+  bombPenalty: {x: 5, y: 10}
+  damageFormat: -{0}$
+  damageColor: {r: 1, g: 0.22, b: 0.16, a: 1}
+  damageFont: {fileID: 11400000, guid: d4e98a79a56adb245b3f28d26d672faf, type: 2}
+  damageMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
+  roundsPerStage: 3
+  postersAfterTitle: 0.2
+  thiefAfterPoster: 0.5
+  nextRoundDelay: 1.8
 --- !u!1 &274949122
 GameObject:
   m_ObjectHideFlags: 0
@@ -319,6 +381,17 @@ Transform:
   - {fileID: 4634650}
   m_Father: {fileID: 566848745}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &354115127 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3771135342606696313, guid: c1c800a9ec34cc54f96976d717062ca5, type: 3}
+  m_PrefabInstance: {fileID: 6242495402789460537}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe460f1658bad5a499810df459b24c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PlayerScoreTag
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -976,6 +1049,8 @@ Transform:
   - {fileID: 1849188210}
   - {fileID: 1226030213}
   - {fileID: 955327269}
+  - {fileID: 156425234}
+  - {fileID: 1898598047}
   m_Father: {fileID: 1957981330}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &734738225
@@ -1127,6 +1202,130 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &867269509
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 867269510}
+  - component: {fileID: 867269514}
+  - component: {fileID: 867269513}
+  - component: {fileID: 867269512}
+  - component: {fileID: 867269511}
+  m_Layer: 0
+  m_Name: Leader Star
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &867269510
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 867269509}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1144961298}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &867269511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 867269509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4d4c6ded84c8894398e00eace355abf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.LeaderStar
+  tags:
+  - {fileID: 1077542171}
+  - {fileID: 354115127}
+  - {fileID: 1804798657}
+  - {fileID: 879857161}
+  changeDelay: 0.6
+  swayDegrees: 3
+  swaySeconds: 2.4
+  glintEverySeconds: 2.6
+  appearSeconds: 0.55
+  flySeconds: 0.7
+  arcHeight: 1.4
+--- !u!225 &867269512
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 867269509}
+  m_Enabled: 1
+  m_Alpha: 0
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
+--- !u!114 &867269513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 867269509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 4c5b4cba070b44c44aa2b588d2f377ae, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 1
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &867269514
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 867269509}
+  m_CullTransparentMesh: 1
+--- !u!114 &879857161 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4202899427726877518, guid: bcec0e7f1d49ead4ebee36962a4eca05, type: 3}
+  m_PrefabInstance: {fileID: 3902247188344845334}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe460f1658bad5a499810df459b24c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PlayerScoreTag
 --- !u!1 &955327268
 GameObject:
   m_ObjectHideFlags: 0
@@ -1174,7 +1373,7 @@ MonoBehaviour:
   floorImage: {fileID: 734738229}
   hidingSpots: {fileID: 1849188211}
   thieves: {fileID: 1226030214}
-  timer: {fileID: 1445836966812051384}
+  rounds: {fileID: 156425235}
   maps:
   - name: Map1 Park
     floor: {fileID: 2800000, guid: 97b13a8c8331fa34caf780d6e8a8da73, type: 3}
@@ -1207,6 +1406,17 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 50b14d9254f34034c9225ac0449c9bd2, type: 3}
     - {fileID: 21300000, guid: 9ca8fa3ef7df38844917de7e92f6edd0, type: 3}
     - {fileID: 21300000, guid: 610e83fe53524fb419146123c2148e4b, type: 3}
+--- !u!114 &1077542171 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6631584823214870485, guid: 13bb2f835acc5f343ad755772ea35dd9, type: 3}
+  m_PrefabInstance: {fileID: 4949916268746661381}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe460f1658bad5a499810df459b24c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PlayerScoreTag
 --- !u!1 &1097634109
 GameObject:
   m_ObjectHideFlags: 0
@@ -1398,6 +1608,7 @@ RectTransform:
   - {fileID: 4949916268746661382}
   - {fileID: 3902247188344845335}
   - {fileID: 1435788369}
+  - {fileID: 867269510}
   - {fileID: 6542012015865685209}
   m_Father: {fileID: 1957981330}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1515,21 +1726,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ThiefSpawner
   playerSpawner: {fileID: 594936650}
   bushScatter: {fileID: 1849188211}
-  thiefTypes:
-  - prefab: {fileID: 6128973433359212458, guid: ff3804531f97ddd42a4d74adbd17fe38, type: 3}
-    count: 3
-  - prefab: {fileID: 3971676936731283268, guid: 15395a36362c1444aa4bc81f623aa4f0, type: 3}
-    count: 2
-  - prefab: {fileID: 3703331366831257569, guid: 9e7bf876ff053344990bd2eb880026b7, type: 3}
-    count: 2
-  - prefab: {fileID: 567263788121558056, guid: ad37426227231e244869384d5b35bd39, type: 3}
-    count: 2
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
   spawnClearanceFromPlayers: 2
-  spawnClearanceFromBushes: 0.3
-  spawnClearanceFromThieves: 0.9
   height: 0.04
+  walkInFromOutside: 1
+  walkInToInside: 0.7
   secondsToFlushBush: 2
   routeClearance: 0.9
   leafSprites:
@@ -1795,6 +1997,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1435788369}
+  - component: {fileID: 1435788370}
   m_Layer: 0
   m_Name: Post
   m_TagString: Untagged
@@ -1825,6 +2028,28 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1435788370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1435788368}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 493417aac86776444a0c15b05d933637, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WantedBoard
+  posters:
+  - {fileID: 7604930754122891426}
+  - {fileID: 4612768883998329640}
+  - {fileID: 6535402817184502792}
+  - {fileID: 2521307907284954349}
+  spacing: 160
+  maxTiltDegrees: 4
+  bountyRange: {x: 10, y: 15}
+  pinStagger: 0.22
+  closeUpDelay: 1.1
 --- !u!1 &1472304788
 GameObject:
   m_ObjectHideFlags: 0
@@ -2001,6 +2226,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1595949008}
   m_CullTransparentMesh: 1
+--- !u!114 &1804798657 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1609423019770936144, guid: d6be824ed9f5fe34686f15e3a77d7dae, type: 3}
+  m_PrefabInstance: {fileID: 3690032621445505067}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe460f1658bad5a499810df459b24c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PlayerScoreTag
 --- !u!1 &1833583717
 GameObject:
   m_ObjectHideFlags: 0
@@ -2086,6 +2322,8 @@ MonoBehaviour:
   playerWidth: 0.665
   sizeVsPlayer: {x: 1.15, y: 2.3}
   edgeGap: 0.1
+  preferredGap: 1.3
+  spotsPerBush: 24
   areaMin: {x: -4.5, y: -1.65}
   areaMax: {x: 4.5, y: 1.65}
   floorSize: {x: 11, y: 5.26}
@@ -2095,6 +2333,97 @@ MonoBehaviour:
   sortingOrder: 5
   height: 0.02
   seed: 0
+--- !u!1 &1898598046
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1898598047}
+  - component: {fileID: 1898598048}
+  m_Layer: 0
+  m_Name: Bombs
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1898598047
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1898598046}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 658267707}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1898598048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1898598046}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2979f6b1b17b2c64eb14f8da5968ca73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BombSquad
+  thieves: {fileID: 1226030214}
+  playerSpawner: {fileID: 594936650}
+  art:
+    fuse:
+    - {fileID: 21300000, guid: 4f79370f4686fbb4e80263af1d006148, type: 3}
+    - {fileID: 21300000, guid: e078bb63258ac3743a01741fff5a8e77, type: 3}
+    - {fileID: 21300000, guid: 0d25ef71eb6fb4e4e894f3e6bf0dccd2, type: 3}
+    - {fileID: 21300000, guid: 0aa0d830ffcb8604f8404a166cb8127b, type: 3}
+    - {fileID: 21300000, guid: 555441bebb18aa047bea7de16fa84102, type: 3}
+    - {fileID: 21300000, guid: 9c89b00107a408e46b75beec3c9fd236, type: 3}
+    - {fileID: 21300000, guid: 947e1fbcb3bacb54e840a55571e5af75, type: 3}
+    - {fileID: 21300000, guid: 140fe716998a1b240998e85489e317f4, type: 3}
+    - {fileID: 21300000, guid: 61e31a8459f65eb42a5480f5304b3b87, type: 3}
+    - {fileID: 21300000, guid: 18c232a7edcb9464bbca2762cbb28136, type: 3}
+    - {fileID: 21300000, guid: 37c3cc7e715f03d4db2b9d315d47cf9f, type: 3}
+    - {fileID: 21300000, guid: 0c12837d00679d64fb8f4e53d89ae886, type: 3}
+    - {fileID: 21300000, guid: dfe8a9408fac8bd42a726e5e287db0cf, type: 3}
+    - {fileID: 21300000, guid: 68106019658cb3f4a8d5e40d91f7093c, type: 3}
+    - {fileID: 21300000, guid: ab89ed4ca1b850d4fa7e253126725e36, type: 3}
+    - {fileID: 21300000, guid: 41c00354cad0f6a4eb35144e8a0f1153, type: 3}
+    - {fileID: 21300000, guid: 255d27727f795ba44bb5ed082a805c9c, type: 3}
+    - {fileID: 21300000, guid: 525850865dcb712498cad09e7912fe1c, type: 3}
+    - {fileID: 21300000, guid: 0439620d8b8f6224c80272a2179da8b8, type: 3}
+    - {fileID: 21300000, guid: 2151ea21b05f7fa4d88077fb48820c58, type: 3}
+    - {fileID: 21300000, guid: e60c99e03cedda44080e5b058cd02477, type: 3}
+    - {fileID: 21300000, guid: 761f7f617c5a29c4681b91be1b3b3b2e, type: 3}
+    - {fileID: 21300000, guid: 63091ea9e612b71448306cda2f6fee45, type: 3}
+    - {fileID: 21300000, guid: 5ef4df0e79b160b4aabba7f8fe612f2c, type: 3}
+    squash:
+    - {fileID: 21300000, guid: a1a8910fa304f0b4ab519310cd176772, type: 3}
+    - {fileID: 21300000, guid: f4adfa0083621914683f675388ddaabe, type: 3}
+    - {fileID: 21300000, guid: babffd75daa2ddd4f9ac46df0e13ab8e, type: 3}
+    - {fileID: 21300000, guid: 8d28dc4a0c6fbd446926e2cc85808d4d, type: 3}
+    - {fileID: 21300000, guid: a0692ec43156eb64c963e23297b6aab9, type: 3}
+    - {fileID: 21300000, guid: e992d1f90fa7c64468c4042ce63d3c6e, type: 3}
+    - {fileID: 21300000, guid: 8d243d580dc453142a12524d359055fd, type: 3}
+    boom:
+    - {fileID: 21300000, guid: b4ff126d28fcaa44d82496883e3ffbb1, type: 3}
+    - {fileID: 21300000, guid: 193ef8d427e0c99469b3eb7c695880e4, type: 3}
+    - {fileID: 21300000, guid: d7a8a408ec085a241b313ba43a553c81, type: 3}
+  chaseSeconds: 3
+  chaseRadius: 2.2
+  cooldownSeconds: 10
+  fuseSeconds: 1
+  blastRadius: 0.9
+  bombSize: 0.3
+  dropBehind: 0.35
 --- !u!1 &1957981329
 GameObject:
   m_ObjectHideFlags: 0
@@ -2430,6 +2759,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 7007672668112098526, guid: 013a314fdfeffc545a779525fab89f42, type: 3}
   m_PrefabInstance: {fileID: 2521307907284954347}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2521307907284954349 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8304763758039108691, guid: 013a314fdfeffc545a779525fab89f42, type: 3}
+  m_PrefabInstance: {fileID: 2521307907284954347}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5940e5b421ebb354b940cd884bb8ad49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WantedPoster
 --- !u!222 &3158072571442014078
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2840,6 +3180,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1775019807403466773, guid: 7a31bdad6efa2b94a8afc0f6ee93d11a, type: 3}
   m_PrefabInstance: {fileID: 4612768883998329638}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &4612768883998329640 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5994140537697730993, guid: 7a31bdad6efa2b94a8afc0f6ee93d11a, type: 3}
+  m_PrefabInstance: {fileID: 4612768883998329638}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5940e5b421ebb354b940cd884bb8ad49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WantedPoster
 --- !u!1001 &4949916268746661381
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3212,6 +3563,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1421750858798287370, guid: 1c982648d8b501d42a60a94a4c0c35f7, type: 3}
   m_PrefabInstance: {fileID: 6535402817184502790}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6535402817184502792 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5167343785792030893, guid: 1c982648d8b501d42a60a94a4c0c35f7, type: 3}
+  m_PrefabInstance: {fileID: 6535402817184502790}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5940e5b421ebb354b940cd884bb8ad49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WantedPoster
 --- !u!224 &6542012015865685209
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3397,6 +3759,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1817330669301518938, guid: 2605e34258f89b84b89b6065a6fe2eb8, type: 3}
   m_PrefabInstance: {fileID: 7604930754122891424}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7604930754122891426 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7511250836835592514, guid: 2605e34258f89b84b89b6065a6fe2eb8, type: 3}
+  m_PrefabInstance: {fileID: 7604930754122891424}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5940e5b421ebb354b940cd884bb8ad49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WantedPoster
 --- !u!1 &7632406178209945632
 GameObject:
   m_ObjectHideFlags: 0

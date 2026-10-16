@@ -44,8 +44,12 @@ namespace Fortal.Display
         // in every direction, so it always shows a little past a player standing on it; the largest
         // is twice the smallest.
         [SerializeField] private Vector2 sizeVsPlayer = new Vector2(1.15f, 2.3f);
-        // Extra gap between the edges of neighbouring bushes.
+        // Extra gap between the edges of neighbouring bushes; never closer than this.
         [SerializeField, Min(0f)] private float edgeGap = 0.1f;
+        // The gap each bush tries for between its edge and its neighbours'. Of a handful of random
+        // spots it takes one this clear, or else the clearest one, so bushes spread over the floor.
+        [SerializeField, Min(0f)] private float preferredGap = 1.3f;
+        [SerializeField, Min(1)] private int spotsPerBush = 24;
 
         [Header("Area (world X/Z)")]
         // Bush centres; Vector2.y is world Z. Defaults keep whole bushes inside the 11 x 5.26 floor.
@@ -60,6 +64,10 @@ namespace Fortal.Display
         [SerializeField, Range(0f, 180f)] private float maxTiltDegrees = 180f;
         [SerializeField] private bool randomFlip = true;
         [SerializeField] private int sortingOrder = 5;
+        // Drop shadow under each bush, in world X/Z (Vector2.y is world Z; negative is toward the
+        // bottom of the floor). A clear colour means no shadow.
+        [SerializeField] private Vector2 shadowOffset = new Vector2(0.07f, -0.09f);
+        [SerializeField] private Color shadowColor = new Color(0f, 0f, 0f, 0.35f);
         [SerializeField] private float height = 0.02f;
         [SerializeField, Min(0)] private int seed;
 
@@ -111,9 +119,8 @@ namespace Fortal.Display
                 float scale = Random.Range(MinimumSize, MaximumSize) / Mathf.Max(0.0001f, Mathf.Min(leaves.x, leaves.y));
                 // Half of the longest side covers the bush at any tilt.
                 float reach = Mathf.Max(leaves.x, leaves.y) * scale * 0.5f;
-                CentreLimits(reach, out Vector2 low, out Vector2 high);
-                var position = new Vector2(Random.Range(low.x, high.x), Random.Range(low.y, high.y));
-                if (TooClose(position, reach, placed)) continue;
+                Vector2 position = PickSpot(reach, placed, out float clearance);
+                if (clearance < edgeGap) continue;
 
                 placed.Add((position, reach));
                 Transform bush = SpawnBush(sprite, position, scale, placed.Count);
@@ -140,16 +147,37 @@ namespace Fortal.Display
         private float MinimumSize => playerWidth * Mathf.Max(1.05f, sizeVsPlayer.x);
         private float MaximumSize => Mathf.Max(MinimumSize, playerWidth * sizeVsPlayer.y);
 
-        // Keeps centres at least the two bushes' reach apart, so neighbours never overlap.
-        private bool TooClose(Vector2 position, float reach, List<(Vector2 position, float reach)> placed)
+        // Tries random spots for a bush reaching this far: the first with at least Preferred Gap
+        // around it wins, otherwise the clearest. clearance is the gap left to the nearest bush edge.
+        private Vector2 PickSpot(float reach, List<(Vector2 position, float reach)> placed, out float clearance)
         {
-            for (int i = 0; i < placed.Count; i++)
+            CentreLimits(reach, out Vector2 low, out Vector2 high);
+            Vector2 best = Vector2.zero;
+            clearance = float.MinValue;
+            for (int i = 0; i < spotsPerBush; i++)
             {
-                float spacing = placed[i].reach + reach + edgeGap;
-                if ((placed[i].position - position).sqrMagnitude < spacing * spacing) return true;
+                var spot = new Vector2(Random.Range(low.x, high.x), Random.Range(low.y, high.y));
+                float gap = Clearance(spot, reach, placed);
+                if (gap <= clearance) continue;
+
+                best = spot;
+                clearance = gap;
+                if (clearance >= preferredGap) break;
             }
 
-            return false;
+            return best;
+        }
+
+        // Gap between this bush's edge and the nearest placed bush's edge; negative when they overlap.
+        private static float Clearance(Vector2 position, float reach, List<(Vector2 position, float reach)> placed)
+        {
+            float clearance = float.MaxValue;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                clearance = Mathf.Min(clearance, Vector2.Distance(placed[i].position, position) - placed[i].reach - reach);
+            }
+
+            return clearance;
         }
 
         private Transform SpawnBush(Sprite sprite, Vector2 position, float scale, int number)
@@ -165,6 +193,7 @@ namespace Fortal.Display
             spriteRenderer.sprite = sprite;
             spriteRenderer.sortingOrder = sortingOrder;
             spriteRenderer.flipX = randomFlip && Random.value < 0.5f;
+            if (shadowColor.a > 0f) BushShadow.Add(spriteRenderer, shadowOffset, shadowColor);
             spawned.Add(bush);
             return bush.transform;
         }

@@ -35,7 +35,6 @@ namespace BountyHunter.Editor
             public float PixelsPerUnit { get; set; }
             // World distance of one walk cycle: video cycle seconds x the 0.6 units/s walk.
             public float CycleLength { get; set; }
-            public int Count { get; set; }
             public bool ArtFacesRight { get; set; }
 
             public string Folder => $"Assets/ART/Thif/{Name}";
@@ -44,10 +43,10 @@ namespace BountyHunter.Editor
 
         private static readonly ThiefKind[] Kinds =
         {
-            new ThiefKind { Name = "Chicken", IdleName = "Sit", PixelsPerUnit = 66.94f, CycleLength = 0.56f, Count = 3 },
-            new ThiefKind { Name = "Cat", IdleName = "Idle", PixelsPerUnit = 62.68f, CycleLength = 0.5f, Count = 2 },
-            new ThiefKind { Name = "Crow", IdleName = "Idle", PixelsPerUnit = 66.2f, CycleLength = 0.48f, Count = 2 },
-            new ThiefKind { Name = "Rat", IdleName = "Idle", PixelsPerUnit = 65.8f, CycleLength = 0.42f, Count = 2 },
+            new ThiefKind { Name = "Chicken", IdleName = "Sit", PixelsPerUnit = 66.94f, CycleLength = 0.56f },
+            new ThiefKind { Name = "Cat", IdleName = "Idle", PixelsPerUnit = 62.68f, CycleLength = 0.5f },
+            new ThiefKind { Name = "Crow", IdleName = "Idle", PixelsPerUnit = 66.2f, CycleLength = 0.48f },
+            new ThiefKind { Name = "Rat", IdleName = "Idle", PixelsPerUnit = 65.8f, CycleLength = 0.42f },
         };
 
         static ThiefSetup()
@@ -108,7 +107,7 @@ namespace BountyHunter.Editor
             Debug.Log("[ThiefSetup] Added Map/Arena/Thieves. Press Play and watch the Console.");
         }
 
-        // Adds missing thief kinds and art to the spawner, leaving kinds and counts already there alone.
+        // Adds missing effect art to the spawner, leaving art already there alone.
         private static void UpdateSpawner(ThiefSpawner spawner)
         {
             if (spawner == null) return;
@@ -121,26 +120,6 @@ namespace BountyHunter.Editor
             AssignIfMissing(spawner, "catchBrawl.stars", LoadSprites(BrawlFolder, "Brawl_Star_"), "stars to the catch brawl");
             AssignIfMissing(spawner, "catchBrawl.words", LoadSprites(BrawlFolder, "Brawl_Word_"), "POW / BAM words to the catch brawl");
             AssignIfMissing(spawner, "catchBrawl.swooshes", LoadSprites(BrawlFolder, "Brawl_Swoosh"), "swooshes to the catch brawl");
-
-            var data = new SerializedObject(spawner);
-            SerializedProperty types = data.FindProperty("thiefTypes");
-            bool changed = false;
-            foreach (ThiefKind kind in Kinds)
-            {
-                var prefab = AssetDatabase.LoadAssetAtPath<ThiefController>(kind.PrefabPath);
-                if (prefab == null || HasType(types, prefab)) continue;
-
-                int index = types.arraySize;
-                types.arraySize = index + 1;
-                types.GetArrayElementAtIndex(index).FindPropertyRelative("prefab").objectReferenceValue = prefab;
-                types.GetArrayElementAtIndex(index).FindPropertyRelative("count").intValue = kind.Count;
-                changed = true;
-                Debug.Log($"[ThiefSetup] Added {kind.Count} {kind.Name} thieves to the spawner. Save the scene (Ctrl+S) to keep it.");
-            }
-
-            if (!changed) return;
-            data.ApplyModifiedProperties();
-            EditorSceneManager.MarkSceneDirty(spawner.gameObject.scene);
         }
 
         private static Sprite[] Limbs()
@@ -150,16 +129,6 @@ namespace BountyHunter.Editor
             limbs.AddRange(LoadSprites(BrawlFolder, "Brawl_CatPaw"));
             limbs.AddRange(LoadSprites(BrawlFolder, "Brawl_Cuffs"));
             return limbs.ToArray();
-        }
-
-        private static bool HasType(SerializedProperty types, ThiefController prefab)
-        {
-            for (int i = 0; i < types.arraySize; i++)
-            {
-                if (types.GetArrayElementAtIndex(i).FindPropertyRelative("prefab").objectReferenceValue == prefab) return true;
-            }
-
-            return false;
         }
 
         private static void AssignIfMissing(ThiefSpawner spawner, string propertyName, Sprite[] sprites, string description)

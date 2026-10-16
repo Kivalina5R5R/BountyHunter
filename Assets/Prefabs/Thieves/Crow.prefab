@@ -194,7 +194,7 @@ MonoBehaviour:
   blinkSeconds: 0.18
   cycleLength: 0.48
   standSpeed: 0.05
-  stopDelay: 0.12
+  stopDelay: 0.25
   crossfadeSeconds: 0.15
 --- !u!1 &8664501356759184078
 GameObject:
@@ -249,7 +249,7 @@ MonoBehaviour:
   acceleration: 2.5
   wanderTurnDegrees: 200
   fleeTurnDegrees: 720
-  wanderPauseSeconds: {x: 1, y: 2.5}
+  wanderPauseSeconds: {x: 1.5, y: 3}
   tripDistance: {x: 1.2, y: 3}
   lurkGap: 0.3
   replanSeconds: 0.2
