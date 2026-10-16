@@ -80,6 +80,7 @@ namespace BountyHunter.Editor
             }
 
             changed |= MoveBack(root);
+            changed |= StrongerBounce(root);
             changed |= BuildCountdown(root);
             changed |= LinkToIntro(root.gameObject);
             changed |= FillMarkers(root.GetComponent<CharacterSelect>());
@@ -154,6 +155,26 @@ namespace BountyHunter.Editor
             spriteRenderer.sortingOrder = order;
             if (sprite != null) piece.transform.localScale = Vector3.one * (width / sprite.bounds.size.x);
             return spriteRenderer;
+        }
+
+        // The step-on bounce was too small to see from above; cards still at the first values get the bigger one.
+        private static bool StrongerBounce(Transform root)
+        {
+            bool changed = false;
+            foreach (CharacterCard card in root.GetComponentsInChildren<CharacterCard>(true))
+            {
+                var data = new SerializedObject(card);
+                SerializedProperty bounce = data.FindProperty("stepBounce");
+                SerializedProperty seconds = data.FindProperty("stepBounceSeconds");
+                if (!Mathf.Approximately(bounce.floatValue, 0.12f) || !Mathf.Approximately(seconds.floatValue, 0.4f)) continue;
+
+                bounce.floatValue = 0.28f;
+                seconds.floatValue = 0.55f;
+                data.ApplyModifiedPropertiesWithoutUndo();
+                changed = true;
+            }
+
+            return changed;
         }
 
         private static bool MoveBack(Transform root)

@@ -28,6 +28,8 @@ namespace BountyHunter.Thieves
         // to this far inside it.
         [SerializeField, Min(0f)] private float walkInFromOutside = 1f;
         [SerializeField, Min(0f)] private float walkInToInside = 0.7f;
+        // An entrance with a player closer than this is not used: a thief would walk into their arms.
+        [SerializeField, Min(0f)] private float safeEntranceDistance = 2.8f;
 
         [Header("Bushes")]
         [SerializeField, Min(0.1f)] private float secondsToFlushBush = 2f;
@@ -56,6 +58,16 @@ namespace BountyHunter.Thieves
         private readonly List<Vector3> roundEntrances = new List<Vector3>();
         private readonly List<Vector3> lastRoundEntrances = new List<Vector3>();
         private bool lastEntranceWasBush;
+
+        // A thief waiting off the floor for its turn to come in, and the way it planned to.
+        private sealed class Arrival
+        {
+            public ThiefController Thief;
+            public Entrance Entrance;
+            public float At;
+        }
+
+        private readonly List<Arrival> arrivals = new List<Arrival>();
         private readonly List<ThiefController> thieves = new List<ThiefController>();
         private SpawnerPlayerLocator players;
 
@@ -178,6 +190,7 @@ namespace BountyHunter.Thieves
             }
 
             thieves.Clear();
+            arrivals.Clear();
             if (roundEntrances.Count == 0) return;
 
             lastRoundEntrances.Clear();
@@ -194,19 +207,66 @@ namespace BountyHunter.Thieves
             roundEntrances.Add(entrance.Point);
             lastEntranceWasBush = entrance.Bush != null;
             HidingBush bush = entrance.Bush;
-            Vector3 inside = entrance.Point + entrance.Inward * walkInToInside;
             Vector3 position = bush != null ? entrance.Point : entrance.Point - entrance.Inward * walkInFromOutside;
             ThiefController thief = Instantiate(prefab, position, Quaternion.identity, transform);
             thief.name = prefab.TypeName;
             thief.Initialize(players, this, this, areaMin, areaMax);
-            if (bush != null) thief.StartHiddenIn(bush, entranceDelay);
-            else thief.WalkIn(inside, entranceDelay);
+            if (bush != null)
+            {
+                thief.StartHiddenIn(bush, entranceDelay);
+            }
+            else
+            {
+                // Which edge it comes over is checked again when its turn comes (see Update).
+                thief.WaitOffFloor();
+                arrivals.Add(new Arrival { Thief = thief, Entrance = entrance, At = Time.time + entranceDelay });
+            }
             thief.gameObject.AddComponent<DustTrail>().Initialize(dustSprites, thief.Body);
             thief.Caught += OnThiefCaught;
             thieves.Add(thief);
             string where = bush != null ? $"hidden in {bush.name}" : "off the floor edge";
             Debug.Log($"[ThiefSpawner] Spawned {thief.name} {where}", this);
             return thief;
+        }
+
+        // Lets waiting thieves in when their turn comes. A player may have gone to stand at the planned
+        // edge meanwhile; then it comes in another way, a safe edge or a free hiding spot.
+        private void Update()
+        {
+            for (int i = arrivals.Count - 1; i >= 0; i--)
+            {
+                Arrival arrival = arrivals[i];
+                if (arrival.Thief == null)
+                {
+                    arrivals.RemoveAt(i);
+                    continue;
+                }
+
+                if (Time.time < arrival.At) continue;
+                arrivals.RemoveAt(i);
+
+                Entrance entrance = arrival.Entrance;
+                if (!Safe(entrance.Point))
+                {
+                    entrance = PickEntrance();
+                    Debug.Log($"[ThiefSpawner] A player is waiting where {arrival.Thief.name} planned to come in; it comes in elsewhere", this);
+                }
+
+                if (entrance.Bush != null)
+                {
+                    arrival.Thief.StartHiddenIn(entrance.Bush, 0f);
+                    continue;
+                }
+
+                Vector3 inside = entrance.Point + entrance.Inward * walkInToInside;
+                Vector3 outside = entrance.Point - entrance.Inward * walkInFromOutside;
+                arrival.Thief.WalkIn(outside, inside, 0f);
+            }
+        }
+
+        private bool Safe(Vector3 point)
+        {
+            return !players.TryGetWithin(point, safeEntranceDistance, out _);
         }
 
         // Scores every free hiding spot (none with a player close by) and a few spots along the floor
@@ -252,6 +312,8 @@ namespace BountyHunter.Thieves
 
             score += NearestOf(candidate.Point, lastRoundEntrances, 4f) * 0.5f;
             score += (players.TryGetNearest(candidate.Point, out _, out float player) ? Mathf.Min(player, 4f) : 4f) * 0.3f;
+            // An entrance with a player standing by is only taken when there is nothing else.
+            if (!Safe(candidate.Point)) score -= 100f;
             return score;
         }
 

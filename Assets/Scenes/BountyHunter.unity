@@ -969,6 +969,9 @@ MonoBehaviour:
   cardBreathe: 0.015
   buttonPulse: 0.06
   pulseSeconds: 1.4
+  stepBounce: 0.28
+  stepBounceSeconds: 0.55
+  stepTwist: 9
 --- !u!4 &258143049
 Transform:
   m_ObjectHideFlags: 0
@@ -1646,6 +1649,9 @@ MonoBehaviour:
   cardBreathe: 0.015
   buttonPulse: 0.06
   pulseSeconds: 1.4
+  stepBounce: 0.28
+  stepBounceSeconds: 0.55
+  stepTwist: 9
 --- !u!4 &450419247
 Transform:
   m_ObjectHideFlags: 0
@@ -1885,6 +1891,9 @@ MonoBehaviour:
   cardBreathe: 0.015
   buttonPulse: 0.06
   pulseSeconds: 1.4
+  stepBounce: 0.28
+  stepBounceSeconds: 0.55
+  stepTwist: 9
 --- !u!4 &553906118
 Transform:
   m_ObjectHideFlags: 0
@@ -2082,7 +2091,7 @@ MonoBehaviour:
   playerParent: {fileID: 0}
   spawnOnStart: 1
   playerScale: 0.462
-  simulationPlayerCount: 3
+  simulationPlayerCount: 4
   players:
   - enabled: 1
     playerId: 1
@@ -4610,6 +4619,7 @@ MonoBehaviour:
   height: 0.04
   walkInFromOutside: 1
   walkInToInside: 0.7
+  safeEntranceDistance: 2.8
   secondsToFlushBush: 2
   routeClearance: 0.9
   leafSprites:
@@ -6873,6 +6883,9 @@ MonoBehaviour:
   cardBreathe: 0.015
   buttonPulse: 0.06
   pulseSeconds: 1.4
+  stepBounce: 0.28
+  stepBounceSeconds: 0.55
+  stepTwist: 9
 --- !u!4 &1949699588
 Transform:
   m_ObjectHideFlags: 0

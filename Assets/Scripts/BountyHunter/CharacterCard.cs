@@ -4,7 +4,8 @@ using UnityEngine;
 namespace BountyHunter.Thieves
 {
     // One character's card on the intro floor: the police ID on its folder with a SELECT button under
-    // it. While a player stands on it a loading ring fills around it and the button fades out of its
+    // it. A player stepping on makes the card bounce so they know it noticed them; while they stand
+    // on it a loading ring fills around it and the button fades out of its
     // way (back again if they step off); once full a red SELECTED stamp slams onto the card. Idle, the card breathes and the button pulses to
     // invite a player over. Lies flat on the floor like the other floor art; CharacterSelect drives it.
     public sealed class CharacterCard : MonoBehaviour
@@ -22,6 +23,13 @@ namespace BountyHunter.Thieves
         [SerializeField, Range(0f, 0.2f)] private float buttonPulse = 0.06f;
         [SerializeField, Min(0.2f)] private float pulseSeconds = 1.4f;
 
+        [Header("Step on")]
+        // The bounce when a player steps onto the card: how much it swells and how long it springs.
+        [SerializeField, Range(0f, 0.6f)] private float stepBounce = 0.28f;
+        [SerializeField, Min(0.1f)] private float stepBounceSeconds = 0.55f;
+        // It also twists from side to side as it bounces, in degrees, so it catches the eye from above.
+        [SerializeField, Range(0f, 30f)] private float stepTwist = 9f;
+
         private static readonly int FillId = Shader.PropertyToID("_Fill");
 
         private MaterialPropertyBlock fillBlock;
@@ -30,6 +38,7 @@ namespace BountyHunter.Thieves
         private Vector3 stampScale;
         private Vector3 ringScale;
         private float progress;
+        private float bounceAge = float.MaxValue;
         private float time;
         private bool busy;
 
@@ -57,7 +66,10 @@ namespace BountyHunter.Thieves
         public void ShowProgress(float value)
         {
             if (Taken) return;
-            progress = Mathf.Clamp01(value);
+            float next = Mathf.Clamp01(value);
+            // Someone just stepped on (from nothing): bounce to say so.
+            if (progress <= 0f && next > 0f) bounceAge = 0f;
+            progress = next;
             ShowRing(progress);
         }
 
@@ -76,14 +88,32 @@ namespace BountyHunter.Thieves
             if (busy) return;
 
             float wave = Mathf.Sin(time * Mathf.PI * 2f / pulseSeconds);
+            bounceAge += Time.deltaTime;
             if (card != null)
             {
-                // Lifts a little toward the player while they stand on it.
+                // Lifts a little toward the player while they stand on it, after a springy bounce.
                 float lift = 1f + 0.05f * progress * progress;
-                card.transform.localScale = cardScale * (lift + (Taken ? 0f : cardBreathe * wave));
+                card.transform.localScale = cardScale * (lift + StepBounce() + (Taken ? 0f : cardBreathe * wave));
+                card.transform.localRotation = Quaternion.Euler(0f, 0f, StepTwist());
             }
 
             if (button != null && !Taken) button.transform.localScale = buttonScale * (1f + buttonPulse * Mathf.Max(0f, wave));
+        }
+
+        // Up fast, then a damped spring back: 0 when not bouncing.
+        private float StepBounce()
+        {
+            float t = bounceAge / stepBounceSeconds;
+            if (t >= 1f) return 0f;
+            return stepBounce * Mathf.Sin(t * Mathf.PI * 2.5f) * (1f - t) * (1f - t);
+        }
+
+        // Side to side, a little out of step with the bounce, dying away with it.
+        private float StepTwist()
+        {
+            float t = bounceAge / stepBounceSeconds;
+            if (t >= 1f) return 0f;
+            return stepTwist * Mathf.Sin(t * Mathf.PI * 3.5f) * (1f - t);
         }
 
         private void ShowRing(float fill)

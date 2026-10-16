@@ -132,6 +132,7 @@ namespace BountyHunter.Thieves
         // makes it wait a little longer). Call right after Initialize.
         public void StartHiddenIn(HidingBush bush, float seconds)
         {
+            entering = false;
             bush.Occupy(this);
             hiddenIn = bush;
             state = ThiefState.Hidden;
@@ -140,12 +141,22 @@ namespace BountyHunter.Thieves
             SetVisible(false);
         }
 
-        // Starts the round unseen where it was placed, off the floor, and after seconds walks
-        // straight in to inside before wandering as usual. Call right after Initialize.
-        public void WalkIn(Vector3 inside, float seconds)
+        // Waits unseen off the floor until WalkIn or StartHiddenIn says how it comes in.
+        public void WaitOffFloor()
+        {
+            entering = true;
+            enterAt = float.MaxValue;
+            SetVisible(false);
+        }
+
+        // Starts from outside (off the floor) after seconds and hurries in toward inside; the moment it
+        // is over the floor edge its own mind takes over (wandering, or running from a player near),
+        // and it cannot be caught for exitGraceSeconds, the same head start as coming out of a bush.
+        public void WalkIn(Vector3 outside, Vector3 inside, float seconds)
         {
             entering = true;
             enterAt = Time.time + seconds;
+            transform.position = new Vector3(outside.x, transform.position.y, outside.z);
             entryPoint = new Vector3(inside.x, transform.position.y, inside.z);
             SetVisible(false);
         }
@@ -209,16 +220,36 @@ namespace BountyHunter.Thieves
 
             SetVisible(true);
             Vector3 position = transform.position;
-            Vector3 next = Vector3.MoveTowards(position, entryPoint, wanderSpeed * 1.3f * Time.deltaTime);
+            // Hurries in, between a stroll and a dash, so it does not dawdle where it cannot be seen.
+            Vector3 next = Vector3.MoveTowards(position, entryPoint, Mathf.Lerp(wanderSpeed, fleeSpeed, 0.5f) * Time.deltaTime);
             Face(next.x - position.x);
             if ((next - position).sqrMagnitude > 0.000001f) lastMoveDirection = (next - position).normalized;
             transform.position = next;
-            if ((entryPoint - next).sqrMagnitude > 0.0001f) return;
 
-            entering = false;
-            Debug.Log($"[Thief] {name} walked onto the floor", this);
+            // Over the edge: it decides for itself from here, running if a player is near.
+            bool onFloor = next.x >= areaMin.x && next.x <= areaMax.x && next.z >= areaMin.y && next.z <= areaMax.y;
+            if (!onFloor && (entryPoint - next).sqrMagnitude > 0.0001f) return;
+
+            FinishWalkIn();
+            if (players.TryGetNearest(next, out Vector3 threat, out float distance) && distance <= fleeRadius)
+            {
+                Debug.Log($"[Thief] {name} came onto the floor next to a player, running", this);
+                players.GetAll(playerPositions);
+                Flee(threat, true);
+                return;
+            }
+
+            Debug.Log($"[Thief] {name} came onto the floor", this);
             BeginWander();
+            // Keeps its pace and heading into a trip of its own instead of stopping at the edge.
+            velocity = lastMoveDirection * Mathf.Lerp(wanderSpeed, fleeSpeed, 0.5f);
             StartTrip();
+        }
+
+        private void FinishWalkIn()
+        {
+            entering = false;
+            catchableAt = Time.time + exitGraceSeconds;
         }
 
         private void UpdateHidden(bool threatened)
