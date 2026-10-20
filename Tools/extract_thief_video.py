@@ -9,6 +9,7 @@ Usage: python extract_thief_video.py <frames folder> <walk out> <idle out> <Name
        <walk_end> <idle_frame> <IdleName> [walk_step]
   Chicken: ... Chicken 232 288 56 Sit      Cat: ... Cat 212 262 8 Idle      Crow: ... Crow 96 144 8 Idle
   Sloth (NPC, its slow 4-second cycle every 4th frame): ... Sloth 0 240 0 Idle 4
+  Goat (NPC, goat_walk.mp4 is 30 fps: its 1-second cycle, every frame): ... Goat 0 30 0 Idle 1
 Frames are extracted first with: ffmpeg -i <Name>_Walk_Loop.mp4 <folder>/v_%03d.png
 """
 import math

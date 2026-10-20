@@ -833,7 +833,7 @@ MonoBehaviour:
   damageColor: {r: 1, g: 0.22, b: 0.16, a: 1}
   damageFont: {fileID: 11400000, guid: d4e98a79a56adb245b3f28d26d672faf, type: 2}
   damageMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
-  roundsPerStage: 3
+  mostPosters: 3
   postersAfterTitle: 0.2
   thiefAfterPoster: 0.5
   nextRoundDelay: 1.8
@@ -944,6 +944,7 @@ GameObject:
   m_Component:
   - component: {fileID: 258143049}
   - component: {fileID: 258143048}
+  - component: {fileID: 258143050}
   m_Layer: 0
   m_Name: Card Tedly
   m_TagString: Untagged
@@ -1000,6 +1001,26 @@ Transform:
   - {fileID: 2004450179}
   m_Father: {fileID: 68337179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &258143050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 258143047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056b1806cbe978b4185493c525f75382, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCardSounds
+  cardPop: {fileID: 8300000, guid: c4daeb9d683755b458a35a978ae8520e, type: 3}
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
+  selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
+  volume: 0.8
+  loadingVolume: 0.45
+  fillSeconds: 2
+  stepOffFadeSeconds: 0.12
 --- !u!1 &274949122
 GameObject:
   m_ObjectHideFlags: 0
@@ -1694,6 +1715,7 @@ GameObject:
   m_Component:
   - component: {fileID: 450419247}
   - component: {fileID: 450419246}
+  - component: {fileID: 450419248}
   m_Layer: 0
   m_Name: Card Simba
   m_TagString: Untagged
@@ -1750,6 +1772,76 @@ Transform:
   - {fileID: 1428046547}
   m_Father: {fileID: 68337179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &450419248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 450419245}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056b1806cbe978b4185493c525f75382, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCardSounds
+  cardPop: {fileID: 8300000, guid: c4daeb9d683755b458a35a978ae8520e, type: 3}
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
+  selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
+  volume: 0.8
+  loadingVolume: 0.45
+  fillSeconds: 2
+  stepOffFadeSeconds: 0.12
+--- !u!1 &493064105
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 493064106}
+  - component: {fileID: 493064107}
+  m_Layer: 0
+  m_Name: Game Music
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &493064106
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493064105}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1957981330}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &493064107
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493064105}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44476732662d42f48a39471bad4956d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.GameMusic
+  intro: {fileID: 1131790406}
+  result: {fileID: 378199801}
+  music: {fileID: 8300000, guid: a18710d2b0878b845b386f0a8322d336, type: 3}
+  volume: 0.45
+  fadeInSeconds: 1
+  fadeOutSeconds: 1.2
 --- !u!1 &513768920
 GameObject:
   m_ObjectHideFlags: 0
@@ -1941,6 +2033,7 @@ GameObject:
   m_Component:
   - component: {fileID: 553906118}
   - component: {fileID: 553906117}
+  - component: {fileID: 553906119}
   m_Layer: 0
   m_Name: Card Rex
   m_TagString: Untagged
@@ -1997,6 +2090,26 @@ Transform:
   - {fileID: 98334489}
   m_Father: {fileID: 68337179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &553906119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 553906116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056b1806cbe978b4185493c525f75382, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCardSounds
+  cardPop: {fileID: 8300000, guid: c4daeb9d683755b458a35a978ae8520e, type: 3}
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
+  selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
+  volume: 0.8
+  loadingVolume: 0.45
+  fillSeconds: 2
+  stepOffFadeSeconds: 0.12
 --- !u!1 &566848744
 GameObject:
   m_ObjectHideFlags: 0
@@ -2174,7 +2287,7 @@ MonoBehaviour:
   playerParent: {fileID: 0}
   spawnOnStart: 1
   playerScale: 0.462
-  simulationPlayerCount: 4
+  simulationPlayerCount: 2
   players:
   - enabled: 1
     playerId: 1
@@ -2536,6 +2649,54 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 720048376}
   m_CullTransparentMesh: 1
+--- !u!1 &723386470
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 723386471}
+  - component: {fileID: 723386472}
+  m_Layer: 0
+  m_Name: Intro Music
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &723386471
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 723386470}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1957981330}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &723386472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 723386470}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ac08e3e7ae78bb4fa43c580f8afc96c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.IntroMusic
+  intro: {fileID: 1131790406}
+  song: {fileID: 8300000, guid: 7b195d1f87f2ffc4382259c8dc7f1329, type: 3}
+  volume: 0.6
+  fadeSeconds: 0.6
 --- !u!1 &734738225
 GameObject:
   m_ObjectHideFlags: 0
@@ -3140,6 +3301,7 @@ GameObject:
   - component: {fileID: 869974350}
   - component: {fileID: 869974353}
   - component: {fileID: 869974354}
+  - component: {fileID: 869974355}
   m_Layer: 0
   m_Name: Background
   m_TagString: Untagged
@@ -3299,6 +3461,26 @@ MonoBehaviour:
   ambience: {fileID: 1131790407}
   shakeStrength: 0.008
   shakeSeconds: 0.3
+--- !u!114 &869974355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869974348}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4afe13fd42276c14ea1fc3c0ac02e1da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.IntroSounds
+  arrival: {fileID: 300282220}
+  binCrash: {fileID: 869974354}
+  effects: {fileID: 8300000, guid: e1fc129854f8f774088a053760fd5287, type: 3}
+  effectsVolume: 1
+  original: {fileID: 8300000, guid: 67098884ba3fbb446a69a319dd34fe61, type: 3}
+  originalVolume: 0
+  crash: {fileID: 8300000, guid: 3f366f47d29a11a42b545055f614b505, type: 3}
+  crashVolume: 1
 --- !u!1 &879358840
 GameObject:
   m_ObjectHideFlags: 0
@@ -3494,6 +3676,7 @@ MonoBehaviour:
   thieves: {fileID: 1226030214}
   rounds: {fileID: 156425235}
   result: {fileID: 378199801}
+  timer: {fileID: 1445836966812051384}
   maps:
   - name: Map1 Street
     floor: {fileID: 2800000, guid: 8374713fd9b1783458e40f23b364f2ec, type: 3}
@@ -4699,6 +4882,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ThiefSpawner
   playerSpawner: {fileID: 594936650}
+  passersBy: {fileID: 1530458020}
+  passerSpacing: 1.8
   bushScatter: {fileID: 1849188211}
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
@@ -5848,12 +6033,17 @@ MonoBehaviour:
   playerSpawner: {fileID: 594936650}
   kinds:
   - {fileID: 3820563407354070144, guid: 3c407ed5613f7144c8dc90c591b37911, type: 3}
+  - {fileID: 9213739133637546188, guid: afbdce6210dbca545aa54eb64c92d666, type: 3}
+  thieves: {fileID: 1226030214}
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
   height: 0.04
   returnSeconds: 15
-  walkInFromOutside: 1
-  walkInToInside: 0.8
+  startOutside: 0.45
+  entranceClearance: 2.5
+  spawnSpacing: 1.8
+  hidingSpotChance: 0.5
+  retrySeconds: 0.5
   mistakeBrawl:
     clouds:
     - {fileID: 21300000, guid: 51795053c97a1d248a979a7e07ebb68a, type: 3}
@@ -7017,6 +7207,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1949699588}
   - component: {fileID: 1949699587}
+  - component: {fileID: 1949699589}
   m_Layer: 0
   m_Name: Card Pompo
   m_TagString: Untagged
@@ -7073,6 +7264,26 @@ Transform:
   - {fileID: 402075949}
   m_Father: {fileID: 68337179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1949699589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1949699586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 056b1806cbe978b4185493c525f75382, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCardSounds
+  cardPop: {fileID: 8300000, guid: c4daeb9d683755b458a35a978ae8520e, type: 3}
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
+  selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
+  volume: 0.8
+  loadingVolume: 0.45
+  fillSeconds: 2
+  stepOffFadeSeconds: 0.12
 --- !u!1 &1957981329
 GameObject:
   m_ObjectHideFlags: 0
@@ -7105,6 +7316,8 @@ Transform:
   - {fileID: 658267707}
   - {fileID: 1144961298}
   - {fileID: 378199800}
+  - {fileID: 723386471}
+  - {fileID: 493064106}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1970572723
@@ -7117,6 +7330,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1970572725}
   - component: {fileID: 1970572724}
+  - component: {fileID: 1970572726}
   m_Layer: 0
   m_Name: Countdown
   m_TagString: Untagged
@@ -7139,7 +7353,8 @@ MonoBehaviour:
   number: {fileID: 965323112}
   from: 3
   stepSeconds: 1
-  startDelay: 0.7
+  goText: GO!
+  startDelay: 1
   dropFromScale: 3
   fallPart: 0.25
   landSquash: 0.15
@@ -7159,6 +7374,24 @@ Transform:
   - {fileID: 965323110}
   m_Father: {fileID: 68337179}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1970572726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1970572723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3606e11dfd4e3a546a942e59f986fc43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.FloorCountdownSounds
+  numbers:
+  - {fileID: 8300000, guid: 69613c0d67939184ea4c261aea20b199, type: 3}
+  - {fileID: 8300000, guid: 6b2057bce88a2884a8a2cad6b5a4c8c1, type: 3}
+  - {fileID: 8300000, guid: 5b8b05dc1bdf28048acc7db73973eaa5, type: 3}
+  go: {fileID: 8300000, guid: 927253d038bcd884882512b239258ba1, type: 3}
+  volume: 0.85
 --- !u!1 &1994020501 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6292268782880236087, guid: c1c800a9ec34cc54f96976d717062ca5, type: 3}

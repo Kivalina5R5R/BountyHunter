@@ -91,6 +91,13 @@ namespace BountyHunter.Thieves
             ThiefExited?.Invoke(this, towardSide);
         }
 
+        // Something other than a thief (a passer-by) comes out of it toward a side: the same rustle
+        // and burst as a thief running out; nothing about who is inside changes.
+        public void PopOut(Vector3 towardSide)
+        {
+            ThiefExited?.Invoke(this, towardSide);
+        }
+
         public void Leave(ThiefController thief)
         {
             if (Occupant == thief) Occupant = null;

@@ -1,11 +1,12 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace BountyHunter.Thieves
 {
-    // Ends the game when the stage clock runs out, when N is pressed on the last map (MapSwitcher) or
-    // at once with R for trying the screen out; never during the intro. The rounds stop, the wall
+    // Ends the game when the last map's clock runs out or N is pressed on it (both through
+    // MapSwitcher), or at once with R for trying the screen out; never during the intro. The rounds stop, the wall
     // fades through black, the game's own pieces on the wall (the wanted board, posters, clock, dogs
     // and their tags) step aside and the result screen comes up over the station with the standings. Console lines start with [ResultSequence].
     public sealed class ResultSequence : MonoBehaviour
@@ -24,25 +25,17 @@ namespace BountyHunter.Thieves
 
         public bool Ended => ended;
 
+        // Raised the moment the game ends, as the wall starts fading to the result.
+        public event Action GameEnded;
+
         private void Awake()
         {
             if (result != null) result.gameObject.SetActive(false);
-            if (timer != null) timer.TimeUp += EndGame;
-        }
-
-        private void OnDestroy()
-        {
-            if (timer != null) timer.TimeUp -= EndGame;
         }
 
         private void Update()
         {
             if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame) TryEndGame();
-        }
-
-        private void EndGame()
-        {
-            TryEndGame();
         }
 
         // Ends the game and brings up the result; false when it is already over or not under way yet.
@@ -52,6 +45,7 @@ namespace BountyHunter.Thieves
             if (ended || (timer != null && !timer.isActiveAndEnabled)) return false;
 
             ended = true;
+            GameEnded?.Invoke();
             if (rounds != null) rounds.Stop();
             StartCoroutine(ShowResult());
             return true;

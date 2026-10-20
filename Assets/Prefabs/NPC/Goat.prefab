@@ -1,0 +1,214 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &469973116407772677
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5746827955427082149}
+  - component: {fileID: 9213739133637546188}
+  m_Layer: 0
+  m_Name: Goat
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5746827955427082149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 469973116407772677}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7133441698846915917}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9213739133637546188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 469973116407772677}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd3fd4692d2150d4ca1c304fa5f8619d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.NpcWalker
+  displayName: Goat
+  body: {fileID: 163567976821973960}
+  artFacesRight: 0
+  walkSpeed: 0.45
+  acceleration: 1.2
+  pauseSeconds: {x: 1.5, y: 4}
+  tripDistance: {x: 1, y: 3}
+  edgeMargin: 0.6
+  enterDepth: 0
+  pathClearance: 1
+  yieldDistance: 0.9
+  yieldPauseSeconds: 0.6
+  bumpDistance: 0.45
+--- !u!1 &4049280464786309460
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7133441698846915917}
+  - component: {fileID: 163567976821973960}
+  - component: {fileID: 5324502319395828226}
+  m_Layer: 0
+  m_Name: Body
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7133441698846915917
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4049280464786309460}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0.057845265, y: 0.057845265, z: 0.057845265}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5746827955427082149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &163567976821973960
+SpriteRenderer:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4049280464786309460}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 36702291d0d735d4d91752d4972a7d86, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 13.158662, y: 14.905386}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+--- !u!114 &5324502319395828226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4049280464786309460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fa0e7418ee719647a607da62c8161af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ThiefFrameAnimation
+  standing: {fileID: 21300000, guid: 36702291d0d735d4d91752d4972a7d86, type: 3}
+  idleFrames:
+  - {fileID: 21300000, guid: 36702291d0d735d4d91752d4972a7d86, type: 3}
+  - {fileID: 21300000, guid: d70f6b344f7233b49bb4d11076a11605, type: 3}
+  - {fileID: 21300000, guid: 60bdb0ef5203dc44d9f0efd63505e656, type: 3}
+  - {fileID: 21300000, guid: bbe7290d3747d66488c11713d50a8f0f, type: 3}
+  - {fileID: 21300000, guid: 927bfd207366d7242addc13a25ae5961, type: 3}
+  - {fileID: 21300000, guid: 7ef101e3c9c223548b69d4ca017bef26, type: 3}
+  - {fileID: 21300000, guid: be1df8f40eff790448241585e7174234, type: 3}
+  - {fileID: 21300000, guid: 6e5f18ac7a256364b87aac615acab44b, type: 3}
+  idleFramesPerSecond: 8
+  runFrames:
+  - {fileID: 21300000, guid: 2e69d29ba328c5a4da6669b909464457, type: 3}
+  - {fileID: 21300000, guid: 1e3a64d063b1bb64ebfabb452a98f443, type: 3}
+  - {fileID: 21300000, guid: f72a00ff15f31db478a09bd6916f4d60, type: 3}
+  - {fileID: 21300000, guid: 663111d3bfaf08849bca36c90ffe957a, type: 3}
+  - {fileID: 21300000, guid: 15dd784f554937143bda779de315d318, type: 3}
+  - {fileID: 21300000, guid: 3380490e2199a2f4084e6cfce5940d91, type: 3}
+  - {fileID: 21300000, guid: ebc3b2cf0758b1046b0fbd4c1aadd48e, type: 3}
+  - {fileID: 21300000, guid: 8251b3af280e9b9409daea092a53eab8, type: 3}
+  - {fileID: 21300000, guid: f8742e30a7491114e943a5615bdfa9d9, type: 3}
+  - {fileID: 21300000, guid: d8e3b4c558107a84dbcac68560e203bf, type: 3}
+  - {fileID: 21300000, guid: b4f4a2bb25c9e8b49b273f81efebc794, type: 3}
+  - {fileID: 21300000, guid: d6db733b66f334e46a59d773313f3ae0, type: 3}
+  - {fileID: 21300000, guid: b2f2d3297c075384c82dfdbbb4d8f27b, type: 3}
+  - {fileID: 21300000, guid: 83006ffb9ac487b4887712b900358a2e, type: 3}
+  - {fileID: 21300000, guid: 7aced7c7d42b89844af12c8999de05c7, type: 3}
+  - {fileID: 21300000, guid: a562ee4a13921e64e9549a0dfba56756, type: 3}
+  - {fileID: 21300000, guid: ae67fd2a0c458e44e82194fa132e9b33, type: 3}
+  - {fileID: 21300000, guid: 41342424d94674f408f6fffa28e4ab85, type: 3}
+  - {fileID: 21300000, guid: dac666d964fab1d40a1ababd13639ca8, type: 3}
+  - {fileID: 21300000, guid: 0afe820bf579670458acfc7b299f581e, type: 3}
+  - {fileID: 21300000, guid: 18a10259c0347f04a867373acfeccfd8, type: 3}
+  - {fileID: 21300000, guid: 9b5365b553ceab0469c84ce24733cccf, type: 3}
+  - {fileID: 21300000, guid: 9c95517dd6611194eb1b879d4fb69053, type: 3}
+  - {fileID: 21300000, guid: c973e2f83a8a9e9498fe55e2126371f2, type: 3}
+  - {fileID: 21300000, guid: 98fc4e00ec2e6dc418b96071cc37aa0c, type: 3}
+  - {fileID: 21300000, guid: de6f1748476ef3a49b9d139588dddfa3, type: 3}
+  - {fileID: 21300000, guid: 5b9e9c24fbc391d4cbc40aa8a7cc9433, type: 3}
+  - {fileID: 21300000, guid: 2132f37ece3035141982eca4293a5a7a, type: 3}
+  - {fileID: 21300000, guid: c0a638d100c2e4845b2fd1088e53ddc3, type: 3}
+  - {fileID: 21300000, guid: 0119f05ce968803458ac9da5b3a8e94f, type: 3}
+  runFramesHalfBlink: []
+  runFramesBlink: []
+  blinkIntervalSeconds: {x: 2, y: 4.5}
+  blinkSeconds: 0.18
+  cycleLength: 0.45
+  standSpeed: 0.05
+  stopDelay: 0.25
+  crossfadeSeconds: 0.15

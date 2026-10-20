@@ -42,6 +42,10 @@ namespace BountyHunter.Thieves
         [Header("Fleeing")]
         // How often a fleeing thief rethinks where to run, in seconds.
         [SerializeField, Min(0.05f)] private float replanSeconds = 0.2f;
+        // Running in the open, it picks a way out and sticks to it this long before choosing again,
+        // so with players on several sides it breaks away one way instead of running in circles.
+        // It only turns early when that way gets blocked: a player close ahead or the floor's edge.
+        [SerializeField, Min(0f)] private float commitSeconds = 1f;
         // Players closer than this push the running thief sideways around them.
         [SerializeField, Min(0.1f)] private float avoidRadius = 1.3f;
         // Distance from the floor edge where the thief starts turning away from it.
@@ -82,6 +86,12 @@ namespace BountyHunter.Thieves
         private IPlayerLocator players;
         private IHidingSpots hidingSpots;
         private IThiefCrowd crowd;
+        // The way out it is sticking to while running in the open, and until when.
+        private Vector3 committedDirection;
+        private float commitUntil;
+        // Passers-by it keeps from walking over, like the other thieves; may be null.
+        private IFloorWalkers bystanders;
+        private readonly List<Vector3> bystanderPositions = new List<Vector3>();
         private Vector2 areaMin;
         private Vector2 areaMax;
         private ThiefState state = ThiefState.Wander;
@@ -118,11 +128,12 @@ namespace BountyHunter.Thieves
         public event Action<ThiefController> Caught;
 
         // Gives the thief its players, bushes and the floor area it may move in (Vector2.y is world Z).
-        public void Initialize(IPlayerLocator playerLocator, IHidingSpots spots, IThiefCrowd thieves, Vector2 moveAreaMin, Vector2 moveAreaMax)
+        public void Initialize(IPlayerLocator playerLocator, IHidingSpots spots, IThiefCrowd thieves, IFloorWalkers passersBy, Vector2 moveAreaMin, Vector2 moveAreaMax)
         {
             players = playerLocator;
             hidingSpots = spots;
             crowd = thieves;
+            bystanders = passersBy;
             areaMin = moveAreaMin;
             areaMax = moveAreaMax;
             BeginWander();
@@ -209,7 +220,7 @@ namespace BountyHunter.Thieves
             else if (calm && state == ThiefState.Flee && targetBush == null) BeginWander();
 
             // While running in the open, the run direction is steered every frame.
-            if (state == ThiefState.Flee && targetBush == null) SetTarget(transform.position + EscapeDirection() * 1.5f);
+            if (state == ThiefState.Flee && targetBush == null) SetTarget(transform.position + RunDirection() * 1.5f);
             Move();
             KeepApart();
         }
@@ -323,7 +334,9 @@ namespace BountyHunter.Thieves
             }
 
             if (!wasFleeing || flushed) Debug.Log($"[Thief] {name} has no safe bush, running away from {playerPositions.Count} player(s)", this);
-            SetTarget(transform.position + EscapeDirection() * 1.5f);
+            // A fresh scare (or being flushed out) picks its way out anew.
+            if (!wasFleeing || flushed) commitUntil = 0f;
+            SetTarget(transform.position + RunDirection() * 1.5f);
         }
 
         // A bush stops being safe once a player stands on it or another thief takes it.
@@ -524,6 +537,36 @@ namespace BountyHunter.Thieves
         // Best direction to run in the open: away from every player (closer players count more),
         // and away from the floor edges so it is not cornered. Of a fan of directions, the one
         // that keeps the most distance from all players a short run ahead wins.
+        // The way out it is sticking to, chosen again once commitSeconds are up or it is blocked.
+        private Vector3 RunDirection()
+        {
+            if (Time.time < commitUntil && !Blocked(committedDirection)) return committedDirection;
+
+            committedDirection = EscapeDirection();
+            commitUntil = Time.time + commitSeconds;
+            return committedDirection;
+        }
+
+        // True when running that way leads into a player right ahead or straight into the edge.
+        private bool Blocked(Vector3 direction)
+        {
+            Vector3 position = transform.position;
+            Vector3 ahead = ClampToArea(position + direction * 0.8f);
+            if (Vector3.Distance(position, ahead) < 0.3f) return true;
+
+            foreach (Vector3 player in playerPositions)
+            {
+                Vector3 toPlayer = player - position;
+                toPlayer.y = 0f;
+                float distance = toPlayer.magnitude;
+                if (distance < 0.0001f) continue;
+                // Only one right in the way counts; brushing past a player at the side of a gap is the point.
+                if (distance < 0.8f && Vector3.Dot(toPlayer / distance, direction) > 0.75f) return true;
+            }
+
+            return false;
+        }
+
         private Vector3 EscapeDirection()
         {
             Vector3 position = transform.position;
@@ -676,6 +719,21 @@ namespace BountyHunter.Thieves
                 if (distance < 0.0001f) away = string.CompareOrdinal(name, other.name) < 0 ? Vector3.left : Vector3.right;
                 else away /= distance;
                 push += away * ((personalSpace - distance) * 0.5f);
+            }
+
+            // Passers-by step aside too, so each side moves half the overlap.
+            if (bystanders != null && !IsHidden)
+            {
+                bystanderPositions.Clear();
+                bystanders.AddPositions(bystanderPositions, transform);
+                foreach (Vector3 other in bystanderPositions)
+                {
+                    Vector3 away = position - other;
+                    away.y = 0f;
+                    float distance = away.magnitude;
+                    if (distance >= personalSpace || distance < 0.0001f) continue;
+                    push += away / distance * ((personalSpace - distance) * 0.5f);
+                }
             }
 
             if (push.sqrMagnitude < 0.000001f) return;

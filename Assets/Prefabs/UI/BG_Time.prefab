@@ -92,7 +92,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.StageTimer
   title: {fileID: 7509345948948757924}
   time: {fileID: 2745909806022816800}
-  stageSeconds: 300
+  stageSeconds: 180
   titleFormat: STAGE {0}-{1}
   warningSeconds: 10
   warningColor: {r: 1, g: 0.36, b: 0.26, a: 1}

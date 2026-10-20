@@ -13,9 +13,13 @@ namespace BountyHunter.Thieves
     // Reports each catch with the player who made it. Console lines start with [ThiefSpawner].
     // Runs after the player spawner so spawn points can keep away from players already placed.
     [DefaultExecutionOrder(10)]
-    public sealed class ThiefSpawner : MonoBehaviour, IHidingSpots, IThiefCrowd
+    public sealed class ThiefSpawner : MonoBehaviour, IHidingSpots, IThiefCrowd, IFloorWalkers
     {
         [SerializeField] private UWBPlayerSpawner playerSpawner;
+        // The passers-by the thieves keep from walking over; may be empty. Thieves come in at least
+        // passerSpacing from them when they can.
+        [SerializeField] private NpcCrowd passersBy;
+        [SerializeField, Min(0f)] private float passerSpacing = 1.8f;
         [SerializeField] private BushScatter bushScatter;
 
         [Header("Floor (world X/Z)")]
@@ -69,9 +73,34 @@ namespace BountyHunter.Thieves
 
         private readonly List<Arrival> arrivals = new List<Arrival>();
         private readonly List<ThiefController> thieves = new List<ThiefController>();
+        private readonly List<Vector3> passerPositions = new List<Vector3>();
         private SpawnerPlayerLocator players;
 
         public IReadOnlyList<ThiefController> Thieves => thieves;
+
+        // Where thieves are waiting to come in, and the hiding spots one is in or heading for.
+        public void AddTakenSpots(List<Vector3> spots)
+        {
+            foreach (Arrival arrival in arrivals)
+            {
+                spots.Add(arrival.Entrance.Point);
+            }
+
+            foreach (HidingBush bush in hidingBushes)
+            {
+                if (bush != null && (bush.Occupant != null || bush.ReservedBy != null)) spots.Add(bush.Center);
+            }
+        }
+
+        // The thieves out in the open (not hidden or caught), for the passers-by to keep clear of.
+        public void AddPositions(List<Vector3> positions, Transform except)
+        {
+            foreach (ThiefController thief in thieves)
+            {
+                if (thief == null || thief.transform == except || thief.IsHidden || thief.State == ThiefState.Caught) continue;
+                positions.Add(thief.transform.position);
+            }
+        }
         public IReadOnlyList<HidingBush> Bushes => hidingBushes;
 
         // A thief was caught; the player is the one nearest to it, or null when none is on the floor.
@@ -210,7 +239,7 @@ namespace BountyHunter.Thieves
             Vector3 position = bush != null ? entrance.Point : entrance.Point - entrance.Inward * walkInFromOutside;
             ThiefController thief = Instantiate(prefab, position, Quaternion.identity, transform);
             thief.name = prefab.TypeName;
-            thief.Initialize(players, this, this, areaMin, areaMax);
+            thief.Initialize(players, this, this, passersBy, areaMin, areaMax);
             if (bush != null)
             {
                 thief.StartHiddenIn(bush, entranceDelay);
@@ -314,6 +343,18 @@ namespace BountyHunter.Thieves
             score += (players.TryGetNearest(candidate.Point, out _, out float player) ? Mathf.Min(player, 4f) : 4f) * 0.3f;
             // An entrance with a player standing by is only taken when there is nothing else.
             if (!Safe(candidate.Point)) score -= 100f;
+
+            // Away from the passers-by, and never right next to one unless nothing else is free.
+            if (passersBy != null)
+            {
+                passerPositions.Clear();
+                passersBy.AddPositions(passerPositions, null);
+                passersBy.AddTakenSpots(passerPositions);
+                float passer = NearestOf(candidate.Point, passerPositions, 4f);
+                score += passer * 0.5f;
+                if (passer < passerSpacing) score -= 50f;
+            }
+
             return score;
         }
 

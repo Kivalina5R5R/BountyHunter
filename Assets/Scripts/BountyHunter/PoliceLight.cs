@@ -9,8 +9,8 @@ namespace BountyHunter.Thieves
     // aim the light.
     public sealed class PoliceLight : MonoBehaviour
     {
-        [SerializeField] private Image redGlow;
-        [SerializeField] private Image blueGlow;
+        [SerializeField] private Graphic redGlow;
+        [SerializeField] private Graphic blueGlow;
         [SerializeField] private Color red = new Color(1f, 0.16f, 0.12f, 1f);
         [SerializeField] private Color blue = new Color(0.2f, 0.45f, 1f, 1f);
         // Full red-and-blue rounds per second.
@@ -29,7 +29,17 @@ namespace BountyHunter.Thieves
 
         private void Start()
         {
-            rims = FindObjectsByType<PoliceLightRim>(FindObjectsSortMode.None);
+            // Only the characters on this light's own screen (its root canvas).
+            Canvas screen = GetComponentInParent<Canvas>();
+            Canvas root = screen != null ? screen.rootCanvas : null;
+            var mine = new System.Collections.Generic.List<PoliceLightRim>();
+            foreach (PoliceLightRim rim in FindObjectsByType<PoliceLightRim>(FindObjectsSortMode.None))
+            {
+                Canvas rimScreen = rim.GetComponentInParent<Canvas>();
+                if (rimScreen != null && rimScreen.rootCanvas == root) mine.Add(rim);
+            }
+
+            rims = mine.ToArray();
         }
 
         private void Update()
@@ -60,7 +70,7 @@ namespace BountyHunter.Thieves
             return Mathf.Pow(0.5f + 0.5f * Mathf.Cos(wave), pulseSharpness);
         }
 
-        private void ShowGlow(Image glow, Color color, float level)
+        private void ShowGlow(Graphic glow, Color color, float level)
         {
             if (glow == null) return;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,6 +15,9 @@ namespace BountyHunter.Thieves
     // Lives on the intro wall picture; positions are in parts of it ((0, 0) bottom left).
     public sealed class IntroBinCrash : MonoBehaviour
     {
+        // Raised the moment the car hits the bin (for its sound).
+        public event Action Crashed;
+
         [SerializeField] private WallVideo arrival;
         [SerializeField] private RectTransform standingBin;
         // The same bin lying in the front corner, shown once the flying bin gets there.
@@ -90,6 +94,7 @@ namespace BountyHunter.Thieves
         private void Crash()
         {
             crashed = true;
+            Crashed?.Invoke();
             if (standingBin == null) return;
 
             // The bumper hits the bin's lower right side.

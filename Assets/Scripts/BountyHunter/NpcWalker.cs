@@ -35,12 +35,17 @@ namespace BountyHunter.Thieves
         // How long it stands still after giving way, and when no clear path is found.
         [SerializeField, Min(0f)] private float yieldPauseSeconds = 0.6f;
 
+        // Thieves and other passers-by closer than this are stepped away from (they step aside too).
+        [SerializeField, Min(0.1f)] private float personalSpace = 0.7f;
+
         [Header("Bumping")]
         // A player whose centre comes this close has bumped into it, from the moment it walks in
         // (NpcCrowd only sends it in where no player is near).
         [SerializeField, Min(0.1f)] private float bumpDistance = 0.45f;
 
         private readonly List<Vector3> playerPositions = new List<Vector3>();
+        private readonly List<Vector3> walkerPositions = new List<Vector3>();
+        private IReadOnlyList<IFloorWalkers> others;
         private IPlayerLocator players;
         private Vector2 areaMin;
         private Vector2 areaMax;
@@ -55,10 +60,12 @@ namespace BountyHunter.Thieves
 
         public event Action<NpcWalker> Bumped;
 
-        // Gives it the players to watch for and the floor area to stroll in (x and world z).
-        public void Initialize(IPlayerLocator playerLocator, Vector2 moveAreaMin, Vector2 moveAreaMax)
+        // Gives it the players to watch for, the others on the floor to keep from walking over (thieves,
+        // passers-by; entries may be null) and the floor area to stroll in (x and world z).
+        public void Initialize(IPlayerLocator playerLocator, IReadOnlyList<IFloorWalkers> floorWalkers, Vector2 moveAreaMin, Vector2 moveAreaMax)
         {
             players = playerLocator;
+            others = floorWalkers;
             areaMin = moveAreaMin;
             areaMax = moveAreaMax;
         }
@@ -73,6 +80,19 @@ namespace BountyHunter.Thieves
             entering = true;
             walking = true;
             bumped = false;
+        }
+
+        // Appears at point already on the floor (stepping out of a hiding spot) and strolls off at once.
+        // It never goes back into hiding.
+        public void StepOutAt(Vector3 point)
+        {
+            transform.position = point;
+            velocity = Vector3.zero;
+            entering = false;
+            walking = false;
+            bumped = false;
+            restUntil = 0f;
+            StartTrip();
         }
 
         private void Update()
@@ -90,6 +110,38 @@ namespace BountyHunter.Thieves
             if (walking) Walk();
             else if (Time.time >= restUntil) StartTrip();
             else Slow();
+            KeepApart();
+        }
+
+        // Moves out of any thief or passer-by closer than personalSpace by half the overlap (they move
+        // the other half), so they never walk over each other.
+        private void KeepApart()
+        {
+            if (others == null) return;
+
+            walkerPositions.Clear();
+            foreach (IFloorWalkers group in others)
+            {
+                if (group != null) group.AddPositions(walkerPositions, transform);
+            }
+
+            Vector3 position = transform.position;
+            Vector3 push = Vector3.zero;
+            foreach (Vector3 other in walkerPositions)
+            {
+                Vector3 away = position - other;
+                away.y = 0f;
+                float distance = away.magnitude;
+                if (distance >= personalSpace) continue;
+
+                // Exactly on top of each other: pick a side from its name so the two split apart.
+                away = distance < 0.0001f ? (name.GetHashCode() % 2 == 0 ? Vector3.left : Vector3.right) : away / distance;
+                push += away * ((personalSpace - distance) * 0.5f);
+            }
+
+            if (push.sqrMagnitude < 0.000001f) return;
+            Vector3 next = position + push;
+            transform.position = entering ? next : Clamped(next, 0f);
         }
 
         private void Walk()

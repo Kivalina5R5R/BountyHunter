@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Fortal.Players;
@@ -102,12 +103,22 @@ namespace BountyHunter.Thieves
             else if (!ready && countdown.Running) countdown.Cancel();
         }
 
+        // True while the intro is on (until the game starts).
+        public bool IsShowing => showing;
+
+        // Raised the moment the intro starts giving way to the game (as the fade to black begins).
+        public event Action Leaving;
+
+        // Raised once the game is on: the first round has begun and the picture is fading back in.
+        public event Action GameStarted;
+
         // Leaves the intro and starts the first round, fading through black.
         public void StartGame()
         {
             if (!showing) return;
 
             showing = false;
+            Leaving?.Invoke();
             StartCoroutine(Transition());
         }
 
@@ -128,6 +139,7 @@ namespace BountyHunter.Thieves
             // switched on; the round waits for that so its thieves can start hidden in them.
             yield return null;
             if (rounds != null) rounds.Begin();
+            GameStarted?.Invoke();
             if (curtain != null) yield return curtain.Open(fadeInSeconds);
         }
 

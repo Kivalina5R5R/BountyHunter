@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -53,7 +54,15 @@ namespace BountyHunter.Thieves
         private bool busy;
         private bool revealing;
 
+        // Moments for its sounds (CharacterCardSounds): the card pops out, a player steps on, and the
+        // SELECTED stamp lands.
+        public event Action Popped;
+        public event Action SteppedOn;
+        public event Action Stamped;
+
         public string Character => character;
+        // 0 to 1: how far the player standing on it has got (0 when nobody is on it or it is taken).
+        public float Progress => Taken ? 0f : progress;
         public bool Taken { get; private set; }
         // False while hidden or still coming out; only a ready card can be picked.
         public bool Ready { get; private set; } = true;
@@ -81,7 +90,11 @@ namespace BountyHunter.Thieves
             if (Taken) return;
             float next = Mathf.Clamp01(value);
             // Someone just stepped on (from nothing): bounce to say so.
-            if (progress <= 0f && next > 0f) bounceAge = 0f;
+            if (progress <= 0f && next > 0f)
+            {
+                bounceAge = 0f;
+                SteppedOn?.Invoke();
+            }
             progress = next;
             ShowRing(progress);
         }
@@ -191,6 +204,7 @@ namespace BountyHunter.Thieves
             if (stamp != null)
             {
                 stamp.enabled = true;
+                Stamped?.Invoke();
                 const float slamSeconds = 0.14f;
                 for (float t = 0f; t < slamSeconds; t += Time.deltaTime)
                 {
@@ -221,6 +235,7 @@ namespace BountyHunter.Thieves
         private IEnumerator RevealRoutine(float delay)
         {
             if (delay > 0f) yield return new WaitForSeconds(delay);
+            Popped?.Invoke();
 
             // Spins down from nothing, overshooting a little before it settles flat.
             for (float t = 0f; t < revealSeconds; t += Time.deltaTime)

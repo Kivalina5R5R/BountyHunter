@@ -2,11 +2,13 @@ using System.Collections.Generic;
 using Fortal.Players;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace BountyHunter.Thieves
 {
-    // Runs the rounds of a stage: round 1 puts up one WANTED poster, round 2 two, round 3 three,
-    // and spawns exactly one thief per poster. The player who catches a thief earns the bounty on
+    // Runs the rounds of a stage: round 1 puts up one WANTED poster, round 2 two, round 3 three, and
+    // every round after that three again, for as long as the stage's clock runs (StageTimer; when it
+    // runs out MapSwitcher moves on to the next map). Each round spawns exactly one thief per poster. The player who catches a thief earns the bounty on
     // its poster and the poster is stamped CAUGHT and torn down. Catching every thief starts the
     // next round: the stage title rolls to the new number first, then the posters go up.
     // From stage 1-2 on the thieves drop bombs (BombSquad): a bombed player loses a random fine in bombPenalty
@@ -33,7 +35,10 @@ namespace BountyHunter.Thieves
         [SerializeField] private TMP_FontAsset damageFont;
         // An outlined material of damageFont keeps the number readable on the busy floor.
         [SerializeField] private Material damageMaterial;
-        [SerializeField, Min(1)] private int roundsPerStage = 3;
+        // Round 1 puts up one poster, round 2 two, and so on up to this many; every round after that
+        // puts up this many again, until the stage's clock runs out (MapSwitcher then moves on).
+        [FormerlySerializedAs("roundsPerStage")]
+        [SerializeField, Min(1)] private int mostPosters = 3;
         // The posters go up this long after the stage title has finished rolling to the new number.
         [SerializeField, Min(0f)] private float postersAfterTitle = 0.2f;
         // Each thief comes out of hiding (or walks onto the floor) this long after its poster starts going up.
@@ -124,17 +129,23 @@ namespace BountyHunter.Thieves
                 bombs.SetArmed(stage > 1 || round > 1);
             }
 
-            if (npcs != null) npcs.Begin();
             if (timer != null) timer.StartStage(stage, round);
-            if (board == null || spawner == null) return;
+            if (board == null || spawner == null)
+            {
+                if (npcs != null) npcs.Begin();
+                return;
+            }
 
             float postersDelay = timer != null ? timer.TitleRollSeconds + postersAfterTitle : 0f;
-            IReadOnlyList<WantedPoster> posters = board.PutUp(round, postersDelay);
+            IReadOnlyList<WantedPoster> posters = board.PutUp(Mathf.Min(round, mostPosters), postersDelay);
             for (int i = 0; i < posters.Count; i++)
             {
                 float entrance = postersDelay + i * board.PinStagger + thiefAfterPoster;
                 wanted[spawner.SpawnThief(posters[i].Thief, entrance)] = posters[i];
             }
+
+            // After the thieves have picked where they come in, so the passers-by keep clear of it.
+            if (npcs != null) npcs.Begin();
 
             Debug.Log($"[BountyRounds] Stage {stage}-{round}: {wanted.Count} wanted", this);
         }
@@ -148,13 +159,8 @@ namespace BountyHunter.Thieves
             if (board != null) board.MarkCaught(poster);
             if (wanted.Count > 0) return;
 
-            if (round < roundsPerStage)
-            {
-                Invoke(nameof(NextRound), nextRoundDelay);
-                return;
-            }
-
-            Debug.Log($"[BountyRounds] Stage {stage} cleared", this);
+            // Every cleared round brings the next, for as long as the stage's clock runs.
+            Invoke(nameof(NextRound), nextRoundDelay);
         }
 
         private void NextRound()

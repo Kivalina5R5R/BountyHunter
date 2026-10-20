@@ -6,14 +6,14 @@ namespace BountyHunter.Thieves
 {
     // The stage banner on the wall: "STAGE 1-1" over a mm:ss countdown. Counts down from Play
     // (stage 1); BountyRounds calls StartStage for every new round and the title rolls up to the
-    // new number, but the clock only starts over when the stage number itself changes (1-3 to 2-1),
-    // so the rounds of a stage share one countdown. Stops at 00:00 and raises TimeUp. The last
+    // new number, but the clock only starts over when the stage number itself changes (a new map), so
+    // all the rounds of a stage share its countdown. Stops at 00:00 and raises TimeUp. The last
     // seconds turn the time red so the players notice.
     public sealed class StageTimer : MonoBehaviour
     {
         [SerializeField] private TMP_Text title;
         [SerializeField] private TMP_Text time;
-        [SerializeField, Min(1f)] private float stageSeconds = 300f;
+        [SerializeField, Min(1f)] private float stageSeconds = 180f;
         // {0} is the stage (map) number, {1} the round within it.
         [SerializeField] private string titleFormat = "STAGE {0}-{1}";
         [SerializeField, Min(0f)] private float warningSeconds = 10f;

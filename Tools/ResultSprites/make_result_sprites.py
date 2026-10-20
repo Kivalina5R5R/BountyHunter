@@ -3,8 +3,9 @@
 For every clip it keys out the green, crops it tight around the character (feet at the bottom, so
 the sprite's bottom centre is where it stands), and picks the loop seam where the motion comes back
 closest to where it started. Every clip keeps the same scale, so the characters keep their sizes.
-Frames are written to Assets/ART/BG/Result/Sprites/<Clip>/<Clip>_000.png. ResultSetup (in Unity)
-turns them into animation clips. Run again after changing a video or a setting below:
+Frames are written to Assets/ART/BG/Result/Sprites/<Clip>/<Clip>_000.png, which the animation
+clips in Assets/ART/BG/Result/Animations play; if a clip ends up with a different number of frames,
+update its keys in Unity's Animation window. Run again after changing a video or a setting below:
 
     python Tools/ResultSprites/make_result_sprites.py            (all clips)
     python Tools/ResultSprites/make_result_sprites.py Shiba      (only clips whose name starts so)
