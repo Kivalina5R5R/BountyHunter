@@ -16,7 +16,7 @@ namespace BountyHunter.Editor
     {
         private const string ScenePath = "Assets/Scenes/BountyHunter.unity";
         private const string PrefabFolder = "Assets/Prefabs/Thieves";
-        private const string LeafFolder = "Assets/ART/BG/Map1/Leaf";
+        private const string LeafFolder = "Assets/ART/BG/Map2/Leaf";
         private const string DustFolder = "Assets/ART/FX/Dust";
         private const string BrawlFolder = "Assets/ART/FX/Brawl";
 

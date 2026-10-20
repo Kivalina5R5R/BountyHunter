@@ -30,11 +30,14 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float holdSeconds = 2f;
         // How long a half-filled ring takes to empty again once the player steps off.
         [SerializeField, Min(0.05f)] private float drainSeconds = 0.6f;
+        // The gap between one card coming out and the next when they are revealed.
+        [SerializeField, Min(0f)] private float revealStaggerSeconds = 0.18f;
 
         private readonly Dictionary<int, string> chosen = new Dictionary<int, string>();
         private readonly List<UWBPlayerController> standing = new List<UWBPlayerController>();
         private float[] progress;
         private SpawnerPlayerLocator players;
+        private bool waitingForReveal;
 
         // Player id to the character they picked.
         public IReadOnlyDictionary<int, string> Chosen => chosen;
@@ -78,6 +81,33 @@ namespace BountyHunter.Thieves
         {
             players = new SpawnerPlayerLocator(playerSpawner);
             progress = new float[cards != null ? cards.Length : 0];
+            if (!waitingForReveal || cards == null) return;
+
+            foreach (CharacterCard card in cards)
+            {
+                if (card != null) card.Hide();
+            }
+        }
+
+        // Keeps the cards hidden from the start until Reveal is called.
+        public void WaitForReveal()
+        {
+            waitingForReveal = true;
+        }
+
+        // Brings the hidden cards out one after another; they can be picked once each has landed.
+        public void Reveal()
+        {
+            if (!waitingForReveal) return;
+
+            waitingForReveal = false;
+            if (cards == null) return;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                if (cards[i] != null) cards[i].Reveal(i * revealStaggerSeconds);
+            }
+
+            Debug.Log("[CharacterSelect] Cards are out", this);
         }
 
         private void Update()
@@ -87,7 +117,7 @@ namespace BountyHunter.Thieves
             for (int i = 0; i < cards.Length; i++)
             {
                 CharacterCard card = cards[i];
-                if (card == null || card.Taken) continue;
+                if (card == null || card.Taken || !card.Ready) continue;
 
                 UWBPlayerController picker = FreePlayerOn(card);
                 progress[i] = picker != null

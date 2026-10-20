@@ -10,7 +10,9 @@ namespace BountyHunter.Thieves
     // its poster and the poster is stamped CAUGHT and torn down. Catching every thief starts the
     // next round: the stage title rolls to the new number first, then the posters go up.
     // From stage 1-2 on the thieves drop bombs (BombSquad): a bombed player loses a random fine in bombPenalty
-    // (or what they have) and the thief's bounty goes up by the same. MapSwitcher starts each new stage.
+    // (or what they have) and the thief's bounty goes up by the same. Passers-by (NpcCrowd, the sloth)
+    // stroll the floor from the first round on; a player who grabs one pays npcFine (or what they
+    // have). MapSwitcher starts each new stage.
     // Console lines start with [BountyRounds].
     [DefaultExecutionOrder(20)]
     public sealed class BountyRounds : MonoBehaviour
@@ -20,6 +22,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private StageTimer timer;
         [SerializeField] private PlayerScoreTag[] scoreTags;
         [SerializeField] private BombSquad bombs;
+        [SerializeField] private NpcCrowd npcs;
+        // What grabbing a passer-by costs, shown at the player's feet like a bomb's fine.
+        [SerializeField, Min(0)] private int npcFine = 5;
         // Inclusive range of the random fine for being caught in a blast.
         [SerializeField] private Vector2Int bombPenalty = new Vector2Int(5, 10);
         // The "-7$" shown on the floor at a bombed player's feet.
@@ -41,11 +46,14 @@ namespace BountyHunter.Thieves
         private int round;
         // Set by IntroSequence: nothing starts until it calls Begin.
         private bool waitingForIntro;
+        // Set once the game is over: no more rounds, catches or fines.
+        private bool stopped;
 
         private void Start()
         {
             if (spawner != null) spawner.ThiefCaught += OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed += OnPlayerBombed;
+            if (npcs != null) npcs.NpcBumped += OnNpcBumped;
             if (round == 0 && !waitingForIntro) StartStage(stage);
         }
 
@@ -68,17 +76,40 @@ namespace BountyHunter.Thieves
         {
             if (spawner != null) spawner.ThiefCaught -= OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed -= OnPlayerBombed;
+            if (npcs != null) npcs.NpcBumped -= OnNpcBumped;
         }
 
         // Starts the stage over from round 1, with any thieves still out removed.
         public void StartStage(int stageNumber)
         {
+            if (stopped) return;
+
             stage = stageNumber;
             // A map switch during the intro only picks the stage the game will start on.
             if (waitingForIntro) return;
 
             CancelInvoke(nameof(NextRound));
             StartRound(1);
+        }
+
+        // Ends the game: the thieves and bombs go and nothing starts again.
+        public void Stop()
+        {
+            if (stopped) return;
+
+            stopped = true;
+            CancelInvoke(nameof(NextRound));
+            wanted.Clear();
+            if (spawner != null) spawner.RemoveThieves();
+            if (bombs != null)
+            {
+                bombs.ClearBombs();
+                bombs.SetArmed(false);
+            }
+
+            if (npcs != null) npcs.Clear();
+
+            Debug.Log("[BountyRounds] Game over", this);
         }
 
         private void StartRound(int roundNumber)
@@ -93,6 +124,7 @@ namespace BountyHunter.Thieves
                 bombs.SetArmed(stage > 1 || round > 1);
             }
 
+            if (npcs != null) npcs.Begin();
             if (timer != null) timer.StartStage(stage, round);
             if (board == null || spawner == null) return;
 
@@ -142,6 +174,8 @@ namespace BountyHunter.Thieves
         // The bombed player pays a random fine (or what they have) and the bomber's bounty grows by what was paid.
         private void OnPlayerBombed(UWBPlayerController player, ThiefController bomber)
         {
+            if (stopped) return;
+
             PlayerScoreTag tag = TagOf(player);
             if (tag == null) return;
 
@@ -153,6 +187,22 @@ namespace BountyHunter.Thieves
             FloorDamage.Play(player.transform.position, string.Format(damageFormat, lost), damageColor, damageFont, damageMaterial, transform);
             if (wanted.TryGetValue(bomber, out WantedPoster poster)) poster.RaiseBounty(lost);
             Debug.Log($"[BountyRounds] Player {player.PlayerId} loses {lost}$ to a bomb (total {tag.Score}$)", this);
+        }
+
+        // Grabbing a passer-by instead of a thief costs npcFine (or what the player has).
+        private void OnNpcBumped(NpcWalker npc, UWBPlayerController player)
+        {
+            if (stopped) return;
+
+            PlayerScoreTag tag = TagOf(player);
+            if (tag == null) return;
+
+            int lost = Mathf.Min(npcFine, tag.Score);
+            if (lost <= 0) return;
+
+            tag.SetScore(tag.Score - lost);
+            FloorDamage.Play(player.transform.position, string.Format(damageFormat, lost), damageColor, damageFont, damageMaterial, transform);
+            Debug.Log($"[BountyRounds] Player {player.PlayerId} loses {lost}$ for grabbing {npc.DisplayName} (total {tag.Score}$)", this);
         }
 
         private PlayerScoreTag TagOf(UWBPlayerController player)

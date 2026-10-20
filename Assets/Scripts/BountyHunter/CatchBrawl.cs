@@ -7,8 +7,9 @@ namespace BountyHunter.Thieves
 {
     // The cartoon scuffle played where a thief is caught: a fight cloud pops up over it and boils,
     // paws and handcuffs poke out of it, stars and POW / BAM words pop, small puffs fly off,
-    // then the cloud bursts into puffs and fades. Lies flat on the floor like the other effects,
-    // with its top toward the wall, so the words read upright on the floor display.
+    // then the cloud bursts into puffs and fades. A finale (left empty for the thieves) slams down
+    // in the middle as it bursts, like a stamp, and stays a moment. Lies flat on the floor like the
+    // other effects, with its top toward the wall, so the words read upright on the floor display.
     public sealed class CatchBrawl : MonoBehaviour
     {
         // The pieces the scuffle is built from; any group left empty is simply skipped.
@@ -23,6 +24,8 @@ namespace BountyHunter.Thieves
             [SerializeField] private Sprite[] stars;
             [SerializeField] private Sprite[] words;
             [SerializeField] private Sprite[] swooshes;
+            // Slams down as a stamp when the cloud bursts (one picked); empty for none.
+            [SerializeField] private Sprite[] finale;
 
             public Sprite[] Clouds => clouds;
             public Sprite[] Puffs => puffs;
@@ -30,6 +33,7 @@ namespace BountyHunter.Thieves
             public Sprite[] Stars => stars;
             public Sprite[] Words => words;
             public Sprite[] Swooshes => swooshes;
+            public Sprite[] Finale => finale;
         }
 
         private const float Height = 0.08f;
@@ -52,7 +56,9 @@ namespace BountyHunter.Thieves
             // Pushes out of the cloud edge and back in.
             Poke,
             // Flies out and fades.
-            Fly
+            Fly,
+            // Slams down from big, holds, then fades.
+            Stamp
         }
 
         private sealed class Piece
@@ -75,6 +81,8 @@ namespace BountyHunter.Thieves
         private float cloudYaw;
         private float elapsed;
         private int cloudFrame;
+        // When the last piece is done.
+        private float lifetime;
 
         // Plays the scuffle centred on position. parent only files it in the hierarchy.
         public static void Play(Vector3 position, Art pieces, Transform parent)
@@ -106,6 +114,13 @@ namespace BountyHunter.Thieves
             AddSwooshes();
             AddSidePuffs();
             AddFinalPuffs();
+            AddFinale();
+            lifetime = BoilUntil + BurstSeconds + 0.2f;
+            foreach (Piece piece in this.pieces)
+            {
+                lifetime = Mathf.Max(lifetime, piece.Start + piece.Duration);
+            }
+
             ApplyCloud();
         }
 
@@ -197,6 +212,15 @@ namespace BountyHunter.Thieves
             }
         }
 
+        // The stamp lands just before the cloud bursts, so it is seen through the burst.
+        private void AddFinale()
+        {
+            if (!HasAny(art.Finale)) return;
+
+            AddPiece(art.Finale, Motion.Stamp, TopOrder + 2, CloudSize * 0.7f, BoilUntil - 0.1f, 0.85f,
+                Vector3.zero, Vector3.zero, Random.Range(-10f, 10f), 0f);
+        }
+
         private void AddPiece(Sprite[] sprites, Motion motion, int order, float size, float start, float duration, Vector3 from, Vector3 to, float yaw, float spin)
         {
             Sprite sprite = sprites[Random.Range(0, sprites.Length)];
@@ -244,7 +268,7 @@ namespace BountyHunter.Thieves
                 Apply(piece, (elapsed - piece.Start) / piece.Duration);
             }
 
-            if (elapsed >= BoilUntil + BurstSeconds + 0.2f) Destroy(gameObject);
+            if (elapsed >= lifetime) Destroy(gameObject);
         }
 
         private void ApplyCloud()
@@ -306,6 +330,12 @@ namespace BountyHunter.Thieves
                     position = Vector3.Lerp(piece.From, piece.To, 1f - (1f - t) * (1f - t));
                     scale = Mathf.Lerp(0.6f, 1.15f, t);
                     alpha = t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
+                    break;
+                case Motion.Stamp:
+                    // Down hard from twice its size in the first fifth, a little bounce, then fades at the end.
+                    float slam = Mathf.Clamp01(t / 0.2f);
+                    scale = slam < 1f ? Mathf.Lerp(2.2f, 1f, slam * slam) : 1f + Mathf.Sin(Mathf.Clamp01((t - 0.2f) / 0.15f) * Mathf.PI) * 0.06f;
+                    alpha = t < 0.2f ? slam : t > 0.75f ? (1f - t) / 0.25f : 1f;
                     break;
             }
 

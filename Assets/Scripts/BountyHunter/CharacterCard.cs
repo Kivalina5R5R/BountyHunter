@@ -7,7 +7,8 @@ namespace BountyHunter.Thieves
     // it. A player stepping on makes the card bounce so they know it noticed them; while they stand
     // on it a loading ring fills around it and the button fades out of its
     // way (back again if they step off); once full a red SELECTED stamp slams onto the card. Idle, the card breathes and the button pulses to
-    // invite a player over. Lies flat on the floor like the other floor art; CharacterSelect drives it.
+    // invite a player over. Hidden at first, it can be revealed: it spins down onto the floor with an
+    // overshoot, squashes as it lands and the button pops up. Lies flat on the floor like the other floor art; CharacterSelect drives it.
     public sealed class CharacterCard : MonoBehaviour
     {
         [SerializeField] private string character = "Tedly";
@@ -30,6 +31,15 @@ namespace BountyHunter.Thieves
         // It also twists from side to side as it bounces, in degrees, so it catches the eye from above.
         [SerializeField, Range(0f, 30f)] private float stepTwist = 9f;
 
+        [Header("Reveal")]
+        // The spin down onto the floor: how long it takes and how far round it turns on the way.
+        [SerializeField, Min(0.1f)] private float revealSeconds = 0.55f;
+        [SerializeField, Range(0f, 360f)] private float revealSpin = 160f;
+        // The squash as it lands, and the button popping up just after.
+        [SerializeField, Min(0.1f)] private float landSeconds = 0.55f;
+        [SerializeField, Min(0f)] private float buttonDelaySeconds = 0.1f;
+        [SerializeField, Min(0.1f)] private float buttonPopSeconds = 0.5f;
+
         private static readonly int FillId = Shader.PropertyToID("_Fill");
 
         private MaterialPropertyBlock fillBlock;
@@ -41,9 +51,12 @@ namespace BountyHunter.Thieves
         private float bounceAge = float.MaxValue;
         private float time;
         private bool busy;
+        private bool revealing;
 
         public string Character => character;
         public bool Taken { get; private set; }
+        // False while hidden or still coming out; only a ready card can be picked.
+        public bool Ready { get; private set; } = true;
         // Where a player stands to pick this card.
         public Vector3 StandPoint => card != null ? card.transform.position : transform.position;
 
@@ -71,6 +84,29 @@ namespace BountyHunter.Thieves
             if (progress <= 0f && next > 0f) bounceAge = 0f;
             progress = next;
             ShowRing(progress);
+        }
+
+        // Hides the whole card until Reveal brings it out.
+        public void Hide()
+        {
+            if (Taken || revealing) return;
+
+            Ready = false;
+            busy = true;
+            progress = 0f;
+            SetAlpha(card, 0f);
+            SetAlpha(button, 0f);
+            SetAlpha(ringBack, 0f);
+            SetAlpha(ringFill, 0f);
+        }
+
+        // Brings a hidden card out after delay seconds.
+        public void Reveal(float delay)
+        {
+            if (Ready || revealing) return;
+
+            revealing = true;
+            StartCoroutine(RevealRoutine(delay));
         }
 
         // The card is picked: button away, ring flash, stamp down.
@@ -180,6 +216,77 @@ namespace BountyHunter.Thieves
             if (card != null) card.transform.localScale = cardScale;
             progress = 0f;
             busy = false;
+        }
+
+        private IEnumerator RevealRoutine(float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+
+            // Spins down from nothing, overshooting a little before it settles flat.
+            for (float t = 0f; t < revealSeconds; t += Time.deltaTime)
+            {
+                float u = t / revealSeconds;
+                float spin = -revealSpin * (1f - EaseOutCubic(u));
+                Place(card, cardScale * EaseOutBack(u), spin);
+                SetAlpha(card, Mathf.Clamp01(u * 4f));
+                yield return null;
+            }
+
+            Place(card, cardScale, 0f);
+            SetAlpha(card, 1f);
+
+            // Lands: the card squashes and the button pops up.
+            float total = Mathf.Max(landSeconds, buttonDelaySeconds + buttonPopSeconds);
+            for (float t = 0f; t < total; t += Time.deltaTime)
+            {
+                float land = Mathf.Clamp01(t / landSeconds);
+                float squash = Mathf.Sin(land * Mathf.PI * 2f) * (1f - land) * 0.07f;
+                Place(card, new Vector3(cardScale.x * (1f + squash), cardScale.y * (1f - squash), cardScale.z), 0f);
+
+                float pop = Mathf.Clamp01((t - buttonDelaySeconds) / buttonPopSeconds);
+                Place(button, buttonScale * EaseOutElastic(pop), 0f);
+                SetAlpha(button, Mathf.Clamp01(pop * 5f));
+                yield return null;
+            }
+
+            Place(card, cardScale, 0f);
+            Place(button, buttonScale, 0f);
+            SetAlpha(button, 1f);
+
+            // The idle breathing starts from its rest point so it carries on without a jump.
+            time = 0f;
+            revealing = false;
+            busy = false;
+            Ready = true;
+        }
+
+        private static void Place(SpriteRenderer sprite, Vector3 scale, float angle)
+        {
+            if (sprite == null) return;
+            sprite.transform.localScale = scale;
+            sprite.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+        }
+
+        private static float EaseOutCubic(float t)
+        {
+            float back = 1f - t;
+            return 1f - back * back * back;
+        }
+
+        // Runs a little past 1 before settling on it.
+        private static float EaseOutBack(float t)
+        {
+            const float overshoot = 1.70158f;
+            float back = t - 1f;
+            return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;
+        }
+
+        // Springs past 1 and wobbles down onto it.
+        private static float EaseOutElastic(float t)
+        {
+            if (t <= 0f) return 0f;
+            if (t >= 1f) return 1f;
+            return Mathf.Pow(2f, -10f * t) * Mathf.Sin((t * 10f - 0.75f) * (Mathf.PI * 2f / 3f)) + 1f;
         }
 
         private static void SetAlpha(SpriteRenderer sprite, float alpha)

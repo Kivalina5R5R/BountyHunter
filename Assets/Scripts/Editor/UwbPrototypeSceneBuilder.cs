@@ -24,8 +24,8 @@ namespace Fortal.Editor
         private const string PrefabFolder = "Assets/Prefabs";
         private const string PlayerPrefabPath = PrefabFolder + "/UWBPlayer.prefab";
         private const string WallArtPath = "Assets/ART/BG/Hunter_BG.png";
-        private const string FloorArtPath = "Assets/ART/BG/Map1/FloorMap.png";
-        private const string BushArtFolder = "Assets/ART/BG/Map1";
+        private const string FloorArtPath = "Assets/ART/BG/Map2/FloorMap2.png";
+        private const string BushArtFolder = "Assets/ART/BG/Map2";
         private const string BushArtPrefix = "pummai";
         private const string KioskPrefabPath = PrefabFolder + "/KioskDisplay.prefab";
         private const string KioskName = "KioskDisplay";

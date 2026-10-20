@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -48,6 +49,11 @@ namespace BountyHunter.Thieves
         private bool preparing;
         private bool takingOver;
         private bool idling;
+
+        // True once the living copy has taken over and the wall is idling.
+        public bool IsIdling => idling;
+        // Raised once, the moment the wall starts idling.
+        public event Action Idling;
 
         private void Awake()
         {
@@ -146,6 +152,7 @@ namespace BountyHunter.Thieves
             idle.alpha = 1f;
             if (arrivalImage != null) arrivalImage.enabled = false;
             idling = true;
+            Idling?.Invoke();
         }
 
         private bool DogsReady()

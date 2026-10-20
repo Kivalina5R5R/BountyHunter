@@ -9,10 +9,10 @@ using UnityEngine.UI;
 namespace BountyHunter.Editor
 {
     // Adds Map/Arena/Maps (MapSwitcher, N switches map) to the game scene with two maps: Map1 the
-    // park (bushes, leaves) and Map2 the street (bins, trash), and gives the wall's BG_Time banner
+    // street (bins, trash) and Map2 the park (bushes, leaves), and gives the wall's BG_Time banner
     // its StageTimer. Runs by itself after imports and is
     // also on the menu. Only empty slots are filled, so art added later (such as the trash sprites
-    // in Map2/Trash) is picked up and Inspector changes are kept.
+    // in Map1/Trash) is picked up and Inspector changes are kept.
     [InitializeOnLoad]
     public static class MapSetup
     {
@@ -39,11 +39,11 @@ namespace BountyHunter.Editor
 
         private static readonly MapArt[] Maps =
         {
-            new MapArt { Name = "Map1 Park", Floor = "Assets/ART/BG/Map1/FloorMap.png", SpotFolder = "Assets/ART/BG/Map1", SpotPrefix = "pummai",
-                MaxTiltDegrees = 180f, SizeVsPlayer = new Vector2(1.15f, 2.3f), BurstFolder = "Assets/ART/BG/Map1/Leaf", BurstPrefix = "Leaf_" },
             // Bins are drawn upright, so they never turn, and stay close to one size.
-            new MapArt { Name = "Map2 Street", Floor = "Assets/ART/BG/Map2/FloorMap2.png", SpotFolder = "Assets/ART/BG/Map2", SpotPrefix = "Been",
-                MaxTiltDegrees = 0f, SizeVsPlayer = new Vector2(1.35f, 1.6f), BurstFolder = "Assets/ART/BG/Map2/Trash", BurstPrefix = "Trash_" },
+            new MapArt { Name = "Map1 Street", Floor = "Assets/ART/BG/Map1/FloorMap1.png", SpotFolder = "Assets/ART/BG/Map1", SpotPrefix = "Been",
+                MaxTiltDegrees = 0f, SizeVsPlayer = new Vector2(1.35f, 1.6f), BurstFolder = "Assets/ART/BG/Map1/Trash", BurstPrefix = "Trash_" },
+            new MapArt { Name = "Map2 Park", Floor = "Assets/ART/BG/Map2/FloorMap2.png", SpotFolder = "Assets/ART/BG/Map2", SpotPrefix = "pummai",
+                MaxTiltDegrees = 180f, SizeVsPlayer = new Vector2(1.15f, 2.3f), BurstFolder = "Assets/ART/BG/Map2/Leaf", BurstPrefix = "Leaf_" },
         };
 
         static MapSetup()
@@ -105,6 +105,7 @@ namespace BountyHunter.Editor
             changed |= SetIfEmpty(data.FindProperty("thieves"), FindComponent<ThiefSpawner>(arena, "Thieves"));
 
             SerializedProperty list = data.FindProperty("maps");
+            changed |= StreetFirst(list);
             if (list.arraySize < Maps.Length)
             {
                 int first = list.arraySize;
@@ -130,6 +131,21 @@ namespace BountyHunter.Editor
 
             if (changed) data.ApplyModifiedPropertiesWithoutUndo();
             return changed;
+        }
+
+        // The park used to be the first map and the street the second; a scene still in that order
+        // swaps them, keeping their settings, and takes the new names.
+        private static bool StreetFirst(SerializedProperty list)
+        {
+            if (list.arraySize < 2) return false;
+            SerializedProperty first = list.GetArrayElementAtIndex(0).FindPropertyRelative("name");
+            if (first.stringValue != "Map1 Park") return false;
+
+            list.MoveArrayElement(1, 0);
+            list.GetArrayElementAtIndex(0).FindPropertyRelative("name").stringValue = Maps[0].Name;
+            list.GetArrayElementAtIndex(1).FindPropertyRelative("name").stringValue = Maps[1].Name;
+            Debug.Log("[MapSetup] The street is Map1 now and the park Map2.");
+            return true;
         }
 
         // Gives the banner prefab a StageTimer driving its Title and Time texts, once.

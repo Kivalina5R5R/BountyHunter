@@ -29,6 +29,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private GameObject[] introFloorPieces;
         [SerializeField] private BountyRounds rounds;
         [SerializeField] private CharacterSelect characterSelect;
+        // The intro wall; the character cards come out once it is idling.
+        [SerializeField] private IntroShow introShow;
         [SerializeField] private FloorCountdown countdown;
         // Its players are locked in when the game starts, so a tag connecting later stays out.
         [SerializeField] private UWBPlayerSpawner playerSpawner;
@@ -59,7 +61,28 @@ namespace BountyHunter.Thieves
             SetPieces(gameFloorPieces, false);
             SetPieces(introFloorPieces, true);
             ShowIntroFloor();
+            HoldCardsForWall();
             Debug.Log("[IntroSequence] Intro on. Press Enter or Space to start the game.", this);
+        }
+
+        private void OnDestroy()
+        {
+            if (introShow != null) introShow.Idling -= RevealCards;
+        }
+
+        // The cards wait hidden until the wall's patrol car has parked and the dogs are idling.
+        private void HoldCardsForWall()
+        {
+            if (introShow == null || characterSelect == null || introShow.IsIdling) return;
+
+            characterSelect.WaitForReveal();
+            introShow.Idling += RevealCards;
+        }
+
+        private void RevealCards()
+        {
+            introShow.Idling -= RevealCards;
+            if (showing && characterSelect != null) characterSelect.Reveal();
         }
 
         private void Update()

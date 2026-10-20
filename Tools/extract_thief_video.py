@@ -6,8 +6,9 @@
 All frames share one crop box, so the thief keeps its place between walking and standing.
 
 Usage: python extract_thief_video.py <frames folder> <walk out> <idle out> <Name> <walk_start>
-       <walk_end> <idle_frame> <IdleName>
+       <walk_end> <idle_frame> <IdleName> [walk_step]
   Chicken: ... Chicken 232 288 56 Sit      Cat: ... Cat 212 262 8 Idle      Crow: ... Crow 96 144 8 Idle
+  Sloth (NPC, its slow 4-second cycle every 4th frame): ... Sloth 0 240 0 Idle 4
 Frames are extracted first with: ffmpeg -i <Name>_Walk_Loop.mp4 <folder>/v_%03d.png
 """
 import math
@@ -20,7 +21,8 @@ frames_dir, walk_dir, idle_dir, NAME = sys.argv[1], sys.argv[2], sys.argv[3], sy
 # 0-based frame numbers; WALK_END repeats WALK_START. IDLE_FRAME is the stillest standing/sitting frame.
 WALK_START, WALK_END, IDLE_FRAME = int(sys.argv[5]), int(sys.argv[6]), int(sys.argv[7])
 IDLE_NAME = sys.argv[8]
-WALK_STEP = 2                        # keep every second frame (30 fps from 60 fps)
+# Keep every second frame (30 fps from 60 fps) unless told otherwise.
+WALK_STEP = int(sys.argv[9]) if len(sys.argv) > 9 else 2
 BREATH_FRAMES = 8
 BREATH_LIFT = 5.0                    # pixels the top of the sitting chicken rises
 IDLE_FIXED_FRACTION = 0.22            # bottom part of the sitting chicken that never moves

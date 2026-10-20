@@ -49,6 +49,29 @@ namespace BountyHunter.Thieves
             }
         }
 
+        // The characters still in play with their scores, best first; a tie keeps the order of the entries.
+        public List<ResultStanding> Standings()
+        {
+            var standings = new List<ResultStanding>();
+            if (entries == null) return standings;
+
+            foreach (Entry entry in entries)
+            {
+                if (entry == null || entry.Tag == null || !entry.Tag.InPlay) continue;
+                standings.Add(new ResultStanding(entry.Character, entry.Tag.Score));
+            }
+
+            // A stable sort, so tied characters stay in entry order.
+            var ranked = new List<ResultStanding>(standings.Count);
+            foreach (ResultStanding standing in standings)
+            {
+                int at = ranked.FindIndex(other => other.Score < standing.Score);
+                ranked.Insert(at < 0 ? ranked.Count : at, standing);
+            }
+
+            return ranked;
+        }
+
         private static bool TryGetPlayer(IReadOnlyDictionary<int, string> chosen, string character, out int player)
         {
             foreach (KeyValuePair<int, string> pick in chosen)

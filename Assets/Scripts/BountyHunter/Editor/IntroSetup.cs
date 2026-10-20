@@ -330,7 +330,7 @@ namespace BountyHunter.Editor
             bool filled = SetIfEmpty(data.FindProperty("arrival"), video.GetComponent<WallVideo>());
             filled |= SetIfEmpty(data.FindProperty("standingBin"), standing);
             filled |= SetIfEmpty(data.FindProperty("landedBin"), landed != null ? landed.GetComponent<RawImage>() : null);
-            filled |= FillSprites(data.FindProperty("trash"), ThiefSetup.LoadSprites("Assets/ART/BG/Map2/Trash", "Trash_"));
+            filled |= FillSprites(data.FindProperty("trash"), ThiefSetup.LoadSprites("Assets/ART/BG/Map1/Trash", "Trash_"));
             filled |= FillSprites(data.FindProperty("puffs"), ThiefSetup.LoadSprites("Assets/ART/FX/Brawl", "Brawl_Puff_"));
             filled |= FillSprites(data.FindProperty("stars"), ThiefSetup.LoadSprites("Assets/ART/FX/Brawl", "Brawl_Star_"));
             if (filled) data.ApplyModifiedPropertiesWithoutUndo();

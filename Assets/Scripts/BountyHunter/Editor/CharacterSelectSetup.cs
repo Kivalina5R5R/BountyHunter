@@ -290,6 +290,13 @@ namespace BountyHunter.Editor
                 changed = true;
             }
 
+            SerializedProperty show = data.FindProperty("introShow");
+            if (show.objectReferenceValue == null)
+            {
+                show.objectReferenceValue = Object.FindFirstObjectByType<IntroShow>(FindObjectsInactive.Include);
+                changed |= show.objectReferenceValue != null;
+            }
+
             SerializedProperty pieces = data.FindProperty("introFloorPieces");
             bool listed = false;
             for (int i = 0; i < pieces.arraySize; i++)

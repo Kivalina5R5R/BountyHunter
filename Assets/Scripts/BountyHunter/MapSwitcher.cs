@@ -9,6 +9,7 @@ namespace BountyHunter.Thieves
     // Switches between maps with the N key: each map has its own floor painting, hiding spot art
     // (bushes, bins, ...) and the bits thrown out when a thief dives in (leaves, trash). A switch
     // lays out new hiding spots and starts the next stage from round 1 (BountyRounds). The first map is applied before anything spawns, so it decides what Play starts with.
+    // N on the last map, once the game is under way, ends the game and brings up the result screen.
     [DefaultExecutionOrder(-100)]
     public sealed class MapSwitcher : MonoBehaviour
     {
@@ -38,6 +39,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private ThiefSpawner thieves;
         // Puts up the posters, spawns their thieves and restarts the timer for every new stage.
         [SerializeField] private BountyRounds rounds;
+        // Ends the game when N is pressed on the last map.
+        [SerializeField] private ResultSequence result;
         [SerializeField] private MapTheme[] maps;
 
         private int current;
@@ -52,6 +55,8 @@ namespace BountyHunter.Thieves
         {
             if (Keyboard.current == null || !Keyboard.current.nKey.wasPressedThisFrame) return;
             if (maps == null || maps.Length < 2) return;
+            if (result != null && result.Ended) return;
+            if (current == maps.Length - 1 && result != null && result.TryEndGame()) return;
 
             current = (current + 1) % maps.Length;
             SwitchTo(maps[current]);
