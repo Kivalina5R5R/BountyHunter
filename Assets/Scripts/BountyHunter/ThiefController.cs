@@ -324,7 +324,6 @@ namespace BountyHunter.Thieves
             state = ThiefState.Flee;
             if (bush != null)
             {
-                targetBush = bush;
                 bool newBush = targetBush != bush;
                 targetBush = bush;
                 bush.Reserve(this);
@@ -418,11 +417,16 @@ namespace BountyHunter.Thieves
             SetTarget(PickWanderGoal());
         }
 
-        // Scores a handful of candidate spots and walks to the best: beside a bush (cover), away
-        // from players, a sensible distance away, and roughly ahead so it does not zigzag.
+        // Scores a handful of candidate spots and walks to the best: beside a bush (cover), out of
+        // the players' reach (further away gains nothing, or every thief would gather on the side
+        // furthest from them), away from the other thieves and passers-by, a sensible distance away,
+        // and roughly ahead so it does not zigzag.
         private Vector3 PickWanderGoal()
         {
             Vector3 position = transform.position;
+            bystanderPositions.Clear();
+            if (bystanders != null) bystanders.AddPositions(bystanderPositions, transform);
+
             Vector3 best = position;
             float bestScore = float.MinValue;
             for (int i = 0; i < 12; i++)
@@ -433,7 +437,9 @@ namespace BountyHunter.Thieves
                 float distance = offset.magnitude;
                 if (distance < tripDistance.x * 0.6f) continue;
 
-                float score = players.TryGetNearest(candidate, out _, out float playerDistance) ? Mathf.Min(playerDistance, 4f) : 4f;
+                float safeDistance = fleeRadius + 0.5f;
+                float score = players.TryGetNearest(candidate, out _, out float playerDistance) ? Mathf.Min(playerDistance, safeDistance) : safeDistance;
+                score += Mathf.Min(NearestOther(candidate), comfortDistance * 2f) * 0.8f;
                 if (NextToBush(candidate)) score += 1.2f;
                 score -= Mathf.Abs(distance - (tripDistance.x + tripDistance.y) * 0.5f) * 0.4f;
                 score += Vector3.Dot(offset / Mathf.Max(distance, 0.0001f), lastMoveDirection) * 0.5f;
@@ -648,32 +654,50 @@ namespace BountyHunter.Thieves
             return targetBush != null ? 0.3f : 0.7f;
         }
 
-        // Bends a heading away from other thieves in the open inside comfortDistance, most for those
-        // ahead; one straight ahead is passed on the side it is already leaning to.
+        // Bends a heading away from other thieves in the open and from passers-by inside
+        // comfortDistance, most for those ahead; one straight ahead is passed on the side it is
+        // already leaning to, so it walks round them instead of into them.
         private Vector3 AvoidThieves(Vector3 position, Vector3 heading, float weight)
         {
-            if (crowd == null || weight <= 0f) return heading;
+            if (weight <= 0f) return heading;
 
             var right = new Vector3(heading.z, 0f, -heading.x);
             Vector3 bend = Vector3.zero;
-            foreach (ThiefController other in crowd.Thieves)
+            if (crowd != null)
             {
-                if (!InTheOpen(other)) continue;
+                foreach (ThiefController other in crowd.Thieves)
+                {
+                    if (InTheOpen(other)) bend += BendAwayFrom(position, other.transform.position, heading, right);
+                }
+            }
 
-                Vector3 away = position - other.transform.position;
-                away.y = 0f;
-                float distance = away.magnitude;
-                if (distance >= comfortDistance || distance < 0.0001f) continue;
-
-                away /= distance;
-                float closeness = 1f - distance / comfortDistance;
-                float ahead = Mathf.Clamp01(Vector3.Dot(heading, -away));
-                bend += away * closeness * (0.4f + ahead);
-                bend += right * (Vector3.Dot(right, away) >= 0f ? 1f : -1f) * closeness * ahead;
+            if (bystanders != null)
+            {
+                bystanderPositions.Clear();
+                bystanders.AddPositions(bystanderPositions, transform);
+                foreach (Vector3 other in bystanderPositions)
+                {
+                    bend += BendAwayFrom(position, other, heading, right);
+                }
             }
 
             if (bend.sqrMagnitude < 0.000001f) return heading;
             return (heading + bend * weight).normalized;
+        }
+
+        // How much one other walker at other bends the heading: away from it, and round it on the
+        // leaning side when it is ahead; nothing beyond comfortDistance.
+        private Vector3 BendAwayFrom(Vector3 position, Vector3 other, Vector3 heading, Vector3 right)
+        {
+            Vector3 away = position - other;
+            away.y = 0f;
+            float distance = away.magnitude;
+            if (distance >= comfortDistance || distance < 0.0001f) return Vector3.zero;
+
+            away /= distance;
+            float closeness = 1f - distance / comfortDistance;
+            float ahead = Mathf.Clamp01(Vector3.Dot(heading, -away));
+            return away * closeness * (0.4f + ahead) + right * (Vector3.Dot(right, away) >= 0f ? 1f : -1f) * closeness * ahead;
         }
 
         // 0 when no other thief in the open is within comfortDistance of the point, up to 1 on top of one.
@@ -738,6 +762,29 @@ namespace BountyHunter.Thieves
 
             if (push.sqrMagnitude < 0.000001f) return;
             transform.position = ClampToArea(position + push);
+        }
+
+        // Flat distance from point to the closest other thief in the open (where it stands or is
+        // walking to) or passer-by in bystanderPositions; very far when there are none.
+        private float NearestOther(Vector3 point)
+        {
+            float nearest = float.MaxValue;
+            if (crowd != null)
+            {
+                foreach (ThiefController other in crowd.Thieves)
+                {
+                    if (!InTheOpen(other)) continue;
+                    nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other.transform.position));
+                    if (other.hasTarget) nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other.target));
+                }
+            }
+
+            foreach (Vector3 other in bystanderPositions)
+            {
+                nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other));
+            }
+
+            return nearest;
         }
 
         // True when another thief in the open stands near the point or is walking to it.

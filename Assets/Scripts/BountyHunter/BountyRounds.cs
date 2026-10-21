@@ -94,6 +94,9 @@ namespace BountyHunter.Thieves
             if (waitingForIntro) return;
 
             CancelInvoke(nameof(NextRound));
+            // A new stage (a new map) sends the passers-by in afresh, over an edge or out of a hiding
+            // spot of the new layout, so the change of stage shows; StartRound's Begin brings them.
+            if (npcs != null) npcs.Clear();
             StartRound(1);
         }
 

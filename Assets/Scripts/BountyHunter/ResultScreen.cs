@@ -17,6 +17,10 @@ namespace BountyHunter.Thieves
         // How one character looks here: its animations (states Dance and Clap), its face for the rows
         // and its size, as a multiple of its frames' pixels, matched to how big it is in the intro so
         // every dog keeps its own size wherever it stands. A spot's own scale enlarges it further.
+        // On the winner's stand winnerOffset moves it (UI pixels, x right, y up) from Stand Spot, so
+        // each dog can be set to stand just right there; it slides in and sways around that place.
+        // Ticking previewOnStand shows that dog on the stand in the prefab while setting it up, moving
+        // as its offset changes (editor only; the game ignores it).
         [Serializable]
         private sealed class Look
         {
@@ -24,11 +28,15 @@ namespace BountyHunter.Thieves
             [SerializeField] private RuntimeAnimatorController animations;
             [SerializeField] private Sprite face;
             [SerializeField, Min(0.01f)] private float size = 0.5f;
+            [SerializeField] private Vector2 winnerOffset;
+            [SerializeField] private bool previewOnStand;
 
             public string Character => character;
             public RuntimeAnimatorController Animations => animations;
             public Sprite Face => face;
             public float Size => size;
+            public Vector2 WinnerOffset => winnerOffset;
+            public bool PreviewOnStand => previewOnStand;
         }
 
         // One line of the standings; face may be left empty (the winner's line has none).
@@ -56,6 +64,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private Row[] rows;
         // Stands on the bench and dances.
         [SerializeField] private Animator winner;
+        // Where the winner stands on the bench before its own Winner Offset (UI pixels). The Winner
+        // picture itself may be anywhere (a preview moves it); the game puts it here.
+        [SerializeField] private Vector2 standSpot = new Vector2(16f, 21.125824f);
         // Clap beside the board, for 2nd, 3rd and 4th place in that order.
         [SerializeField] private Animator[] clappers;
         [SerializeField] private string rankFormat = "NO. {0}";
@@ -79,6 +90,8 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.05f)] private float idleRampSeconds = 0.6f;
 
         private readonly Dictionary<RectTransform, Rest> rests = new Dictionary<RectTransform, Rest>();
+        // Where the winner stands before its own winnerOffset.
+        private Rest winnerSpot;
         // When each piece finished coming in; idle motion starts from then.
         private readonly Dictionary<RectTransform, float> arrivedAt = new Dictionary<RectTransform, float>();
 
@@ -86,10 +99,21 @@ namespace BountyHunter.Thieves
         private readonly struct Rest
         {
             public Rest(RectTransform piece)
+                : this(piece.anchoredPosition, piece.localScale, piece.localRotation)
             {
-                Position = piece.anchoredPosition;
-                Scale = piece.localScale;
-                Rotation = piece.localRotation;
+            }
+
+            public Rest(Vector2 position, Vector3 scale, Quaternion rotation)
+            {
+                Position = position;
+                Scale = scale;
+                Rotation = rotation;
+            }
+
+            // The same rest moved by offset.
+            public Rest Moved(Vector2 offset)
+            {
+                return new Rest(Position + offset, Scale, Rotation);
             }
 
             public Vector2 Position { get; }
@@ -110,10 +134,10 @@ namespace BountyHunter.Thieves
                 if (used) FillRow(rows[i], i + 1, standings[i]);
             }
 
-            Cast(winner, standings.Count > 0 ? standings[0].Character : null, DanceState);
+            Cast(winner, standings.Count > 0 ? standings[0].Character : null, DanceState, true);
             for (int i = 0; i < Count(clappers); i++)
             {
-                Cast(clappers[i], i + 1 < standings.Count ? standings[i + 1].Character : null, ClapState);
+                Cast(clappers[i], i + 1 < standings.Count ? standings[i + 1].Character : null, ClapState, false);
             }
 
             StopAllCoroutines();
@@ -125,6 +149,7 @@ namespace BountyHunter.Thieves
         private void RememberRests()
         {
             if (rests.Count > 0) return;
+            if (winner != null) winnerSpot = new Rest(standSpot, winner.transform.localScale, winner.transform.localRotation);
             if (entrance != null)
             {
                 foreach (RectTransform piece in entrance)
@@ -168,7 +193,8 @@ namespace BountyHunter.Thieves
         }
 
         // Puts the character's animations on the spot and starts the state; no character hides it.
-        private void Cast(Animator spot, string character, string state)
+        // onStand: the winner's spot, where the character's winnerScale applies too.
+        private void Cast(Animator spot, string character, string state, bool onStand)
         {
             if (spot == null) return;
 
@@ -185,6 +211,7 @@ namespace BountyHunter.Thieves
 
             picture.SetNativeSize();
             picture.rectTransform.sizeDelta *= look.Size;
+            if (onStand) StandOnSpot(picture.rectTransform, look.WinnerOffset);
         }
 
         private IEnumerator Entrance(IReadOnlyList<ResultStanding> standings)
@@ -275,6 +302,15 @@ namespace BountyHunter.Thieves
             return entrance != null && System.Array.IndexOf(entrance, piece) >= 0;
         }
 
+        // Puts the winner at the stand's spot moved by its offset, as the place it comes in to and
+        // sways around (when it slides in or sways) or straight away (when it does neither).
+        private void StandOnSpot(RectTransform piece, Vector2 offset)
+        {
+            Rest spot = winnerSpot.Moved(offset);
+            if (rests.ContainsKey(piece)) rests[piece] = spot;
+            else Place(piece, spot);
+        }
+
         private static void Place(RectTransform piece, Rest rest)
         {
             piece.anchoredPosition = rest.Position;
@@ -305,6 +341,50 @@ namespace BountyHunter.Thieves
 
             return -1;
         }
+
+#if UNITY_EDITOR
+        // Shows the look ticked Preview On Stand on the winner's stand, in the editor only, whenever
+        // a value here changes (after the change, as pictures cannot be resized during it).
+        private void OnValidate()
+        {
+            if (!Application.isPlaying) UnityEditor.EditorApplication.delayCall += ShowPreview;
+        }
+
+        private void ShowPreview()
+        {
+            if (this == null || Application.isPlaying || winner == null || looks == null) return;
+
+            Look look = Array.Find(looks, candidate => candidate != null && candidate.PreviewOnStand);
+            if (look == null || !winner.TryGetComponent(out Image picture)) return;
+
+            Sprite first = FirstFrame(look.Animations, DanceState);
+            if (first == null) return;
+
+            picture.sprite = first;
+            picture.SetNativeSize();
+            picture.rectTransform.sizeDelta *= look.Size;
+            picture.rectTransform.anchoredPosition = standSpot + look.WinnerOffset;
+        }
+
+        // The first picture of the controller's clip for state (named like it, e.g. Chiwawa_Dance).
+        private static Sprite FirstFrame(RuntimeAnimatorController controller, string state)
+        {
+            if (controller == null) return null;
+
+            foreach (AnimationClip clip in controller.animationClips)
+            {
+                if (clip == null || !clip.name.EndsWith(state, StringComparison.Ordinal)) continue;
+
+                foreach (UnityEditor.EditorCurveBinding binding in UnityEditor.AnimationUtility.GetObjectReferenceCurveBindings(clip))
+                {
+                    UnityEditor.ObjectReferenceKeyframe[] keys = UnityEditor.AnimationUtility.GetObjectReferenceCurve(clip, binding);
+                    if (keys.Length > 0 && keys[0].value is Sprite sprite) return sprite;
+                }
+            }
+
+            return null;
+        }
+#endif
 
         private Look LookOf(string character)
         {

@@ -37,6 +37,9 @@ namespace Fortal.Display
         [Header("Amount and Size")]
         // Each Play picks a bush count in this range (both ends included).
         [SerializeField] private Vector2Int countRange = new Vector2Int(5, 6);
+        // No picture (bush, bin, crate, ...) is laid out more times than this in one layout; with too
+        // few pictures for the count, the layout simply has fewer spots.
+        [SerializeField, Min(1)] private int maxSamePicture = 2;
         // Width of the player marker in world units (Tag Circle 1.44 x player scale 0.462).
         [SerializeField, Min(0.01f)] private float playerWidth = 0.665f;
         // Bush size as a multiple of the player width, measured on the bush's NARROWEST side of
@@ -109,11 +112,12 @@ namespace Fortal.Display
 
             int count = Random.Range(Mathf.Max(0, countRange.x), Mathf.Max(countRange.x, countRange.y) + 1);
             var placed = new List<(Vector2 position, float reach)>();
+            var timesUsed = new Dictionary<Sprite, int>();
             int attempts = count * 300;
             while (placed.Count < count && attempts-- > 0)
             {
-                Sprite sprite = bushSprites[Random.Range(0, bushSprites.Length)];
-                if (sprite == null) continue;
+                Sprite sprite = PickSprite(timesUsed);
+                if (sprite == null) break;
 
                 Vector2 leaves = VisibleSize(sprite);
                 float scale = Random.Range(MinimumSize, MaximumSize) / Mathf.Max(0.0001f, Mathf.Min(leaves.x, leaves.y));
@@ -123,6 +127,7 @@ namespace Fortal.Display
                 if (clearance < edgeGap) continue;
 
                 placed.Add((position, reach));
+                timesUsed[sprite] = timesUsed.TryGetValue(sprite, out int used) ? used + 1 : 1;
                 Transform bush = SpawnBush(sprite, position, scale, placed.Count);
                 bushes.Add(new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f, reach));
             }
@@ -141,6 +146,20 @@ namespace Fortal.Display
             // A bush too big for the room left sits on the middle line instead.
             if (min.x > max.x) min.x = max.x = (min.x + max.x) * 0.5f;
             if (min.y > max.y) min.y = max.y = (min.y + max.y) * 0.5f;
+        }
+
+        // A random picture laid out fewer than maxSamePicture times so far; null when every one is used up.
+        private Sprite PickSprite(Dictionary<Sprite, int> timesUsed)
+        {
+            var allowed = new List<Sprite>();
+            foreach (Sprite sprite in bushSprites)
+            {
+                if (sprite == null) continue;
+                if (timesUsed.TryGetValue(sprite, out int used) && used >= maxSamePicture) continue;
+                allowed.Add(sprite);
+            }
+
+            return allowed.Count > 0 ? allowed[Random.Range(0, allowed.Count)] : null;
         }
 
         // Never lets a bush shrink below the player's size, whatever the Inspector says.

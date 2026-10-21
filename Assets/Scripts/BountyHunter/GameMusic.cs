@@ -10,7 +10,7 @@ namespace BountyHunter.Thieves
         [SerializeField] private IntroSequence intro;
         [SerializeField] private ResultSequence result;
         [SerializeField] private AudioClip music;
-        [SerializeField, Range(0f, 1f)] private float volume = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float volume = 0.3f;
         [SerializeField, Min(0.05f)] private float fadeInSeconds = 1f;
         [SerializeField, Min(0.05f)] private float fadeOutSeconds = 1.2f;
 

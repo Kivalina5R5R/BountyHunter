@@ -11,10 +11,10 @@ namespace BountyHunter.Thieves
     // its rustle), wherever is far from the players and from the thieves and other passers-by. They
     // never hide again after that; only thieves hide. One a player bumps into vanishes in a mistaken-arrest
     // scuffle (the thieves' fight cloud with its paw and handcuffs, but OOPS! / WRONG!, question
-    // marks and sweat instead of stars, and a big red X slamming down as it bursts),
-    // NpcBumped says who did it (BountyRounds fines them), and returnSeconds later it comes back the
-    // same way. Clear takes them all away. Console lines start with
-    // [NpcCrowd].
+    // marks and sweat instead of stars, and a big red X slamming down as it bursts), and
+    // NpcBumped says who did it (BountyRounds fines them). Once the scuffle is over it is back on
+    // the same spot, stamping about in its angry act (NpcWalker.GetAngry), then strolls on; it
+    // never leaves the floor. Clear takes them all away. Console lines start with [NpcCrowd].
     public sealed class NpcCrowd : MonoBehaviour, IFloorWalkers
     {
         [SerializeField] private UWBPlayerSpawner playerSpawner;
@@ -25,20 +25,21 @@ namespace BountyHunter.Thieves
         [SerializeField] private Vector2 areaMin = new Vector2(-5.15f, -2.3f);
         [SerializeField] private Vector2 areaMax = new Vector2(5.15f, 2.3f);
         [SerializeField, Min(0f)] private float height = 0.04f;
-        [SerializeField, Min(1f)] private float returnSeconds = 15f;
         // Starts this far outside an edge, just out of sight, and walks straight in until it is free
         // to stroll (NpcWalker).
         [SerializeField, Min(0f)] private float startOutside = 0.45f;
         // It only comes in at a spot at least this far from every player, and spawnSpacing from every
         // thief and passer-by in sight; while there is none it waits off the floor and looks again
         // every retrySeconds.
-        [SerializeField, Min(0f)] private float entranceClearance = 2.5f;
+        [SerializeField, Min(0f)] private float entranceClearance = 1.6f;
         [SerializeField, Min(0f)] private float spawnSpacing = 1.8f;
         // How often an empty hiding spot is picked over an edge, when both are clear.
         [SerializeField, Range(0f, 1f)] private float hidingSpotChance = 0.5f;
         [SerializeField, Min(0.1f)] private float retrySeconds = 0.5f;
         // The scuffle played when one is grabbed by mistake.
         [SerializeField] private CatchBrawl.Art mistakeBrawl;
+        // The bumped passer-by starts its angry act this long before the scuffle's X is gone.
+        [SerializeField, Min(0f)] private float angryBeforeStampGone = 0.9f;
 
         private readonly List<NpcWalker> walkers = new List<NpcWalker>();
         private readonly List<Vector3> playerPositions = new List<Vector3>();
@@ -72,7 +73,7 @@ namespace BountyHunter.Thieves
 
                 NpcWalker walker = Instantiate(kind, transform);
                 walker.name = kind.name;
-                walker.Initialize(players, new IFloorWalkers[] { this, thieves }, areaMin, areaMax);
+                walker.Initialize(players, new IFloorWalkers[] { this, thieves }, thieves, areaMin, areaMax);
                 walker.Bumped += OnBumped;
                 walkers.Add(walker);
                 walker.gameObject.SetActive(false);
@@ -114,19 +115,27 @@ namespace BountyHunter.Thieves
         private void OnBumped(NpcWalker walker)
         {
             Vector3 at = walker.transform.position;
-            CatchBrawl.Play(at, mistakeBrawl, transform);
+            float scuffle = CatchBrawl.Play(at, mistakeBrawl, transform);
             walker.gameObject.SetActive(false);
-            StartCoroutine(ComeBack(walker));
+            StartCoroutine(GetAngryAfter(walker, scuffle));
 
             if (!players.TryGetNearestPlayer(at, out UWBPlayerController player)) return;
-            Debug.Log($"[NpcCrowd] Player {player.PlayerId} grabbed {walker.DisplayName}; back in {returnSeconds:0}s", this);
+            Debug.Log($"[NpcCrowd] Player {player.PlayerId} grabbed {walker.DisplayName}", this);
             NpcBumped?.Invoke(walker, player);
         }
 
-        private IEnumerator ComeBack(NpcWalker walker)
+        // The passer-by is back on its spot just before the X slams down (still hidden in the cloud),
+        // so the X lands on it as the cloud bursts. It starts its angry act angryBeforeStampGone
+        // before the X is gone; when that is earlier still, it is back already angry, under the cloud.
+        private IEnumerator GetAngryAfter(NpcWalker walker, float scuffleSeconds)
         {
-            yield return new WaitForSeconds(returnSeconds);
-            yield return Enter(walker);
+            float angry = Mathf.Clamp(CatchBrawl.StampGoneSeconds - angryBeforeStampGone, 0f, scuffleSeconds);
+            float reappear = Mathf.Min(Mathf.Max(0f, CatchBrawl.StampSeconds - 0.05f), angry);
+            yield return new WaitForSeconds(reappear);
+            if (walker == null) yield break;
+
+            walker.gameObject.SetActive(true);
+            walker.GetAngry(Mathf.Max(0f, angry - reappear));
         }
 
         // Waits off the floor until a spot is clear, then walks in over the edge there or steps out
@@ -190,7 +199,9 @@ namespace BountyHunter.Thieves
                 float fromWalkers = Nearest(candidate.Point, walkerPositions);
                 if (fromPlayers < entranceClearance || fromWalkers < spawnSpacing) continue;
 
-                float score = Mathf.Min(fromPlayers, 5f) + Mathf.Min(fromWalkers, 5f) + UnityEngine.Random.value;
+                // Clear of the players is enough (further gains little, or every passer-by would come
+                // in on the side away from them); being away from the others spreads them out.
+                float score = Mathf.Min(fromPlayers, entranceClearance + 0.5f) + Mathf.Min(fromWalkers, 5f) + UnityEngine.Random.value;
                 if ((candidate.Bush != null) == preferSpot) score += 3f;
                 if (score <= bestScore) continue;
                 bestScore = score;

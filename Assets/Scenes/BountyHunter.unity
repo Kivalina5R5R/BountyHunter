@@ -1839,7 +1839,7 @@ MonoBehaviour:
   intro: {fileID: 1131790406}
   result: {fileID: 378199801}
   music: {fileID: 8300000, guid: a18710d2b0878b845b386f0a8322d336, type: 3}
-  volume: 0.45
+  volume: 0.3
   fadeInSeconds: 1
   fadeOutSeconds: 1.2
 --- !u!1 &513768920
@@ -2694,8 +2694,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.IntroMusic
   intro: {fileID: 1131790406}
-  song: {fileID: 8300000, guid: 7b195d1f87f2ffc4382259c8dc7f1329, type: 3}
-  volume: 0.6
+  binCrash: {fileID: 869974354}
+  song: {fileID: 8300000, guid: 0941c5c1583bd3046a6e3ebdfc413580, type: 3}
+  otherSong: {fileID: 8300000, guid: 7b195d1f87f2ffc4382259c8dc7f1329, type: 3}
+  startAfterCrashSeconds: 0.85
+  volume: 0.4
+  otherSongVolume: 0.16
   fadeSeconds: 0.6
 --- !u!1 &734738225
 GameObject:
@@ -3620,13 +3624,13 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
+  fallAngle: 8
   streak: {fileID: 2800000, guid: 087e9b6095e4f434fa38a6dc9729ef66, type: 3}
   count: 480
   speed: {x: 1.1, y: 2.4}
   length: {x: 0.045, y: 0.13}
   width: {x: 0.0018, y: 0.0045}
   brightness: {x: 0.3, y: 0.7}
-  slant: 8
 --- !u!1 &955327268
 GameObject:
   m_ObjectHideFlags: 0
@@ -3709,6 +3713,22 @@ MonoBehaviour:
     - {fileID: 21300000, guid: e7b0d322e1b7b9d478bb27c0dec7393f, type: 3}
     - {fileID: 21300000, guid: 45d40b57765f326418b1eeead14847b1, type: 3}
     - {fileID: 21300000, guid: 34c8c7f2335da78418802d02877f2316, type: 3}
+  - name: Map3 Market
+    floor: {fileID: 2800000, guid: 0a345f1399626d94bb139b3386dce375, type: 3}
+    hidingSpots:
+    - {fileID: 21300000, guid: 1b4ffd10b2426b8479b7a03e12e712b3, type: 3}
+    - {fileID: 21300000, guid: d3138ea7f20046948b1b1c75843378cd, type: 3}
+    - {fileID: 21300000, guid: 5c3a98ba6dc798b46aefe70837703058, type: 3}
+    - {fileID: 21300000, guid: 53fe46ecc2d794a4889285bd1c467296, type: 3}
+    maxTiltDegrees: 20
+    sizeVsPlayer: {x: 1.1, y: 1.35}
+    burstSprites:
+    - {fileID: 21300000, guid: 0032d19ddae64c00b0776551c8e20e90, type: 3}
+    - {fileID: 21300000, guid: 76905f20eb8c4c15bec9632ee6b0316c, type: 3}
+    - {fileID: 21300000, guid: d9c2e916f68341b0828c2aed794d468a, type: 3}
+    - {fileID: 21300000, guid: 03a7eaea7655490e8944e560931b9c7d, type: 3}
+    - {fileID: 21300000, guid: 5ffd1309b7254e71bcc1526a6a6b5daa, type: 3}
+    - {fileID: 21300000, guid: 35f55427f8fa435895638ecc2a079b26, type: 3}
 --- !u!1 &965323109
 GameObject:
   m_ObjectHideFlags: 0
@@ -6034,13 +6054,16 @@ MonoBehaviour:
   kinds:
   - {fileID: 3820563407354070144, guid: 3c407ed5613f7144c8dc90c591b37911, type: 3}
   - {fileID: 9213739133637546188, guid: afbdce6210dbca545aa54eb64c92d666, type: 3}
+  - {fileID: 6901360468467825966, guid: 8bf641a515684fd1bbd80bfd83d34e27, type: 3}
+  - {fileID: 2756808222533752220, guid: a04fba0758af44be8d86a5857b495329, type: 3}
+  - {fileID: 9198195446814911402, guid: c18f7a34e165405dad2d06f888a48fd2, type: 3}
+  - {fileID: 891268817931483143, guid: a8b265dd8cfc40f7927abf048ca1f097, type: 3}
   thieves: {fileID: 1226030214}
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
   height: 0.04
-  returnSeconds: 15
   startOutside: 0.45
-  entranceClearance: 2.5
+  entranceClearance: 1.6
   spawnSpacing: 1.8
   hidingSpotChance: 0.5
   retrySeconds: 0.5
@@ -6065,6 +6088,7 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 73d7555711d15734a8cb2287bbb68228, type: 3}
     finale:
     - {fileID: 21300000, guid: 73b33ae44c873ec42a1adcc2d4073f9c, type: 3}
+  angryBeforeStampGone: 1
 --- !u!4 &1530458021
 Transform:
   m_ObjectHideFlags: 0
@@ -6999,6 +7023,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: efd3003e732dca2419ccccf9b897744c, type: 3}
   - {fileID: 21300000, guid: 4776d548c7afb044ab8c7a9f588cd6c9, type: 3}
   countRange: {x: 5, y: 6}
+  maxSamePicture: 2
   playerWidth: 0.665
   sizeVsPlayer: {x: 1.15, y: 2.3}
   edgeGap: 0.1
@@ -7732,6 +7757,10 @@ PrefabInstance:
     - target: {fileID: 4815918676431054411, guid: f753875edd21e6841ab5bc21252b1988, type: 3}
       propertyPath: m_Name
       value: Result
+      objectReference: {fileID: 0}
+    - target: {fileID: 4815918676431054411, guid: f753875edd21e6841ab5bc21252b1988, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5006329151382932877, guid: f753875edd21e6841ab5bc21252b1988, type: 3}
       propertyPath: m_fontColor32.rgba

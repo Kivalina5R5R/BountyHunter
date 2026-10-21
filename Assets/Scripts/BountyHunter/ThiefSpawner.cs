@@ -144,15 +144,27 @@ namespace BountyHunter.Thieves
         }
 
         // Safe when the thief gets there clearly before every player and never runs close past one.
+        // A player behind it (chasing it away from the bush) is left behind, not run past, so only
+        // players level with it or ahead along the way count; otherwise a chaser close on its heels
+        // would rule out every bush, even the one right next to it.
         private bool SafeRoute(Vector3 from, Vector3 to, float length, IReadOnlyList<Vector3> playerPositions)
         {
             foreach (Vector3 player in playerPositions)
             {
                 if (length >= SpawnerPlayerLocator.FlatDistance(player, to) * 0.85f) return false;
+                if (IsBehind(player, from, to)) continue;
                 if (DistanceToSegment(player, from, to) < routeClearance) return false;
             }
 
             return true;
+        }
+
+        // True when point lies behind from, looking from from towards to (flat).
+        private static bool IsBehind(Vector3 point, Vector3 from, Vector3 to)
+        {
+            var back = new Vector2(point.x - from.x, point.z - from.z);
+            var ahead = new Vector2(to.x - from.x, to.z - from.z);
+            return Vector2.Dot(back, ahead) < 0f;
         }
 
         private static float DistanceToSegment(Vector3 point, Vector3 a, Vector3 b)

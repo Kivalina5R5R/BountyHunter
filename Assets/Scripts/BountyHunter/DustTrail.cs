@@ -2,15 +2,16 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
-    // Kicks up soft dust puffs at a thief's feet while it moves. Puffs come more often the faster
-    // it goes and settle back the way it came. Nothing appears while the thief stands still or
-    // hides (its sprite is off). Added to each thief by ThiefSpawner; DustPuffs animates them.
+    // Kicks up soft dust puffs at a thief's feet while it runs. Puffs come more often the faster
+    // it goes and settle back the way it came. Nothing appears while the thief walks (wandering
+    // stays under minimumSpeed), stands still or hides (its sprite is off). Added to each thief by ThiefSpawner; DustPuffs animates them.
     public sealed class DustTrail : MonoBehaviour
     {
         private const float Height = 0.03f;
 
-        // Below this speed (units per second) no dust is kicked up.
-        [SerializeField, Min(0f)] private float minimumSpeed = 0.3f;
+        // Below this speed (units per second) no dust is kicked up: above a thief's walk (wander
+        // speed 0.6, up to 0.72) and its hurried walk onto the floor (1.05), below its run (1.5).
+        [SerializeField, Min(0f)] private float minimumSpeed = 1.1f;
         // Distance travelled between puffs at walking pace; running halves it.
         [SerializeField, Min(0.02f)] private float spacing = 0.14f;
         [SerializeField] private Vector2 startWidth = new Vector2(0.16f, 0.22f);

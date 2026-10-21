@@ -42,6 +42,8 @@ namespace BountyHunter.Thieves
         private const float PopSeconds = 0.18f;
         private const float BoilUntil = 1.05f;
         private const float BurstSeconds = 0.35f;
+        // How long the finale (the big X) stays, from slamming down to gone.
+        private const float StampLastsSeconds = 0.85f;
         private const float BoilFramesPerSecond = 14f;
         // Limbs sit under the cloud, everything else on top. Above thieves (8) and leaves (9),
         // below player markers (20), so the players can still see where they stand.
@@ -84,15 +86,24 @@ namespace BountyHunter.Thieves
         // When the last piece is done.
         private float lifetime;
 
-        // Plays the scuffle centred on position. parent only files it in the hierarchy.
-        public static void Play(Vector3 position, Art pieces, Transform parent)
+        // Seconds after Play when the finale (the big X) slams down; until the cloud bursts just after,
+        // whatever is under it is hidden, so this is the moment to put it back unseen.
+        public static float StampSeconds => BoilUntil - 0.1f;
+
+        // Seconds after Play when the finale (the big X) is gone.
+        public static float StampGoneSeconds => StampSeconds + StampLastsSeconds;
+
+        // Plays the scuffle centred on position and returns how many seconds it lasts (0 when there
+        // is no art for it). parent only files it in the hierarchy.
+        public static float Play(Vector3 position, Art pieces, Transform parent)
         {
-            if (pieces == null || !HasAny(pieces.Clouds)) return;
+            if (pieces == null || !HasAny(pieces.Clouds)) return 0f;
 
             var brawl = new GameObject("Catch Brawl").AddComponent<CatchBrawl>();
             brawl.transform.SetParent(parent, true);
             brawl.transform.position = new Vector3(position.x, Height, position.z);
             brawl.Build(pieces);
+            return brawl.lifetime;
         }
 
         private static bool HasAny(Sprite[] sprites)
@@ -217,7 +228,7 @@ namespace BountyHunter.Thieves
         {
             if (!HasAny(art.Finale)) return;
 
-            AddPiece(art.Finale, Motion.Stamp, TopOrder + 2, CloudSize * 0.7f, BoilUntil - 0.1f, 0.85f,
+            AddPiece(art.Finale, Motion.Stamp, TopOrder + 2, CloudSize * 0.7f, StampSeconds, StampLastsSeconds,
                 Vector3.zero, Vector3.zero, Random.Range(-10f, 10f), 0f);
         }
 

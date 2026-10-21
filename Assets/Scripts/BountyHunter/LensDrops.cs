@@ -106,6 +106,8 @@ namespace BountyHunter.Thieves
         private RawImage CreatePicture(string pictureName, Texture texture)
         {
             var pictureObject = new GameObject(pictureName, typeof(RectTransform), typeof(RawImage));
+            // Same layer as this object, so a camera that only draws the UI layer (the kiosk's) sees it.
+            pictureObject.layer = gameObject.layer;
             pictureObject.transform.SetParent(transform, false);
             var picture = pictureObject.GetComponent<RawImage>();
             picture.texture = texture;

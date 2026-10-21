@@ -2444,18 +2444,26 @@ MonoBehaviour:
     animations: {fileID: 9100000, guid: 8a7796001d74bac41b4c36fee93a0da4, type: 2}
     face: {fileID: 21300000, guid: 9f7808a9a698f12429e4a26be3dcdba3, type: 3}
     size: 0.592
+    winnerOffset: {x: 1.5, y: 0}
+    previewOnStand: 0
   - character: Tedly
     animations: {fileID: 9100000, guid: a21fc7610147f4943a19a7aff98646c2, type: 2}
     face: {fileID: 21300000, guid: d88ded62f8036dc439e5fb758f010624, type: 3}
     size: 0.593
+    winnerOffset: {x: -27, y: 0}
+    previewOnStand: 0
   - character: Pompo
     animations: {fileID: 9100000, guid: beb6b28b45efa1d44b03ca00d5189271, type: 2}
     face: {fileID: 21300000, guid: b80895dd05284c34cb9903ec395a3953, type: 3}
     size: 0.47
+    winnerOffset: {x: -23, y: 0}
+    previewOnStand: 0
   - character: Simba
     animations: {fileID: 9100000, guid: 92442d09d1417934ca1526c29f71d756, type: 2}
     face: {fileID: 21300000, guid: ea9b731a6092f95468b834722a8873a9, type: 3}
     size: 0.365
+    winnerOffset: {x: -30, y: 0}
+    previewOnStand: 0
   rows:
   - root: {fileID: 1868542940665972397}
     face: {fileID: 0}
@@ -2478,6 +2486,7 @@ MonoBehaviour:
     name: {fileID: 968344327719220109}
     score: {fileID: 2787098485698825039}
   winner: {fileID: 2240600156780211974}
+  standSpot: {x: 16, y: 21.125824}
   clappers:
   - {fileID: 4503337091142998266}
   - {fileID: 1101286011712172012}
@@ -2686,7 +2695,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 16, y: 21.125824}
+  m_AnchoredPosition: {x: 17.5, y: 21.125824}
   m_SizeDelta: {x: 220.224, y: 281.792}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &5558780510381228846
