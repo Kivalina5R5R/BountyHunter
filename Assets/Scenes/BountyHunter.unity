@@ -1311,6 +1311,9 @@ MonoBehaviour:
   - {fileID: 1762042445}
   - {fileID: 573300348}
   - {fileID: 1994020501}
+  - {fileID: 1849188209}
+  floorImage: {fileID: 734738229}
+  resultFloor: {fileID: 2800000, guid: 8219005658df14a4e9d54f02a149be8c, type: 3}
   curtain: {fileID: 1680354128}
   fadeOutSeconds: 0.45
   fadeInSeconds: 0.6
@@ -6312,6 +6315,104 @@ Transform:
   m_Children: []
   m_Father: {fileID: 658267707}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1554582272
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1554582274}
+  - component: {fileID: 1554582273}
+  m_Layer: 0
+  m_Name: Game Sfx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1554582273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1554582272}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81a5a6bf731cb3048b26bd601c521bd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.GameSfx
+  thieves: {fileID: 1226030214}
+  passersBy: {fileID: 1530458020}
+  bombs: {fileID: 1898598048}
+  timer: {fileID: 1445836966812051384}
+  maps: {fileID: 955327270}
+  board: {fileID: 1435788370}
+  thiefSteps:
+  - {fileID: 8300000, guid: 8d4fc988c6421e54395574c2e053e0c9, type: 3}
+  - {fileID: 8300000, guid: 9e1e9fbc7e665204aaaaaf6d1e64c62d, type: 3}
+  - {fileID: 8300000, guid: ecff900809faa3042941523e9662aff1, type: 3}
+  runVolume: 0.3
+  stepVoices: 3
+  hideIn:
+  - {fileID: 8300000, guid: 56e099abc46a3904f9563c353c92f783, type: 3}
+  - {fileID: 8300000, guid: dadd94958038ccc4d90c0404deca6ef9, type: 3}
+  - {fileID: 8300000, guid: c5d365e510f81304b902fc3ef4dbcfec, type: 3}
+  hideOut:
+  - {fileID: 8300000, guid: b54d42a5ed40fb142875461fda0e5afc, type: 3}
+  - {fileID: 8300000, guid: 43f64721585b8564b9dc0410b0ae3c32, type: 3}
+  - {fileID: 8300000, guid: f50b4b8e2e5b3924d968dc9830c6972c, type: 3}
+  flushed: {fileID: 8300000, guid: 725142c1544bcd6459f97a28b7f9c0f6, type: 3}
+  stepOn:
+  - {fileID: 8300000, guid: 79f203a059621a04dbb2f29ca4f8e2ca, type: 3}
+  - {fileID: 8300000, guid: 7a590dc73b2bb914db3efa5a5c22c12b, type: 3}
+  - {fileID: 8300000, guid: 27e8150d16e011b4c9095bc7ecbae108, type: 3}
+  stepOnGapSeconds: 0.5
+  flushBuild: {fileID: 8300000, guid: 66bb1d482c91a0248839340c10f5019c, type: 3}
+  flushVolume: 0.4
+  flushFadeSeconds: 0.15
+  hideVolume: 0.55
+  scuffle: {fileID: 8300000, guid: 101b7de225c384248bbb26011daaac0a, type: 3}
+  cuffs: {fileID: 8300000, guid: c05edda1a7ec583408afe98dafe43c36, type: 3}
+  coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
+  wrong: {fileID: 8300000, guid: 5e3ed60fb6e6f5f4c9f07598f563455d, type: 3}
+  npcAngry: {fileID: 8300000, guid: 18bb207578d9cbd44b6f60c37821d564, type: 3}
+  fine: {fileID: 8300000, guid: 5d6c1c374307f9b4f8b70f6e0a6c1a80, type: 3}
+  catchVolume: 0.7
+  bombDrop: {fileID: 8300000, guid: 58ce2c94aa0d3354da9133ad9e8aba8e, type: 3}
+  bombFuse: {fileID: 8300000, guid: 17c38b5756f9bec479322a01fd09335b, type: 3}
+  bombBoom: {fileID: 8300000, guid: 23e431682da4d4746b69be880ec14422, type: 3}
+  playerHit: {fileID: 8300000, guid: 9c075df8db7efb644807069b3f9bfba0, type: 3}
+  bombVolume: 0.8
+  fuseVolume: 0.3
+  posterPin: {fileID: 8300000, guid: 214c51d74c398f240b0e0dc6d373d45d, type: 3}
+  tick: {fileID: 8300000, guid: edefc10a0be03f644b50a68245f896e3, type: 3}
+  tickFinal: {fileID: 8300000, guid: 24e5e1b7a7c4d244296ba98fed24c9e4, type: 3}
+  timeUp: {fileID: 8300000, guid: 467672ee737769d4aba41b9ebb994e43, type: 3}
+  mapWhoosh: {fileID: 8300000, guid: 29e59584dfd396e4287fb2d73c5ad423, type: 3}
+  rhythmVolume: 0.6
+  finalTicks: 3
+  speakers:
+    floorHalfWidth: 5.15
+    width: 1
+    swapSides: 0
+--- !u!4 &1554582274
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1554582272}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1559666629
 GameObject:
   m_ObjectHideFlags: 0
@@ -9344,3 +9445,4 @@ SceneRoots:
   - {fileID: 1957981330}
   - {fileID: 594936651}
   - {fileID: 1097634112}
+  - {fileID: 1554582274}

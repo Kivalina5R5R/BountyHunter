@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -28,6 +29,8 @@ namespace BountyHunter.Thieves
         public IReadOnlyList<WantedPoster> Shown => shown;
         // Gap between posters being pinned up, left to right.
         public float PinStagger => pinStagger;
+        // Posters put up: how many, the delay before the first and the time between them (for sounds).
+        public event Action<int, float, float> PostersPutUp;
 
         // Takes the posters off the wall straight away, so the first round drops them in.
         private void Awake()
@@ -80,6 +83,7 @@ namespace BountyHunter.Thieves
                 motions[poster].Appear(Slot(i), Random.Range(-maxTiltDegrees, maxTiltDegrees), delay + i * pinStagger);
             }
 
+            PostersPutUp?.Invoke(shown.Count, delay, pinStagger);
             return shown;
         }
 

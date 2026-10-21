@@ -42,6 +42,12 @@ namespace BountyHunter.Thieves
             oneShots = CreateSource();
             climb = CreateSource();
             climb.clip = loading;
+            // The card's own sounds come from the speaker on its side of the floor.
+            if (mixer != null)
+            {
+                climb.panStereo = mixer.PanAt(transform.position);
+                oneShots.panStereo = climb.panStereo;
+            }
         }
 
         private void OnEnable()
@@ -115,7 +121,7 @@ namespace BountyHunter.Thieves
         private void Play(AudioClip clip)
         {
             if (clip == null) return;
-            if (mixer != null) mixer.PlayOneShot(clip, volume);
+            if (mixer != null) mixer.PlayOneShot(clip, volume, transform.position);
             else oneShots.PlayOneShot(clip, volume);
         }
 

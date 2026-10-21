@@ -2,13 +2,16 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
     // Ends the game when the last map's clock runs out or N is pressed on it (both through
     // MapSwitcher), or at once with R for trying the screen out; never during the intro. The rounds stop, the wall
     // fades through black, the game's own pieces on the wall (the wanted board, posters, clock, dogs
-    // and their tags) step aside and the result screen comes up over the station with the standings. Console lines start with [ResultSequence].
+    // and their tags) step aside and the result screen comes up over the station with the standings.
+    // The floor goes back to the menu picture (resultFloor), its hiding spots with hideOnResult.
+    // Console lines start with [ResultSequence].
     public sealed class ResultSequence : MonoBehaviour
     {
         [SerializeField] private StageTimer timer;
@@ -17,6 +20,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private ResultScreen result;
         // Switched off while the result shows; the station behind them stays.
         [SerializeField] private GameObject[] hideOnResult;
+        // The floor picture and what it shows with the results (the menu floor, as in the intro).
+        [SerializeField] private RawImage floorImage;
+        [SerializeField] private Texture resultFloor;
         [SerializeField] private FadeCurtain curtain;
         [SerializeField, Min(0f)] private float fadeOutSeconds = 0.45f;
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
@@ -63,9 +69,19 @@ namespace BountyHunter.Thieves
                 }
             }
 
+            ShowResultFloor();
             if (result != null && scoreTags != null) result.Show(scoreTags.Standings());
             Debug.Log("[ResultSequence] Results are up", this);
             if (curtain != null) yield return curtain.Open(fadeInSeconds);
+        }
+
+        private void ShowResultFloor()
+        {
+            if (floorImage == null || resultFloor == null) return;
+
+            AspectRatioFitter fitter = floorImage.GetComponent<AspectRatioFitter>();
+            if (fitter != null) fitter.aspectRatio = (float)resultFloor.width / resultFloor.height;
+            floorImage.texture = resultFloor;
         }
     }
 }

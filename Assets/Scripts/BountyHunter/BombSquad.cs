@@ -37,6 +37,9 @@ namespace BountyHunter.Thieves
 
         // A bomb went off with this player inside its blast; the thief is the one who dropped it.
         public event Action<UWBPlayerController, ThiefController> PlayerBombed;
+        // A bomb put down at a spot with its fuse seconds, and a bomb going off at a spot (for sounds).
+        public event Action<Vector3, float> BombDropped;
+        public event Action<Vector3> BombExploded;
 
         private void Start()
         {
@@ -97,11 +100,13 @@ namespace BountyHunter.Thieves
             behind.y = 0f;
             Vector3 spot = position + (behind.sqrMagnitude > 0.0001f ? behind.normalized * dropBehind : Vector3.zero);
             bombs.Add(Bomb.Drop(spot, art, fuseSeconds, blastRadius, bombSize, transform, bomb => OnExploded(bomb, thief)));
+            BombDropped?.Invoke(spot, fuseSeconds);
             Debug.Log($"[BombSquad] {thief.name} drops a bomb ({fuseSeconds:0.#}s fuse)", this);
         }
 
         private void OnExploded(Bomb bomb, ThiefController thief)
         {
+            BombExploded?.Invoke(bomb.transform.position);
             players.GetPlayersWithin(bomb.transform.position, bomb.BlastRadius, caughtInBlast);
             foreach (UWBPlayerController player in caughtInBlast)
             {

@@ -49,6 +49,10 @@ namespace BountyHunter.Thieves
 
         private int current;
 
+        // Which map is on now (0 first), and when the game moves on to another one.
+        public int CurrentMap => current;
+        public event Action<int> MapSwitched;
+
         private void Awake()
         {
             if (maps == null || maps.Length == 0) return;
@@ -94,6 +98,7 @@ namespace BountyHunter.Thieves
             Apply(map);
             if (hidingSpots != null) hidingSpots.Scatter();
             if (rounds != null) rounds.StartStage(current + 1);
+            MapSwitched?.Invoke(current);
             Debug.Log($"[MapSwitcher] Switched to {map.Name}", this);
         }
 

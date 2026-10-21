@@ -34,6 +34,8 @@ namespace BountyHunter.Thieves
         public float TitleRollSeconds => titleRollSeconds;
 
         public event Action TimeUp;
+        // Each whole second shown within the last warningSeconds, while the clock runs (for its tick).
+        public event Action<int> WarningSecond;
 
         private void Start()
         {
@@ -81,6 +83,7 @@ namespace BountyHunter.Thieves
             }
 
             time.text = $"{seconds / 60:00}:{seconds % 60:00}";
+            if (running && seconds > 0 && seconds <= warningSeconds) WarningSecond?.Invoke(seconds);
             time.color = seconds <= warningSeconds ? warningColor : normalColor;
         }
     }

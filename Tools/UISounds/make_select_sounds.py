@@ -4,7 +4,7 @@ the floor speakers, and in the playful cartoon-cop mood of the game:
 
 - SFX_Card_Pop.wav     a card swishing in and landing with a soft pop (its SELECT button comes
                        up with it, without a sound of its own)
-- SFX_Step_On.wav      a soft, warm bop on a light thump when a player steps onto a card
+- SFX_Step_On.wav      a soft, round "boop" eased in (not struck) when a player steps onto a card
 - SFX_Load_Climb.wav   the ring filling: soft marimba notes climbing G4 to G5 over the 2 s the ring
                        takes to fill, ringing on a moment after; CharacterCardSounds plays it in step with the ring
 - SFX_Selected.wav     a soft rubber-stamp thump and a marimba "ta-da" (G major, rising)
@@ -77,11 +77,13 @@ def glide(length, start, end, curve=3.0):
 
 
 def step_on():
-    t = seconds(0.22)
-    # A warm bop: a short downward note on a soft thump.
-    bop = (tone(glide(0.22, 470, 330, 2)) + 0.3 * tone(glide(0.22, 940, 660, 2))) * np.exp(-t * 16)
-    thump = tone(110 * np.exp(-t * 10) + 60) * np.exp(-t * 30)
-    return (0.8 * bop + 0.6 * thump) * np.minimum(1, t / 0.003)
+    t = seconds(0.26)
+    # A soft, round "boop": one gentle falling note (no octave above it) eased in over 15 ms rather
+    # than struck, on a faint low cushion, so stepping on a card never jabs the ear.
+    boop = tone(glide(0.26, 360, 280, 2)) * np.exp(-t * 11)
+    cushion = 0.3 * tone(100 * np.exp(-t * 10) + 60) * np.exp(-t * 26)
+    ease_in = np.minimum(1, t / 0.015) ** 2
+    return lowpass((boop + cushion) * ease_in, 1600)
 
 
 def load_climb(fill=2.0, tail=0.4):
@@ -131,6 +133,6 @@ def save(name, sound):
 
 if __name__ == "__main__":
     save("SFX_Card_Pop.wav", finish(card_pop(), 0.7))
-    save("SFX_Step_On.wav", finish(step_on(), 0.7))
+    save("SFX_Step_On.wav", finish(step_on(), 0.5))
     save("SFX_Load_Climb.wav", finish(load_climb(), 0.65))
     save("SFX_Selected.wav", finish(selected(), 0.8))
