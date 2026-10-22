@@ -8,8 +8,8 @@ namespace BountyHunter.Thieves
     // card is clearly ahead, so the tune does not flip between cards); the others stay quiet. The
     // short sounds all go through here: the same sound started again within repeatGapSeconds is
     // skipped, sounds starting close together are turned down so the pile-up is not louder, and the
-    // ta-da (Duck) turns the climb down for a moment so it stands out. Every card's sounds come from
-    // the room's speaker on its side of the floor (speakers).
+    // ta-da (Duck) turns the climb down for a moment so it stands out. The sounds come from both of
+    // the room's speakers alike.
     // Sits on the parent of the cards; CharacterCardSounds finds it there (or adds it).
     public sealed class CardSoundMixer : MonoBehaviour
     {
@@ -22,13 +22,12 @@ namespace BountyHunter.Thieves
         // While the ta-da rings the climb drops to this share of its volume, for duckSeconds.
         [SerializeField, Range(0f, 1f)] private float duckedClimb = 0.3f;
         [SerializeField, Min(0f)] private float duckSeconds = 1.2f;
-        [SerializeField] private FloorStereo speakers = new FloorStereo();
 
         private readonly List<CharacterCardSounds> cards = new List<CharacterCardSounds>();
         private readonly Dictionary<AudioClip, float> lastStarted = new Dictionary<AudioClip, float>();
         private readonly List<float> recentStarts = new List<float>();
         private CharacterCardSounds leader;
-        // A few voices, so sounds from cards on either side can ring at once each on its own side.
+        // A few voices, so sounds from several cards can ring at once.
         private readonly List<AudioSource> oneShots = new List<AudioSource>();
         private float duckUntil = float.MinValue;
 
@@ -71,15 +70,8 @@ namespace BountyHunter.Thieves
             return card == leader;
         }
 
-        // The pan for a sound at point on the floor (left speaker -1, right 1).
-        public float PanAt(Vector3 point)
-        {
-            return speakers.PanAt(point);
-        }
-
         // Plays a short sound unless the same one just started; quieter when others started with it.
-        // at: where on the floor it sounds from (the card).
-        public void PlayOneShot(AudioClip clip, float volume, Vector3 at)
+        public void PlayOneShot(AudioClip clip, float volume)
         {
             if (clip == null) return;
 
@@ -91,7 +83,6 @@ namespace BountyHunter.Thieves
             float crowd = 1f / Mathf.Sqrt(recentStarts.Count + 1);
             recentStarts.Add(now);
             AudioSource voice = oneShots.Find(source => !source.isPlaying) ?? oneShots[0];
-            voice.panStereo = speakers.PanAt(at);
             voice.PlayOneShot(clip, volume * crowd);
         }
 

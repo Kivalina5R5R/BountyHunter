@@ -18,13 +18,17 @@ Hiding spots (one sound per map; in = a thief dives in, out = it comes out):
                                   trembling speeding up over a quiet rising hum (played in step)
 - SFX_Flushed                     a springy boing as a player standing on the spot flushes it out
 
-Catching:
-- SFX_Scuffle      the fight cloud: muffled thumps, whooshes and pops for about a second
-- SFX_Cuffs        handcuffs clicking shut
-- SFX_Coin         the bounty paid: a bright two-note ka-ching
-- SFX_Wrong        bumping an innocent passer-by: a soft, low "bwomp-bwomp"
-- SFX_Npc_Angry    the passer-by's grumble ("hrrmph!")
-- SFX_Fine         money taken away: three falling notes
+Catching a thief and grabbing a passer-by by mistake share the same fight cloud, so their sounds
+tell them apart from the first moment: a catch is bright and rising (it is won), a mistake is dull
+and falling (it went wrong).
+- SFX_Scuffle      catching a thief: a quick grab swish, punchy thumps and pops bouncing upward,
+                   ending in a rising whoop as the cloud bursts
+- SFX_Cuffs        handcuffs ratcheting shut: click-click-click-CLACK
+- SFX_Coin         the bounty paid: a mellow rising chime, G C E G (soft attack, pure round
+                   tones, low-passed; a pleasant reward, never piercing)
+- SFX_Bump         grabbing a passer-by: a hollow cartoon bonk, a clumsy muffled tumble with
+                   pops sliding down
+- SFX_Wrong        the big X slamming down on the passer-by: a stamp thud and a low "eh-eh" buzzer
 
 Bombs:
 - SFX_Bomb_Drop    the bomb landing with a bounce
@@ -326,20 +330,29 @@ def whoosh(length, low, high):
     return band(noise(length), low, high) * np.sin(np.pi * t / length) ** 2
 
 
+def pop(start, end, length=0.06):
+    """A small cartoon pop sliding from start to end Hz."""
+    t = seconds(length)
+    return tone(glide(length, start, end, 2)) * np.exp(-t * 60) * attack(t)
+
+
 def scuffle():
-    length = 1.25
+    # Catching a thief: bright and winning. Punchy thumps, whooshes and pops that slide upward,
+    # climbing toward a whoop as the cloud bursts (0.95 s).
+    length = 1.2
     out = np.zeros(int(length * RATE))
-    for k in range(9):
-        at = 0.04 + k * 0.12 + rng.uniform(-0.03, 0.03)
-        place(out, rng.uniform(0.5, 0.9) * thump(0.14, rng.uniform(150, 230), 70, 32), at)
-    for k in range(4):
-        place(out, 0.35 * whoosh(0.16, 500, 2500), 0.08 + k * 0.27 + rng.uniform(0, 0.05))
-    for k in range(5):
-        t = seconds(0.06)
-        pop = tone(glide(0.06, 900, 500, 2)) * np.exp(-t * 60) * attack(t)
-        place(out, 0.25 * pop, rng.uniform(0.1, 1.0))
-    out *= np.minimum(1, np.linspace(length, 0, len(out)) / 0.25)
-    return lowpass(out, 4000)
+    place(out, 0.5 * whoop(0.14, 600, 2600), 0.0)
+    for k in range(8):
+        at = 0.06 + k * 0.105 + rng.uniform(-0.02, 0.02)
+        place(out, rng.uniform(0.6, 0.95) * thump(0.12, rng.uniform(190, 260), 85, 36), at)
+    for k in range(3):
+        place(out, 0.3 * whoosh(0.14, 700, 2800), 0.12 + k * 0.25 + rng.uniform(0, 0.04))
+    for k in range(6):
+        low = 500 + 90 * k
+        place(out, 0.3 * pop(low, low * 1.8), 0.12 + k * 0.13 + rng.uniform(-0.02, 0.02))
+    place(out, 0.55 * whoop(0.3, 500, 3200), 0.7)
+    out *= np.minimum(1, np.linspace(length, 0, len(out)) / 0.2)
+    return lowpass(out, 5000)
 
 
 def metal_click(frequency):
@@ -350,56 +363,63 @@ def metal_click(frequency):
 
 
 def cuffs():
-    out = np.zeros(int(0.35 * RATE))
-    place(out, 0.8 * metal_click(2100), 0.0)
-    place(out, 0.9 * metal_click(2400), 0.11)
+    # The ratchet zipping round (little clicks) and the cuff snapping shut (a fuller clack).
+    out = np.zeros(int(0.45 * RATE))
+    for k in range(4):
+        place(out, 0.35 * metal_click(2600 + 120 * k), k * 0.035)
+    place(out, 0.7 * thump(0.08, 400, 220, 50), 0.17)
+    place(out, 1.0 * metal_click(1800), 0.17)
+    place(out, 0.6 * metal_click(2700), 0.175)
     return lowpass(out, 7000)
 
 
-def bell(frequency, length):
+def chime(frequency, length):
+    """A mellow chime (a felt mallet on a soft bar): an almost pure tone with a slow-ish attack and
+    a faint octave, nothing bright on top, so it rings without stinging."""
     t = seconds(length)
-    return (tone(np.full(len(t), frequency)) * np.exp(-t * 5)
-            + 0.5 * tone(np.full(len(t), frequency * 2.76)) * np.exp(-t * 9)
-            + 0.25 * tone(np.full(len(t), frequency * 5.4)) * np.exp(-t * 16)) * attack(t, 0.002)
+    return (tone(np.full(len(t), frequency)) * np.exp(-t * 6)
+            + 0.08 * tone(np.full(len(t), frequency * 2)) * np.exp(-t * 12)) * np.minimum(1, t / 0.012)
 
 
 def coin():
-    out = np.zeros(int(0.8 * RATE))
-    place(out, 0.6 * bell(1318.5, 0.3), 0.0)
-    place(out, 0.8 * bell(1975.5, 0.7), 0.08)
-    return lowpass(out, 6500)
+    # The bounty paid: four mellow notes climbing G C E G, spaced so they never pile into a
+    # loud chord, the last left to ring. Mid-range and low-passed, a reward and not a sting.
+    out = np.zeros(int(1.0 * RATE))
+    for k, note in enumerate((392.0, 523.3, 659.3, 784.0)):
+        place(out, (0.7 + 0.1 * k) * chime(note, 0.7 if k == 3 else 0.3), k * 0.08)
+    return lowpass(out, 2200)
+
+
+def bump():
+    # Grabbing a passer-by: dull and clumsy. A hollow cartoon bonk on the head first, so it is
+    # clear at once this one went wrong, then a muffled tumble with pops sliding down.
+    length = 0.95
+    out = np.zeros(int(length * RATE))
+    t = seconds(0.25)
+    bonk = (tone(glide(0.25, 520, 300, 2)) * np.exp(-t * 18)
+            + 0.5 * tone(glide(0.25, 780, 450, 2)) * np.exp(-t * 30)) * attack(t, 0.001)
+    place(out, 1.0 * bonk, 0.0)
+    for k in range(6):
+        at = 0.2 + k * 0.11 + rng.uniform(-0.02, 0.02)
+        place(out, rng.uniform(0.4, 0.65) * thump(0.14, rng.uniform(120, 160), 60, 28), at)
+    for k in range(4):
+        high = 650 - 70 * k
+        place(out, 0.22 * pop(high, high * 0.55, 0.08), 0.25 + k * 0.15 + rng.uniform(-0.02, 0.02))
+    out *= np.minimum(1, np.linspace(length, 0, len(out)) / 0.2)
+    return lowpass(out, 2400)
 
 
 def wrong():
+    # The big X slamming down: a heavy stamp thud with a low game-show buzzer, "eh-eh".
     out = np.zeros(int(0.6 * RATE))
-    for k, (start, end) in enumerate(((330, 300), (247, 200))):
-        t = seconds(0.24)
-        # A soft, hollow buzz: a few odd harmonics, low-passed.
-        pitch = glide(0.24, start, end, 1.5)
-        buzz = tone(pitch) + 0.33 * tone(3 * pitch) + 0.2 * tone(5 * pitch)
-        place(out, buzz * np.minimum(1, t / 0.01) * np.exp(-t * 6), k * 0.25)
-    return lowpass(out, 1600)
-
-
-def npc_angry():
-    length = 0.6
-    t = seconds(length)
-    # A low growl rising and falling, through two vowel-like resonances ("hrrm-ph").
-    pitch = 120 + 35 * np.sin(np.pi * t / length) + 6 * np.sin(2 * np.pi * 25 * t)
-    saw = sum(tone(pitch * n) / n for n in range(1, 12))
-    voice = band(saw, 300, 900) + 0.6 * band(saw, 1000, 1700)
-    envelope = np.minimum(1, t / 0.05) * np.minimum(1, (length - t) / 0.15) * (0.7 + 0.3 * np.sin(2 * np.pi * 9 * t))
-    puff = 0.3 * band(noise(length), 400, 2000) * np.exp(-((t - 0.52) / 0.04) ** 2)
-    return lowpass(voice * envelope + puff, 3000)
-
-
-def fine():
-    out = np.zeros(int(0.9 * RATE))
-    for k, note in enumerate((659.3, 587.3, 493.9)):
-        place(out, 0.7 * marimba(note, 0.45), k * 0.13)
-    t = seconds(0.4)
-    place(out, 0.4 * tone(glide(0.4, 440, 330, 1.2)) * np.exp(-t * 6) * attack(t), 0.4)
-    return lowpass(out, 4500)
+    place(out, 1.0 * thump(0.25, 180, 55, 14), 0.0)
+    for k in range(2):
+        length = 0.16 if k == 0 else 0.24
+        t = seconds(length)
+        square = np.sign(tone(np.full(len(t), 110.0))) + 0.6 * np.sign(tone(np.full(len(t), 116.5)))
+        gate = np.minimum(1, t / 0.008) * np.minimum(1, (length - t) / 0.03)
+        place(out, 0.45 * band(square, 120, 1400) * gate, 0.02 + k * 0.2)
+    return lowpass(out, 1800)
 
 
 # Bombs ------------------------------------------------------------------------------------------------
@@ -534,11 +554,10 @@ SOUNDS = [
     ("SFX_Step_On_Bush", lambda: step_on("bush"), 0.55, 0.02),
     ("SFX_Step_On_Crate", lambda: step_on("crate"), 0.6, 0.02),
     ("SFX_Scuffle", scuffle, 0.75, 0.02),
-    ("SFX_Cuffs", cuffs, 0.6, 0.02),
+    ("SFX_Cuffs", cuffs, 0.95, 0.02),
     ("SFX_Coin", coin, 0.6, 0.02),
+    ("SFX_Bump", bump, 0.7, 0.02),
     ("SFX_Wrong", wrong, 0.7, 0.02),
-    ("SFX_Npc_Angry", npc_angry, 0.7, 0.02),
-    ("SFX_Fine", fine, 0.65, 0.02),
     ("SFX_Bomb_Drop", bomb_drop, 0.7, 0.02),
     ("SFX_Bomb_Fuse", bomb_fuse, 0.45, 0),
     ("SFX_Bomb_Boom", bomb_boom, 0.9, 0.2),

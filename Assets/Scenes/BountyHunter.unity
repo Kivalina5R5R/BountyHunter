@@ -1017,7 +1017,7 @@ MonoBehaviour:
   stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
   loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
   selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
-  volume: 0.8
+  volume: 0.6
   loadingVolume: 0.45
   fillSeconds: 2
   stepOffFadeSeconds: 0.12
@@ -1792,10 +1792,27 @@ MonoBehaviour:
   stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
   loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
   selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
-  volume: 0.8
+  volume: 0.6
   loadingVolume: 0.45
   fillSeconds: 2
   stepOffFadeSeconds: 0.12
+--- !u!114 &493064108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493064105}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57761fbb5ee14062b7c8414f7933f893, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ResultMusic
+  result: {fileID: 378199801}
+  intro: {fileID: 8300000, guid: d212fdd94f9b4a708c22fdef3fc33ece, type: 3}
+  loop: {fileID: 8300000, guid: 6b13b727007645b18fe787778ab6098e, type: 3}
+  volume: 0.6
+  fadeInSeconds: 1.2
 --- !u!1 &493064105
 GameObject:
   m_ObjectHideFlags: 0
@@ -1806,6 +1823,7 @@ GameObject:
   m_Component:
   - component: {fileID: 493064106}
   - component: {fileID: 493064107}
+  - component: {fileID: 493064108}
   m_Layer: 0
   m_Name: Game Music
   m_TagString: Untagged
@@ -1843,8 +1861,11 @@ MonoBehaviour:
   intro: {fileID: 1131790406}
   result: {fileID: 378199801}
   music: {fileID: 8300000, guid: a18710d2b0878b845b386f0a8322d336, type: 3}
-  volume: 0.3
-  fadeInSeconds: 1
+  startVolume: 0.4
+  volume: 0.25
+  fadeInSeconds: 0.5
+  holdSeconds: 3
+  settleSeconds: 5
   fadeOutSeconds: 1.2
 --- !u!1 &513768920
 GameObject:
@@ -2110,7 +2131,7 @@ MonoBehaviour:
   stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
   loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
   selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
-  volume: 0.8
+  volume: 0.6
   loadingVolume: 0.45
   fillSeconds: 2
   stepOffFadeSeconds: 0.12
@@ -6315,6 +6336,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 658267707}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1554582275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1554582272}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a899f8c42557494c8f9ee5c80c88a477, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ResultSounds
+  result: {fileID: 2025837162}
+  tick: {fileID: 8300000, guid: b9268c280e724de69541be852851cb94, type: 3}
+  applause: {fileID: 8300000, guid: 08003797e6e2a6d47bcbc96b73d98432, type: 3}
+  applauseStartSeconds: 0.95
+  applauseEndSeconds: 8
+  applauseFadeSeconds: 0.4
+  tickVolume: 0.25
+  applauseVolume: 0.85
+  tickGapSeconds: 0.07
+  tickTopPitch: 1.5
 --- !u!1 &1554582272
 GameObject:
   m_ObjectHideFlags: 0
@@ -6325,6 +6368,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1554582274}
   - component: {fileID: 1554582273}
+  - component: {fileID: 1554582275}
   m_Layer: 0
   m_Name: Game Sfx
   m_TagString: Untagged
@@ -6354,7 +6398,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 8d4fc988c6421e54395574c2e053e0c9, type: 3}
   - {fileID: 8300000, guid: 9e1e9fbc7e665204aaaaaf6d1e64c62d, type: 3}
   - {fileID: 8300000, guid: ecff900809faa3042941523e9662aff1, type: 3}
-  runVolume: 0.3
+  runVolume: 0.25
   stepVoices: 3
   hideIn:
   - {fileID: 8300000, guid: 56e099abc46a3904f9563c353c92f783, type: 3}
@@ -6371,28 +6415,27 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 27e8150d16e011b4c9095bc7ecbae108, type: 3}
   stepOnGapSeconds: 0.5
   flushBuild: {fileID: 8300000, guid: 66bb1d482c91a0248839340c10f5019c, type: 3}
-  flushVolume: 0.4
+  flushVolume: 0.5
   flushFadeSeconds: 0.15
-  hideVolume: 0.55
+  hideVolume: 0.5
   scuffle: {fileID: 8300000, guid: 101b7de225c384248bbb26011daaac0a, type: 3}
   cuffs: {fileID: 8300000, guid: c05edda1a7ec583408afe98dafe43c36, type: 3}
   coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
+  bump: {fileID: 8300000, guid: 7effa7c219494d0f801ffd736a238ec9, type: 3}
   wrong: {fileID: 8300000, guid: 5e3ed60fb6e6f5f4c9f07598f563455d, type: 3}
-  npcAngry: {fileID: 8300000, guid: 18bb207578d9cbd44b6f60c37821d564, type: 3}
-  fine: {fileID: 8300000, guid: 5d6c1c374307f9b4f8b70f6e0a6c1a80, type: 3}
-  catchVolume: 0.7
+  catchVolume: 0.6
   bombDrop: {fileID: 8300000, guid: 58ce2c94aa0d3354da9133ad9e8aba8e, type: 3}
   bombFuse: {fileID: 8300000, guid: 17c38b5756f9bec479322a01fd09335b, type: 3}
   bombBoom: {fileID: 8300000, guid: 23e431682da4d4746b69be880ec14422, type: 3}
   playerHit: {fileID: 8300000, guid: 9c075df8db7efb644807069b3f9bfba0, type: 3}
   bombVolume: 0.8
-  fuseVolume: 0.3
+  fuseVolume: 0.35
   posterPin: {fileID: 8300000, guid: 214c51d74c398f240b0e0dc6d373d45d, type: 3}
   tick: {fileID: 8300000, guid: edefc10a0be03f644b50a68245f896e3, type: 3}
   tickFinal: {fileID: 8300000, guid: 24e5e1b7a7c4d244296ba98fed24c9e4, type: 3}
   timeUp: {fileID: 8300000, guid: 467672ee737769d4aba41b9ebb994e43, type: 3}
   mapWhoosh: {fileID: 8300000, guid: 29e59584dfd396e4287fb2d73c5ad423, type: 3}
-  rhythmVolume: 0.6
+  rhythmVolume: 0.45
   finalTicks: 3
   speakers:
     floorHalfWidth: 5.15
@@ -7523,7 +7566,7 @@ MonoBehaviour:
   stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
   loading: {fileID: 8300000, guid: c6e0b63a344048e49b92a00ebc63a912, type: 3}
   selected: {fileID: 8300000, guid: c1189db93f012a6469b37129bc208ac5, type: 3}
-  volume: 0.8
+  volume: 0.6
   loadingVolume: 0.45
   fillSeconds: 2
   stepOffFadeSeconds: 0.12

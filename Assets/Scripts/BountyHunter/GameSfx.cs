@@ -9,11 +9,16 @@ namespace BountyHunter.Thieves
     // same soft paws for every thief; Footsteps, added to each thief as it appears; passers-by and
     // strolling make none), thieves diving into and out of hiding spots (each map's own sound, plus
     // a boing when a player standing on the spot flushes one out), catching a
-    // thief (scuffle, handcuffs, the bounty's ka-ching), bumping a passer-by (scuffle, a "wrong"
-    // buzz, the fine, its grumble), bombs (landing, fizzing fuse, boom, a player hit), posters pinned
+    // thief (a bright scuffle, handcuffs, the bounty's ka-ching), grabbing a passer-by by mistake (a
+    // dull bonk and tumble, then a buzzer as the X slams down), bombs (landing, fizzing fuse, boom, a player hit), posters pinned
     // up, the last ten seconds ticking, the time-up whistle and the switch to the next map.
-    // Footsteps share a few voices (more at once are skipped) and are kept quiet; every sound leans
-    // left or right with where on the floor it happens. Console lines start with [GameSfx].
+    // Footsteps share a few voices (more at once are skipped) and are kept quiet; they alone lean
+    // left or right with where the thief runs, every other sound comes from both speakers alike.
+    // Volumes are set in tiers so the plays stand out: the big moments (the bounty chime, a thief
+    // flushed out, the boom, time up) loudest, then
+    // feedback (scuffle, the penalty, the final ticks, a bomb landing), then information (hiding,
+    // stepping on, ticks, posters), with footfalls, the fuse and the music underneath. Console
+    // lines start with [GameSfx].
     public sealed class GameSfx : MonoBehaviour
     {
 
@@ -28,7 +33,7 @@ namespace BountyHunter.Thieves
         [Header("Running thieves")]
         // Every thief's footfalls (one picked at random each step).
         [SerializeField] private AudioClip[] thiefSteps;
-        [SerializeField, Range(0f, 1f)] private float runVolume = 0.3f;
+        [SerializeField, Range(0f, 1f)] private float runVolume = 0.25f;
         // Footfalls sounding at once; more are skipped.
         [SerializeField, Range(1, 8)] private int stepVoices = 3;
 
@@ -43,26 +48,39 @@ namespace BountyHunter.Thieves
         // While a player stands on a spot with a thief in it: a gentle build-up, played in step with
         // the flush (as long as it takes, 2 s), fading out when they step off.
         [SerializeField] private AudioClip flushBuild;
-        [SerializeField, Range(0f, 1f)] private float flushVolume = 0.4f;
+        [SerializeField, Range(0f, 1f)] private float flushVolume = 0.5f;
         [SerializeField, Min(0.01f)] private float flushFadeSeconds = 0.15f;
-        [SerializeField, Range(0f, 1f)] private float hideVolume = 0.55f;
+        // Thieves going in and out and players stepping on.
+        [SerializeField, Range(0f, 1f)] private float hideVolume = 0.5f;
+        // The boing of a thief flushed out (a big moment).
+        [SerializeField, Range(0f, 1f)] private float flushedVolume = 0.6f;
 
         [Header("Catching")]
         [SerializeField] private AudioClip scuffle;
         [SerializeField] private AudioClip cuffs;
         [SerializeField] private AudioClip coin;
+        // The scuffle and handcuffs of a catch.
+        [SerializeField, Range(0f, 1f)] private float catchVolume = 0.6f;
+        // The bounty's chime, the loudest part of a catch.
+        [SerializeField, Range(0f, 1f)] private float coinVolume = 0.8f;
+
+        [Header("Bumping a passer-by (kept below a catch)")]
+        // The bonk and tumble (its own sound, so a mistake is told from a catch at once).
+        [SerializeField] private AudioClip bump;
         [SerializeField] private AudioClip wrong;
-        [SerializeField] private AudioClip npcAngry;
-        [SerializeField] private AudioClip fine;
-        [SerializeField, Range(0f, 1f)] private float catchVolume = 0.7f;
+        [SerializeField, Range(0f, 1f)] private float bumpVolume = 0.8f;
+        [SerializeField, Range(0f, 1f)] private float wrongVolume = 0.5f;
 
         [Header("Bombs")]
         [SerializeField] private AudioClip bombDrop;
         [SerializeField] private AudioClip bombFuse;
         [SerializeField] private AudioClip bombBoom;
         [SerializeField] private AudioClip playerHit;
+        // The boom.
         [SerializeField, Range(0f, 1f)] private float bombVolume = 0.8f;
-        [SerializeField, Range(0f, 1f)] private float fuseVolume = 0.3f;
+        [SerializeField, Range(0f, 1f)] private float dropVolume = 0.6f;
+        [SerializeField, Range(0f, 1f)] private float hitVolume = 0.7f;
+        [SerializeField, Range(0f, 1f)] private float fuseVolume = 0.35f;
 
         [Header("The game's rhythm")]
         [SerializeField] private AudioClip posterPin;
@@ -70,21 +88,23 @@ namespace BountyHunter.Thieves
         [SerializeField] private AudioClip tickFinal;
         [SerializeField] private AudioClip timeUp;
         [SerializeField] private AudioClip mapWhoosh;
-        [SerializeField, Range(0f, 1f)] private float rhythmVolume = 0.6f;
+        // Posters, ticks and the map whoosh.
+        [SerializeField, Range(0f, 1f)] private float rhythmVolume = 0.45f;
+        [SerializeField, Range(0f, 1f)] private float finalTickVolume = 0.7f;
+        [SerializeField, Range(0f, 1f)] private float timeUpVolume = 0.6f;
         // The last seconds that tick with the higher sound.
         [SerializeField, Min(0)] private int finalTicks = 3;
 
         [Header("Speakers")]
-        // Each sound comes from the room's left or right speaker as far as it is to that side of
-        // the floor; sounds of things that move keep following them while they play.
+        // A running thief's footfalls come from the room's left or right speaker as far as it is to
+        // that side of the floor, following it while they sound. Nothing else is panned.
         [SerializeField] private FloorStereo speakers = new FloorStereo();
 
-        // When things happen in a scuffle, after it starts (CatchBrawl: the X lands at 0.95 s).
-        private const float CuffsAt = 0.95f;
-        private const float CoinAt = 1.2f;
-        private const float WrongAt = 0.25f;
-        private const float FineAt = 0.55f;
-        private const float AngryAt = 1.0f;
+        // When things happen in a scuffle, after it starts. The cuffs close and the buzzer sounds as
+        // the cloud bursts (with a passer-by, as the X slams down); the bounty follows a moment later.
+        private static float CuffsAt => CatchBrawl.StampSeconds;
+        private static float CoinAt => CatchBrawl.StampSeconds + 0.2f;
+        private static float WrongAt => CatchBrawl.StampSeconds;
         // A pinned poster lands this long after it starts coming in (PosterMotion.pinSeconds).
         private const float PinLands = 0.16f;
 
@@ -92,13 +112,11 @@ namespace BountyHunter.Thieves
         {
             public float At;
             public AudioClip Clip;
-            public Vector3 Where;
-            public Transform Follow;
             public float Volume;
         }
 
         private readonly List<AudioSource> voices = new List<AudioSource>();
-        // Voices playing the sound of something that moves, and what they follow.
+        // Footfall voices sounding now, and the thief each follows.
         private readonly Dictionary<AudioSource, Transform> following = new Dictionary<AudioSource, Transform>();
         private readonly List<AudioSource> doneFollowing = new List<AudioSource>();
         private readonly List<AudioSource> stepSources = new List<AudioSource>();
@@ -187,7 +205,9 @@ namespace BountyHunter.Thieves
             if (clip == null || source == null || runner == null) return;
 
             source.pitch = UnityEngine.Random.Range(0.93f, 1.07f);
-            StartOn(source, clip, runner.position, runVolume, runner);
+            source.panStereo = speakers.PanAt(runner.position);
+            following[source] = runner;
+            source.PlayOneShot(clip, runVolume);
         }
 
         // Thieves and hiding spots appear during the game; their sounds are hooked up here.
@@ -237,7 +257,7 @@ namespace BountyHunter.Thieves
                 if (lastStepOn.TryGetValue(bush, out float last) && Time.time - last < stepOnGapSeconds) continue;
 
                 lastStepOn[bush] = Time.time;
-                Play(ForMap(stepOn), bush.Center, hideVolume, bush.transform);
+                Play(ForMap(stepOn), hideVolume);
             }
 
             stoodOn.RemoveWhere(bush => bush == null);
@@ -266,7 +286,6 @@ namespace BountyHunter.Thieves
             }
 
             float at = Mathf.Min(bush.FlushProgress * flushBuild.length, flushBuild.length - 0.01f);
-            voice.panStereo = speakers.PanAt(bush.Center);
             voice.volume = flushVolume;
             if (!voice.isPlaying)
             {
@@ -297,14 +316,13 @@ namespace BountyHunter.Thieves
 
         private void OnThiefEntered(HidingBush bush, Vector3 side)
         {
-            Play(ForMap(hideIn), bush.Center, hideVolume, bush.transform);
+            Play(ForMap(hideIn), hideVolume);
         }
 
-        // (Hiding spots can walk about, so their sounds follow them.)
         private void OnThiefExited(HidingBush bush, Vector3 side)
         {
-            Play(ForMap(hideOut), bush.Center, hideVolume, bush.transform);
-            if (bush.PlayerIsStandingOn) Play(flushed, bush.Center, hideVolume, bush.transform);
+            Play(ForMap(hideOut), hideVolume);
+            if (bush.PlayerIsStandingOn) Play(flushed, flushedVolume);
         }
 
         private AudioClip ForMap(AudioClip[] clips)
@@ -318,26 +336,22 @@ namespace BountyHunter.Thieves
 
         private void OnThiefCaught(ThiefController thief, UWBPlayerController catcher)
         {
-            Vector3 at = thief != null ? thief.transform.position : Vector3.zero;
-            Play(scuffle, at, catchVolume);
-            Later(CuffsAt, cuffs, at, catchVolume);
-            Later(CoinAt, coin, at, catchVolume);
+            Play(scuffle, catchVolume);
+            Later(CuffsAt, cuffs, catchVolume);
+            Later(CoinAt, coin, coinVolume);
         }
 
         private void OnNpcBumped(NpcWalker npc, UWBPlayerController player)
         {
-            Vector3 at = npc != null ? npc.transform.position : Vector3.zero;
-            Play(scuffle, at, catchVolume * 0.7f);
-            Later(WrongAt, wrong, at, catchVolume * 0.8f);
-            Later(FineAt, fine, at, catchVolume);
-            Later(AngryAt, npcAngry, at, catchVolume, npc != null ? npc.transform : null);
+            Play(bump, bumpVolume);
+            Later(WrongAt, wrong, wrongVolume);
         }
 
         // Bombs ---------------------------------------------------------------------------------------
 
         private void OnBombDropped(Vector3 at, float fuseSeconds)
         {
-            Play(bombDrop, at, bombVolume);
+            Play(bombDrop, dropVolume);
             if (bombFuse == null) return;
 
             // The fuse fizzes on its own voice until the bomb goes off.
@@ -345,19 +359,18 @@ namespace BountyHunter.Thieves
             fuse.clip = bombFuse;
             fuse.loop = true;
             fuse.volume = fuseVolume;
-            fuse.panStereo = speakers.PanAt(at);
             fuse.Play();
             Destroy(fuse.gameObject, Mathf.Max(0.05f, fuseSeconds));
         }
 
         private void OnBombExploded(Vector3 at)
         {
-            Play(bombBoom, at, bombVolume);
+            Play(bombBoom, bombVolume);
         }
 
         private void OnPlayerBombed(UWBPlayerController player, ThiefController thief)
         {
-            Play(playerHit, player != null ? player.transform.position : Vector3.zero, bombVolume);
+            Play(playerHit, hitVolume);
         }
 
         // The game's rhythm ---------------------------------------------------------------------------
@@ -366,31 +379,31 @@ namespace BountyHunter.Thieves
         {
             for (int i = 0; i < count; i++)
             {
-                Later(delay + i * stagger + PinLands, posterPin, Vector3.zero, rhythmVolume);
+                Later(delay + i * stagger + PinLands, posterPin, rhythmVolume);
             }
         }
 
         private void OnWarningSecond(int secondsLeft)
         {
-            Play(secondsLeft <= finalTicks ? tickFinal : tick, Vector3.zero, rhythmVolume);
+            bool final = secondsLeft <= finalTicks;
+            Play(final ? tickFinal : tick, final ? finalTickVolume : rhythmVolume);
         }
 
         private void OnTimeUp()
         {
-            Play(timeUp, Vector3.zero, rhythmVolume);
+            Play(timeUp, timeUpVolume);
         }
 
         private void OnMapSwitched(int map)
         {
-            Play(mapWhoosh, Vector3.zero, rhythmVolume);
+            Play(mapWhoosh, rhythmVolume);
         }
 
         // Playing -------------------------------------------------------------------------------------
 
-        // follow: something that moves, which the sound keeps following; null for a sound that stays put.
-        private void Later(float seconds, AudioClip clip, Vector3 at, float volume, Transform follow = null)
+        private void Later(float seconds, AudioClip clip, float volume)
         {
-            if (clip != null) pending.Add(new Pending { At = Time.time + seconds, Clip = clip, Where = at, Volume = volume, Follow = follow });
+            if (clip != null) pending.Add(new Pending { At = Time.time + seconds, Clip = clip, Volume = volume });
         }
 
         private void PlayPending()
@@ -398,13 +411,14 @@ namespace BountyHunter.Thieves
             for (int i = pending.Count - 1; i >= 0; i--)
             {
                 if (Time.time < pending[i].At) continue;
-                Play(pending[i].Clip, pending[i].Where, pending[i].Volume, pending[i].Follow);
+                Play(pending[i].Clip, pending[i].Volume);
                 pending.RemoveAt(i);
             }
         }
 
-        // Plays on the next free voice (or the one that started longest ago when all are busy).
-        private void Play(AudioClip clip, Vector3 at, float volume, Transform follow = null)
+        // Plays on the next free voice (or the one that started longest ago when all are busy), from
+        // both speakers alike.
+        private void Play(AudioClip clip, float volume)
         {
             if (clip == null) return;
 
@@ -416,19 +430,10 @@ namespace BountyHunter.Thieves
                 source.Stop();
             }
 
-            StartOn(source, clip, at, volume, follow);
-        }
-
-        private void StartOn(AudioSource source, AudioClip clip, Vector3 at, float volume, Transform follow)
-        {
-            Vector3 where = follow != null ? follow.position : at;
-            source.panStereo = speakers.PanAt(where);
-            if (follow != null) following[source] = follow;
-            else following.Remove(source);
             source.PlayOneShot(clip, volume);
         }
 
-        // Keeps the sounds of moving things on their side of the room as they move.
+        // Keeps each footfall on the side of the room its thief is running on.
         private void FollowMovers()
         {
             doneFollowing.Clear();

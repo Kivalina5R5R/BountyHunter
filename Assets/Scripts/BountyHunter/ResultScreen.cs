@@ -10,8 +10,9 @@ namespace BountyHunter.Thieves
     // The result screen on the wall once the time is up: TIME'S UP and WINNER on the board over the
     // standings (the winner's row on top and bigger, the others with their faces), the winner dancing
     // on the bench and the others clapping beside the board. When shown, the board pops up first, then
-    // its pieces one after another while the scores count up, then the dogs. Laid out in
-    // Assets/Prefabs/UI/Result.prefab; move or resize anything there. Console lines start with [ResultScreen].
+    // its pieces one after another while the scores count up, then the dogs. Its moments are raised
+    // as events (ResultSounds plays them). Laid out in Assets/Prefabs/UI/Result.prefab; move or
+    // resize anything there. Console lines start with [ResultScreen].
     public sealed class ResultScreen : MonoBehaviour
     {
         // How one character looks here: its animations (states Dance and Clap), its face for the rows
@@ -90,6 +91,7 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.05f)] private float idleRampSeconds = 0.6f;
 
         private readonly Dictionary<RectTransform, Rest> rests = new Dictionary<RectTransform, Rest>();
+        private readonly Dictionary<TMP_Text, int> shownScores = new Dictionary<TMP_Text, int>();
         // Where the winner stands before its own winnerOffset.
         private Rest winnerSpot;
         // When each piece finished coming in; idle motion starts from then.
@@ -120,6 +122,12 @@ namespace BountyHunter.Thieves
             public Vector3 Scale { get; }
             public Quaternion Rotation { get; }
         }
+
+        // Raised each time a counting score shows a new number, with how far the count is (0..1).
+        public event Action<float> ScoreTicked;
+
+        // Raised as a row's score has finished counting up, with its place (1 is the winner).
+        public event Action<int> ScoreCounted;
 
         // Shows the standings, best first, and plays the entrance.
         public void Show(IReadOnlyList<ResultStanding> standings)
@@ -247,7 +255,7 @@ namespace BountyHunter.Thieves
 
                 int row = RowIndexOf(piece);
                 if (row < 0) StartCoroutine(Pop(piece));
-                else StartCoroutine(SlideIn(piece, rows[row].Score, row < standings.Count ? standings[row].Score : 0));
+                else StartCoroutine(SlideIn(piece, rows[row].Score, row + 1, row < standings.Count ? standings[row].Score : 0));
                 yield return new WaitForSeconds(entranceStagger);
             }
         }
@@ -267,8 +275,8 @@ namespace BountyHunter.Thieves
         }
 
         // Slides in from the left while it fades in, running a little past its place before settling,
-        // and once there counts its score up.
-        private IEnumerator SlideIn(RectTransform piece, TMP_Text score, int points)
+        // and once there counts its score up. rank: the row's place in the standings (1 is the winner).
+        private IEnumerator SlideIn(RectTransform piece, TMP_Text score, int rank, int points)
         {
             Vector2 rest = rests.TryGetValue(piece, out Rest place) ? place.Position : piece.anchoredPosition;
             CanvasGroup fade = FadeOf(piece);
@@ -284,6 +292,7 @@ namespace BountyHunter.Thieves
             fade.alpha = 1f;
             arrivedAt[piece] = Time.time;
             yield return CountUp(score, points);
+            ScoreCounted?.Invoke(rank);
         }
 
         // The row's own fader, added the first time it is needed.
@@ -322,14 +331,24 @@ namespace BountyHunter.Thieves
         {
             if (label == null) yield break;
 
+            shownScores[label] = 0;
             for (float t = 0f; t < countUpSeconds; t += Time.deltaTime)
             {
                 float u = t / countUpSeconds;
-                label.text = string.Format(scoreFormat, Mathf.RoundToInt(score * (1f - (1f - u) * (1f - u))));
+                ShowScore(label, Mathf.RoundToInt(score * (1f - (1f - u) * (1f - u))), u);
                 yield return null;
             }
 
+            ShowScore(label, score, 1f);
+        }
+
+        private void ShowScore(TMP_Text label, int score, float progress)
+        {
             label.text = string.Format(scoreFormat, score);
+            if (shownScores.TryGetValue(label, out int shown) && shown == score) return;
+
+            shownScores[label] = score;
+            ScoreTicked?.Invoke(progress);
         }
 
         private int RowIndexOf(RectTransform piece)

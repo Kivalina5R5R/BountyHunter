@@ -16,8 +16,10 @@ namespace BountyHunter.Thieves
         [SerializeField] private AudioClip stepOn;
         [SerializeField] private AudioClip loading;
         [SerializeField] private AudioClip selected;
-        [SerializeField, Range(0f, 1f)] private float volume = 0.8f;
-        [SerializeField, Range(0f, 1f)] private float loadingVolume = 0.6f;
+        // The pop and the bop, kept below the ta-da so picking stands out.
+        [SerializeField, Range(0f, 1f)] private float volume = 0.6f;
+        [SerializeField, Range(0f, 1f)] private float selectedVolume = 1f;
+        [SerializeField, Range(0f, 1f)] private float loadingVolume = 0.45f;
         // How long the ring takes to fill (CharacterSelect.holdSeconds); the climb is made that long.
         [SerializeField, Min(0.1f)] private float fillSeconds = 2f;
         // How quickly the climb fades away when the player steps off.
@@ -42,12 +44,6 @@ namespace BountyHunter.Thieves
             oneShots = CreateSource();
             climb = CreateSource();
             climb.clip = loading;
-            // The card's own sounds come from the speaker on its side of the floor.
-            if (mixer != null)
-            {
-                climb.panStereo = mixer.PanAt(transform.position);
-                oneShots.panStereo = climb.panStereo;
-            }
         }
 
         private void OnEnable()
@@ -115,14 +111,19 @@ namespace BountyHunter.Thieves
         private void OnStamped()
         {
             if (mixer != null) mixer.Duck();
-            Play(selected);
+            Play(selected, selectedVolume);
         }
 
         private void Play(AudioClip clip)
         {
+            Play(clip, volume);
+        }
+
+        private void Play(AudioClip clip, float clipVolume)
+        {
             if (clip == null) return;
-            if (mixer != null) mixer.PlayOneShot(clip, volume, transform.position);
-            else oneShots.PlayOneShot(clip, volume);
+            if (mixer != null) mixer.PlayOneShot(clip, clipVolume);
+            else oneShots.PlayOneShot(clip, clipVolume);
         }
 
         // The mixer shared by all the cards, on their parent; the first card adds it when the scene
