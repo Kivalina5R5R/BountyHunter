@@ -121,6 +121,7 @@ namespace BountyHunter.Thieves
             yield return Until(closes);
             answersOpen = false;
             wall.SetCountdown(-1);
+            wall.ShowReward(-1);
             ClearRings();
 
             // The reveal, one step after another: the culprit swells on the floor and is stamped, the
@@ -176,6 +177,7 @@ namespace BountyHunter.Thieves
             LineupFeatureArt art = ArtFor(clue.Feature);
             wall.ShowClue(index, art?.Icon, clue.Has, art != null ? art.Label : clue.Feature.ToString().ToUpperInvariant());
             cluesShown = index + 1;
+            wall.ShowReward(Reward(cluesShown));
             ClueShown?.Invoke(index);
         }
 

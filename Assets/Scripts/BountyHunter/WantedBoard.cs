@@ -88,10 +88,12 @@ namespace BountyHunter.Thieves
         }
 
         // Takes every poster off the wall at once, without the tear-down (between stages, while the
-        // screen is dark, so the next stage's posters come in on an empty board).
+        // screen is dark, so the next stage's posters come in on an empty board). Every poster goes,
+        // also a caught one still being stamped or falling, which would otherwise stay stuck on the
+        // board when the stage is hidden mid-way and turn up over the next stage's posters.
         public void TakeDownNow()
         {
-            foreach (WantedPoster poster in shown) motions[poster].HideNow();
+            foreach (PosterMotion motion in motions.Values) motion.HideNow();
             shown.Clear();
         }
 

@@ -11,9 +11,9 @@ namespace BountyHunter.Thieves
     // a boing when a player standing on the spot flushes one out), catching a
     // thief (a bright scuffle, handcuffs, the bounty's ka-ching), grabbing a passer-by by mistake (a
     // dull bonk and tumble, then a buzzer as the X slams down), bombs (landing, fizzing fuse, boom, a player hit), posters pinned
-    // up, the last ten seconds ticking, the time-up whistle and the switch to the next map.
-    // Footsteps share a few voices (more at once are skipped) and are kept quiet; they alone lean
-    // left or right with where the thief runs, every other sound comes from both speakers alike.
+    // up, the last ten seconds ticking and the switch to the next map.
+    // Footsteps share a few voices (more at once are skipped) and are kept quiet. Every sound comes
+    // from both speakers alike, wherever on the floor it happens.
     // Volumes are set in tiers so the plays stand out: the big moments (the bounty chime, a thief
     // flushed out, the boom, time up) loudest, then
     // feedback (scuffle, the penalty, the final ticks, a bomb landing), then information (hiding,
@@ -54,6 +54,11 @@ namespace BountyHunter.Thieves
         [SerializeField, Range(0f, 1f)] private float hideVolume = 0.5f;
         // The boing of a thief flushed out (a big moment).
         [SerializeField, Range(0f, 1f)] private float flushedVolume = 0.6f;
+        // Several spots sounding the same thing this close together (players stepping on at once,
+        // thieves diving in side by side) play it once, so it does not double up into one loud,
+        // phasing blur. Each one heard is pitched a little differently so close ones stay apart.
+        [SerializeField, Min(0f)] private float spotSoundGapSeconds = 0.12f;
+        [SerializeField, Range(0f, 0.2f)] private float spotPitchSpread = 0.05f;
 
         [Header("Catching")]
         [SerializeField] private AudioClip scuffle;
@@ -86,19 +91,12 @@ namespace BountyHunter.Thieves
         [SerializeField] private AudioClip posterPin;
         [SerializeField] private AudioClip tick;
         [SerializeField] private AudioClip tickFinal;
-        [SerializeField] private AudioClip timeUp;
         [SerializeField] private AudioClip mapWhoosh;
         // Posters, ticks and the map whoosh.
         [SerializeField, Range(0f, 1f)] private float rhythmVolume = 0.45f;
         [SerializeField, Range(0f, 1f)] private float finalTickVolume = 0.7f;
-        [SerializeField, Range(0f, 1f)] private float timeUpVolume = 0.6f;
         // The last seconds that tick with the higher sound.
         [SerializeField, Min(0)] private int finalTicks = 3;
-
-        [Header("Speakers")]
-        // A running thief's footfalls come from the room's left or right speaker as far as it is to
-        // that side of the floor, following it while they sound. Nothing else is panned.
-        [SerializeField] private FloorStereo speakers = new FloorStereo();
 
         // When things happen in a scuffle, after it starts. The cuffs close and the buzzer sounds as
         // the cloud bursts (with a passer-by, as the X slams down); the bounty follows a moment later.
@@ -116,9 +114,6 @@ namespace BountyHunter.Thieves
         }
 
         private readonly List<AudioSource> voices = new List<AudioSource>();
-        // Footfall voices sounding now, and the thief each follows.
-        private readonly Dictionary<AudioSource, Transform> following = new Dictionary<AudioSource, Transform>();
-        private readonly List<AudioSource> doneFollowing = new List<AudioSource>();
         private readonly List<AudioSource> stepSources = new List<AudioSource>();
         private readonly List<Pending> pending = new List<Pending>();
         private readonly HashSet<HidingBush> heardBushes = new HashSet<HidingBush>();
@@ -128,6 +123,8 @@ namespace BountyHunter.Thieves
         // Each spot's own voice for its flush build-up.
         private readonly Dictionary<HidingBush, AudioSource> flushVoices = new Dictionary<HidingBush, AudioSource>();
         private readonly List<HidingBush> goneSpots = new List<HidingBush>();
+        // When each hiding-spot sound last played.
+        private readonly Dictionary<AudioClip, float> spotSoundAt = new Dictionary<AudioClip, float>();
         private readonly HashSet<Transform> withSteps = new HashSet<Transform>();
         private int nextVoice;
 
@@ -151,7 +148,6 @@ namespace BountyHunter.Thieves
             if (timer != null)
             {
                 timer.WarningSecond += OnWarningSecond;
-                timer.TimeUp += OnTimeUp;
             }
 
             if (maps != null) maps.MapSwitched += OnMapSwitched;
@@ -172,7 +168,6 @@ namespace BountyHunter.Thieves
             if (timer != null)
             {
                 timer.WarningSecond -= OnWarningSecond;
-                timer.TimeUp -= OnTimeUp;
             }
 
             if (maps != null) maps.MapSwitched -= OnMapSwitched;
@@ -192,12 +187,11 @@ namespace BountyHunter.Thieves
             ListenToNewcomers();
             WatchStepOns();
             PlayPending();
-            FollowMovers();
         }
 
         // Running thieves ---------------------------------------------------------------------------
 
-        // One footfall of runner, a running thief, following it across the speakers while it sounds.
+        // One footfall of runner, a running thief.
         public void PlayRunStep(Transform runner)
         {
             AudioClip clip = RandomOf(thiefSteps);
@@ -205,8 +199,6 @@ namespace BountyHunter.Thieves
             if (clip == null || source == null || runner == null) return;
 
             source.pitch = UnityEngine.Random.Range(0.93f, 1.07f);
-            source.panStereo = speakers.PanAt(runner.position);
-            following[source] = runner;
             source.PlayOneShot(clip, runVolume);
         }
 
@@ -239,14 +231,16 @@ namespace BountyHunter.Thieves
         // Hiding spots ------------------------------------------------------------------------------
 
         // The moment a player steps onto a hiding spot, the spot gives a little (its map's sound);
-        // staying on one with a thief inside builds up until it is flushed out.
+        // staying on one with a thief inside builds up until it is flushed out. With players on
+        // several such spots, only the one closest to flushing builds up; the rest stay quiet.
         private void WatchStepOns()
         {
             DropGoneFlushVoices();
+            HidingBush building = ClosestToFlush();
             foreach (HidingBush bush in heardBushes)
             {
                 if (bush == null) continue;
-                UpdateFlush(bush);
+                UpdateFlush(bush, bush == building);
                 if (!bush.PlayerIsStandingOn)
                 {
                     stoodOn.Remove(bush);
@@ -257,18 +251,32 @@ namespace BountyHunter.Thieves
                 if (lastStepOn.TryGetValue(bush, out float last) && Time.time - last < stepOnGapSeconds) continue;
 
                 lastStepOn[bush] = Time.time;
-                Play(ForMap(stepOn), hideVolume);
+                PlaySpotSound(ForMap(stepOn), hideVolume);
             }
 
             stoodOn.RemoveWhere(bush => bush == null);
             if (lastStepOn.Count > heardBushes.Count * 2) lastStepOn.Clear();
         }
 
+        // The spot with a thief in it and a player on it that is furthest into its flush, or null.
+        private HidingBush ClosestToFlush()
+        {
+            HidingBush closest = null;
+            foreach (HidingBush bush in heardBushes)
+            {
+                if (bush == null || bush.Occupant == null || !bush.PlayerIsStandingOn) continue;
+                if (closest == null || bush.FlushProgress > closest.FlushProgress) closest = bush;
+            }
+
+            return closest;
+        }
+
         // The build-up follows the flush: at the point it has reached while a player stands on a spot
         // with a thief in it (picking up there after stepping off and back on), else fading away.
-        private void UpdateFlush(HidingBush bush)
+        // Only the spot given as loudest builds up.
+        private void UpdateFlush(HidingBush bush, bool loudest)
         {
-            bool building = flushBuild != null && bush.Occupant != null && bush.PlayerIsStandingOn;
+            bool building = loudest && flushBuild != null && bush.Occupant != null && bush.PlayerIsStandingOn;
             flushVoices.TryGetValue(bush, out AudioSource voice);
             if (!building)
             {
@@ -316,13 +324,24 @@ namespace BountyHunter.Thieves
 
         private void OnThiefEntered(HidingBush bush, Vector3 side)
         {
-            Play(ForMap(hideIn), hideVolume);
+            PlaySpotSound(ForMap(hideIn), hideVolume);
         }
 
         private void OnThiefExited(HidingBush bush, Vector3 side)
         {
-            Play(ForMap(hideOut), hideVolume);
-            if (bush.PlayerIsStandingOn) Play(flushed, flushedVolume);
+            PlaySpotSound(ForMap(hideOut), hideVolume);
+            if (bush.PlayerIsStandingOn) PlaySpotSound(flushed, flushedVolume);
+        }
+
+        // A hiding-spot sound, skipped when the same one started less than spotSoundGapSeconds ago,
+        // slightly pitched up or down.
+        private void PlaySpotSound(AudioClip clip, float volume)
+        {
+            if (clip == null) return;
+            if (spotSoundAt.TryGetValue(clip, out float at) && Time.time - at < spotSoundGapSeconds) return;
+
+            spotSoundAt[clip] = Time.time;
+            Play(clip, volume, 1f + UnityEngine.Random.Range(-spotPitchSpread, spotPitchSpread));
         }
 
         private AudioClip ForMap(AudioClip[] clips)
@@ -389,11 +408,6 @@ namespace BountyHunter.Thieves
             Play(final ? tickFinal : tick, final ? finalTickVolume : rhythmVolume);
         }
 
-        private void OnTimeUp()
-        {
-            Play(timeUp, timeUpVolume);
-        }
-
         private void OnMapSwitched(int map)
         {
             Play(mapWhoosh, rhythmVolume);
@@ -417,8 +431,8 @@ namespace BountyHunter.Thieves
         }
 
         // Plays on the next free voice (or the one that started longest ago when all are busy), from
-        // both speakers alike.
-        private void Play(AudioClip clip, float volume)
+        // both speakers alike, at its own pitch unless another is given.
+        private void Play(AudioClip clip, float volume, float pitch = 1f)
         {
             if (clip == null) return;
 
@@ -430,20 +444,8 @@ namespace BountyHunter.Thieves
                 source.Stop();
             }
 
+            source.pitch = pitch;
             source.PlayOneShot(clip, volume);
-        }
-
-        // Keeps each footfall on the side of the room its thief is running on.
-        private void FollowMovers()
-        {
-            doneFollowing.Clear();
-            foreach (KeyValuePair<AudioSource, Transform> pair in following)
-            {
-                if (!pair.Key.isPlaying || pair.Value == null) doneFollowing.Add(pair.Key);
-                else pair.Key.panStereo = speakers.PanAt(pair.Value.position);
-            }
-
-            foreach (AudioSource source in doneFollowing) following.Remove(source);
         }
 
         private AudioSource CreateSource(string label)

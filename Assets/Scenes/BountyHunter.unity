@@ -5252,6 +5252,8 @@ MonoBehaviour:
   walkInFromOutside: 1
   walkInToInside: 0.7
   safeEntranceDistance: 2.8
+  entranceSpread: 3.5
+  edgeCandidates: 16
   secondsToFlushBush: 2
   routeClearance: 0.9
   leafSprites:
@@ -6508,6 +6510,11 @@ MonoBehaviour:
   spawnSpacing: 1.8
   hidingSpotChance: 0.5
   retrySeconds: 0.5
+  startingCount: {x: 2, y: 3}
+  staggerSeconds: 1.5
+  arriveEverySeconds: 8
+  mostOnFloor: 4
+  staySeconds: {x: 10, y: 15}
   mistakeBrawl:
     clouds:
     - {fileID: 21300000, guid: 51795053c97a1d248a979a7e07ebb68a, type: 3}
@@ -6697,6 +6704,8 @@ MonoBehaviour:
   flushFadeSeconds: 0.15
   hideVolume: 0.5
   flushedVolume: 0.6
+  spotSoundGapSeconds: 0.12
+  spotPitchSpread: 0.05
   scuffle: {fileID: 8300000, guid: 101b7de225c384248bbb26011daaac0a, type: 3}
   cuffs: {fileID: 8300000, guid: c05edda1a7ec583408afe98dafe43c36, type: 3}
   coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
@@ -6717,16 +6726,10 @@ MonoBehaviour:
   posterPin: {fileID: 8300000, guid: 214c51d74c398f240b0e0dc6d373d45d, type: 3}
   tick: {fileID: 8300000, guid: edefc10a0be03f644b50a68245f896e3, type: 3}
   tickFinal: {fileID: 8300000, guid: 24e5e1b7a7c4d244296ba98fed24c9e4, type: 3}
-  timeUp: {fileID: 8300000, guid: 467672ee737769d4aba41b9ebb994e43, type: 3}
   mapWhoosh: {fileID: 8300000, guid: 29e59584dfd396e4287fb2d73c5ad423, type: 3}
   rhythmVolume: 0.45
   finalTickVolume: 0.7
-  timeUpVolume: 0.6
   finalTicks: 3
-  speakers:
-    floorHalfWidth: 5.15
-    width: 1
-    swapSides: 0
 --- !u!4 &1554582274
 Transform:
   m_ObjectHideFlags: 0
@@ -9790,11 +9793,11 @@ GameObject:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+  - {fileID: 513768923}
   - {fileID: 1097634112}
   - {fileID: 410087041}
-  - {fileID: 1554582274}
   - {fileID: 832575519}
-  - {fileID: 513768923}
+  - {fileID: 1554582274}
   - {fileID: 566848745}
   - {fileID: 1957981330}
   - {fileID: 594936651}

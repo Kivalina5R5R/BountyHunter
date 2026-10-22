@@ -43,6 +43,11 @@ namespace BountyHunter.Thieves
         private Material material;
         private bool prepared;
         private bool playWhenPrepared;
+        // Whether the video should be playing: started and, if it does not loop, not yet at its end.
+        // Hiding the wall stops a video player; this brings it back when the wall shows again.
+        private bool wanted;
+        // Hidden while still getting ready, which may cut the preparing short.
+        private bool hiddenBeforeReady;
 
         // The video frame once it is playing, else null. Raised with the frame when playback starts.
         public RenderTexture Frame { get; private set; }
@@ -73,6 +78,7 @@ namespace BountyHunter.Thieves
             player.prepareCompleted += OnPrepared;
             player.loopPointReached += OnEnd;
             playWhenPrepared = playOnAwake;
+            wanted = playOnAwake;
             player.Prepare();
 
             if (!UsesSpare) return;
@@ -99,6 +105,7 @@ namespace BountyHunter.Thieves
         public void Play()
         {
             if (player == null) return;
+            wanted = true;
             if (prepared) player.Play();
             else playWhenPrepared = true;
         }
@@ -112,7 +119,46 @@ namespace BountyHunter.Thieves
 
         private void OnEnd(VideoPlayer source)
         {
-            if (!loop) Finished?.Invoke(this);
+            if (loop) return;
+
+            wanted = false;
+            Finished?.Invoke(this);
+        }
+
+        // A wall hidden for a while (as during a mini game) stops its video; it carries on when the
+        // wall shows again, a seamless hand-over cut short starting over cleanly.
+        private void OnEnable()
+        {
+            if (player == null || !wanted) return;
+
+            if (handingOver)
+            {
+                spare.frameReady -= OnSpareFrame;
+                spare.sendFrameReadyEvents = false;
+                spare.Stop();
+                spare.Prepare();
+                handingOver = false;
+            }
+
+            if (prepared)
+            {
+                player.Play();
+                return;
+            }
+
+            // Hidden before it was ready: get it ready again and play once it is.
+            if (!hiddenBeforeReady) return;
+
+            hiddenBeforeReady = false;
+            playWhenPrepared = true;
+            player.prepareCompleted -= OnPrepared;
+            player.prepareCompleted += OnPrepared;
+            player.Prepare();
+        }
+
+        private void OnDisable()
+        {
+            if (!prepared) hiddenBeforeReady = true;
         }
 
         // Swaps the still for the video once there is a picture to show, then stops the per-frame events.

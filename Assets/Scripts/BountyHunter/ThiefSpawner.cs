@@ -34,6 +34,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float walkInToInside = 0.7f;
         // An entrance with a player closer than this is not used: a thief would walk into their arms.
         [SerializeField, Min(0f)] private float safeEntranceDistance = 2.8f;
+        // The thieves of one round come in at least this far apart (metres) whenever the floor allows.
+        [SerializeField, Min(0f)] private float entranceSpread = 3.5f;
+        // Spots along the floor edges weighed for each entrance (with the free hiding spots).
+        [SerializeField, Min(1)] private int edgeCandidates = 16;
 
         [Header("Bushes")]
         [SerializeField, Min(0.1f)] private float secondsToFlushBush = 2f;
@@ -266,6 +270,7 @@ namespace BountyHunter.Thieves
             thief.Caught += OnThiefCaught;
             thieves.Add(thief);
             string where = bush != null ? $"hidden in {bush.name}" : "off the floor edge";
+            where += $" at ({entrance.Point.x:0.0}, {entrance.Point.z:0.0})";
             Debug.Log($"[ThiefSpawner] Spawned {thief.name} {where}", this);
             return thief;
         }
@@ -310,10 +315,12 @@ namespace BountyHunter.Thieves
             return !players.TryGetWithin(point, safeEntranceDistance, out _);
         }
 
-        // Scores every free hiding spot (none with a player close by) and a few spots along the floor
-        // edges, and takes the best: far from where the other thieves of this round came in, not where
-        // they came in last round, the other way in than the last thief (a bush after an edge and the
-        // other way round), and away from the players, with a little chance mixed in.
+        // Scores every free hiding spot (none with a player close by) and edgeCandidates spots along the
+        // floor edges, and takes the best: far from where the other thieves of this round came in (and
+        // never within entranceSpread of one unless nothing else is left), on the halves of the floor
+        // (left/right and top/bottom) fewer of them used, not where they came in last round, the other
+        // way in than the last thief (a bush after an edge and the other way round), and away from the
+        // players, with a little chance mixed in.
         private Entrance PickEntrance()
         {
             var candidates = new List<Entrance>();
@@ -324,7 +331,7 @@ namespace BountyHunter.Thieves
                 candidates.Add(new Entrance { Point = new Vector3(bush.Center.x, height, bush.Center.z), Bush = bush });
             }
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < edgeCandidates; i++)
             {
                 candidates.Add(EdgeSpot());
             }
@@ -347,8 +354,15 @@ namespace BountyHunter.Thieves
             float score = Random.Range(0f, 1f);
             if (roundEntrances.Count > 0)
             {
-                score += NearestOf(candidate.Point, roundEntrances, 12f);
+                float nearest = NearestOf(candidate.Point, roundEntrances, 12f);
+                score += nearest;
+                if (nearest < entranceSpread) score -= 40f;
                 if ((candidate.Bush != null) != lastEntranceWasBush) score += 2f;
+
+                // The left and right halves take turns, and so do the top and bottom halves, so even
+                // with the players crowding one end the thieves come in above and below them too.
+                score += HalfTurn(candidate.Point.x, point => point.x) * 3f;
+                score += HalfTurn(candidate.Point.z, point => point.z) * 3f;
             }
 
             score += NearestOf(candidate.Point, lastRoundEntrances, 4f) * 0.5f;
@@ -370,6 +384,16 @@ namespace BountyHunter.Thieves
             return score;
         }
 
+        // 1 when the candidate's half of the floor along one axis (below or above zero) had fewer
+        // entrances this round than the other half, otherwise 0.
+        private float HalfTurn(float candidate, System.Func<Vector3, float> axis)
+        {
+            int below = roundEntrances.FindAll(point => axis(point) < 0f).Count;
+            int above = roundEntrances.Count - below;
+            bool isBelow = candidate < 0f;
+            return (isBelow && below < above) || (!isBelow && above < below) ? 1f : 0f;
+        }
+
         // Distance to the closest of points, at most cap (also when there are none).
         private static float NearestOf(Vector3 point, List<Vector3> points, float cap)
         {
@@ -382,11 +406,12 @@ namespace BountyHunter.Thieves
             return nearest;
         }
 
-        // A random spot on one of the floor edges, mostly the long left and right ends.
+        // A random spot on one of the floor edges: half on the left and right ends, half along the top
+        // and bottom.
         private Entrance EdgeSpot()
         {
             float sign = Random.value < 0.5f ? -1f : 1f;
-            if (Random.value < 0.65f)
+            if (Random.value < 0.5f)
             {
                 return new Entrance
                 {

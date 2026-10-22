@@ -46,6 +46,13 @@ namespace BountyHunter.Thieves
         [SerializeField] private Sprite yes;
         [SerializeField] private Sprite no;
 
+        [Header("What a right answer pays now")]
+        // Under the clue cards while answers are open: how much a right answer given now pays.
+        [SerializeField] private RectTransform rewardPanel;
+        [SerializeField] private TMP_Text rewardText;
+        // {0} is the amount.
+        [SerializeField] private string rewardFormat = "RIGHT ANSWER NOW: +{0}$";
+
         [Header("The culprit, at the reveal")]
         [SerializeField] private RectTransform culprit;
         [SerializeField] private Image culpritPicture;
@@ -111,6 +118,7 @@ namespace BountyHunter.Thieves
             StopAllCoroutines();
             foreach (Card card in cards) card.Root.gameObject.SetActive(false);
             SetCountdown(-1);
+            ShowReward(-1);
             if (culprit != null) culprit.gameObject.SetActive(false);
             ShowLines(heading, subline);
         }
@@ -147,6 +155,26 @@ namespace BountyHunter.Thieves
         {
             if (title != null) title.text = string.Empty;
             if (line != null) line.text = string.Empty;
+        }
+
+        // True once the prefab has its reward panel (made before it, it has none).
+        public bool HasRewardPanel => rewardPanel != null && rewardText != null;
+
+        // What a right answer given now pays; it pops each time it changes. Below zero hides it.
+        public void ShowReward(int amount)
+        {
+            if (rewardPanel == null) return;
+
+            bool shown = amount >= 0;
+            if (!shown)
+            {
+                rewardPanel.gameObject.SetActive(false);
+                return;
+            }
+
+            if (rewardText != null) rewardText.text = string.Format(rewardFormat, amount);
+            rewardPanel.gameObject.SetActive(true);
+            StartCoroutine(Pop(rewardPanel));
         }
 
         // Whole seconds left to lock in; below zero hides it.

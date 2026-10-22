@@ -38,6 +38,7 @@ namespace BountyHunter.Thieves.EditorTools
             LineupPrefabBuilder.HideGameWallDuringMiniGames();
             LineupPrefabBuilder.AddCulpritPanelIfMissing();
             LineupPrefabBuilder.CentreCulpritPanel();
+            LineupPrefabBuilder.AddRewardPanelIfMissing();
         }
     }
 
@@ -164,6 +165,39 @@ namespace BountyHunter.Thieves.EditorTools
         }
 
         // Adds the culprit panel to a wall prefab made before it had one, keeping everything else in it.
+        // Adds the "right answer now pays" panel to a wall prefab made before it had one.
+        public static void AddRewardPanelIfMissing()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || prefab.HasRewardPanel) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var serialized = new SerializedObject(contents.GetComponent<LineupWall>());
+            AddRewardPanel(contents.GetComponent<RectTransform>(), serialized);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall now shows what a right answer pays, under the clue cards.");
+        }
+
+        // Under the clue cards, near the bottom of the wall: a cream strip saying what a right answer
+        // given now pays. Hidden until the first clue.
+        private static void AddRewardPanel(RectTransform wall, SerializedObject serialized)
+        {
+            Image panel = UiImage("Reward", wall, Load<Sprite>(Art + "Pill.png"), Color.white);
+            panel.type = Image.Type.Sliced;
+            panel.pixelsPerUnitMultiplier = 2f;
+            Place(panel.rectTransform, new Vector2(0f, -188f), new Vector2(470f, 50f));
+            TMP_Text text = UiText("Text", panel.rectTransform, "RIGHT ANSWER NOW: +20$", 34f, Ink, Vector2.zero, new Vector2(450f, 46f));
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 20f;
+            text.fontSizeMax = 34f;
+
+            serialized.FindProperty("rewardPanel").objectReferenceValue = panel.rectTransform;
+            serialized.FindProperty("rewardText").objectReferenceValue = text;
+            panel.gameObject.SetActive(false);
+        }
+
         public static void AddCulpritPanelIfMissing()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
@@ -537,6 +571,7 @@ namespace BountyHunter.Thieves.EditorTools
             UiText("Label", group, "LOCK IN!", 30f, Color.white, new Vector2(0f, -100f), new Vector2(260f, 40f));
 
             AddCulpritPanel(rect, serialized);
+            AddRewardPanel(rect, serialized);
             serialized.FindProperty("title").objectReferenceValue = title;
             serialized.FindProperty("line").objectReferenceValue = line;
             serialized.FindProperty("countdownGroup").objectReferenceValue = group.gameObject;

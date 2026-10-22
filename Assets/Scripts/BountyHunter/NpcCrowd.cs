@@ -6,15 +6,18 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
-    // The passers-by on the floor during the game (NpcWalker prefabs; the sloth first). Begin sends
-    // each one onto the floor: walking in over an edge or stepping out of an empty hiding spot (with
-    // its rustle), wherever is far from the players and from the thieves and other passers-by. They
-    // never hide again after that; only thieves hide. One a player bumps into vanishes in a mistaken-arrest
+    // The passers-by on the floor during the game (NpcWalker prefabs, one of each kind at most at a
+    // time). Begin sends a few in, staggered, then one more every arriveEverySeconds while fewer
+    // than mostOnFloor are out; each strolls for a while (staySeconds, counted once it is on the
+    // floor) and then walks off over an edge. A new one is a kind not on the floor, the one gone the
+    // longest first, so they all take turns. Each comes in walking over an edge or stepping out of an
+    // empty hiding spot (with its rustle), wherever is far from the players and from the thieves and
+    // other passers-by. They never hide again after that; only thieves hide. One a player bumps into vanishes in a mistaken-arrest
     // scuffle (the thieves' fight cloud with its paw and handcuffs, but OOPS! / WRONG!, question
     // marks and sweat instead of stars, and a big red X slamming down as it bursts), and
     // NpcBumped says who did it (BountyRounds fines them). Once the scuffle is over it is back on
-    // the same spot, stamping about in its angry act (NpcWalker.GetAngry), then strolls on; it
-    // never leaves the floor. Clear takes them all away. Console lines start with [NpcCrowd].
+    // the same spot, stamping about in its angry act (NpcWalker.GetAngry), then strolls on (or goes,
+    // when its time is up). Clear takes them all away. Console lines start with [NpcCrowd].
     public sealed class NpcCrowd : MonoBehaviour, IFloorWalkers
     {
         [SerializeField] private UWBPlayerSpawner playerSpawner;
@@ -36,12 +39,29 @@ namespace BountyHunter.Thieves
         // How often an empty hiding spot is picked over an edge, when both are clear.
         [SerializeField, Range(0f, 1f)] private float hidingSpotChance = 0.5f;
         [SerializeField, Min(0.1f)] private float retrySeconds = 0.5f;
+
+        [Header("Coming and going")]
+        // How many come in at the start (inclusive range), staggerSeconds apart.
+        [SerializeField] private Vector2Int startingCount = new Vector2Int(2, 3);
+        [SerializeField, Min(0f)] private float staggerSeconds = 1.5f;
+        // After the starting ones, one more comes in this often (while fewer than mostOnFloor are
+        // out and none is still waiting for a clear spot).
+        [SerializeField, Min(0.5f)] private float arriveEverySeconds = 8f;
+        [SerializeField, Min(1)] private int mostOnFloor = 4;
+        // How long each strolls about once on the floor before it walks off (random in the range).
+        [SerializeField] private Vector2 staySeconds = new Vector2(10f, 15f);
         // The scuffle played when one is grabbed by mistake.
         [SerializeField] private CatchBrawl.Art mistakeBrawl;
         // The bumped passer-by starts its angry act this long before the scuffle's X is gone.
         [SerializeField, Min(0f)] private float angryBeforeStampGone = 0.9f;
 
         private readonly List<NpcWalker> walkers = new List<NpcWalker>();
+        // The kind each walker out now was made from, walkers still waiting to come in, and when each
+        // kind last left the floor.
+        private readonly Dictionary<NpcWalker, NpcWalker> kindOf = new Dictionary<NpcWalker, NpcWalker>();
+        private readonly HashSet<NpcWalker> waiting = new HashSet<NpcWalker>();
+        private readonly Dictionary<NpcWalker, float> lastLeftAt = new Dictionary<NpcWalker, float>();
+        private Coroutine schedule;
         private readonly List<Vector3> playerPositions = new List<Vector3>();
         private readonly List<Vector3> walkerPositions = new List<Vector3>();
 
@@ -62,25 +82,88 @@ namespace BountyHunter.Thieves
             players = new SpawnerPlayerLocator(playerSpawner);
         }
 
-        // Sends every passer-by onto the floor, once; later calls do nothing while they are out.
+        // Starts the passers-by coming and going; later calls do nothing until Clear.
         public void Begin()
         {
-            if (walkers.Count > 0 || kinds == null) return;
+            if (schedule != null || kinds == null) return;
 
-            foreach (NpcWalker kind in kinds)
+            schedule = StartCoroutine(ComeAndGo());
+        }
+
+        // A few at the start, then one more every arriveEverySeconds while there is room.
+        private IEnumerator ComeAndGo()
+        {
+            int starting = UnityEngine.Random.Range(startingCount.x, Mathf.Max(startingCount.x, startingCount.y) + 1);
+            for (int i = 0; i < starting; i++)
             {
-                if (kind == null) continue;
-
-                NpcWalker walker = Instantiate(kind, transform);
-                walker.name = kind.name;
-                walker.Initialize(players, new IFloorWalkers[] { this, thieves }, thieves, areaMin, areaMax);
-                walker.Bumped += OnBumped;
-                walkers.Add(walker);
-                walker.gameObject.SetActive(false);
-                StartCoroutine(Enter(walker));
+                if (i > 0) yield return new WaitForSeconds(staggerSeconds);
+                SendOne();
             }
 
-            Debug.Log($"[NpcCrowd] {walkers.Count} passer-by on the floor", this);
+            while (true)
+            {
+                yield return new WaitForSeconds(arriveEverySeconds);
+                if (walkers.Count < mostOnFloor && waiting.Count == 0) SendOne();
+            }
+        }
+
+        // Sends in a kind not out now, the one gone the longest (or never out) first.
+        private void SendOne()
+        {
+            NpcWalker kind = NextKind();
+            if (kind == null) return;
+
+            NpcWalker walker = Instantiate(kind, transform);
+            walker.name = kind.name;
+            walker.Initialize(players, new IFloorWalkers[] { this, thieves }, thieves, areaMin, areaMax);
+            walker.Bumped += OnBumped;
+            walker.Left += OnLeft;
+            walkers.Add(walker);
+            kindOf[walker] = kind;
+            walker.gameObject.SetActive(false);
+            StartCoroutine(Visit(walker));
+            Debug.Log($"[NpcCrowd] {walker.DisplayName} comes in, {walkers.Count} passer-by out", this);
+        }
+
+        private NpcWalker NextKind()
+        {
+            NpcWalker next = null;
+            float nextLeftAt = float.MaxValue;
+            foreach (NpcWalker kind in kinds)
+            {
+                if (kind == null || kindOf.ContainsValue(kind)) continue;
+
+                // Never out counts as gone the longest; a little chance breaks ties.
+                float leftAt = (lastLeftAt.TryGetValue(kind, out float at) ? at : -100000f) + UnityEngine.Random.value * 0.01f;
+                if (leftAt >= nextLeftAt) continue;
+                nextLeftAt = leftAt;
+                next = kind;
+            }
+
+            return next;
+        }
+
+        // Comes in, strolls for its stay once fully on the floor, then heads off.
+        private IEnumerator Visit(NpcWalker walker)
+        {
+            waiting.Add(walker);
+            yield return Enter(walker);
+            waiting.Remove(walker);
+            while (walker != null && walker.IsComingIn) yield return null;
+
+            yield return new WaitForSeconds(UnityEngine.Random.Range(staySeconds.x, Mathf.Max(staySeconds.x, staySeconds.y)));
+            if (walker != null) walker.Leave();
+        }
+
+        private void OnLeft(NpcWalker walker)
+        {
+            if (kindOf.TryGetValue(walker, out NpcWalker kind)) lastLeftAt[kind] = Time.time;
+            kindOf.Remove(walker);
+            walkers.Remove(walker);
+            walker.Bumped -= OnBumped;
+            walker.Left -= OnLeft;
+            Destroy(walker.gameObject);
+            Debug.Log($"[NpcCrowd] {walker.DisplayName} walked off, {walkers.Count} passer-by out", this);
         }
 
         // The passers-by on the floor now (not ones waiting off it to come back).
@@ -98,18 +181,22 @@ namespace BountyHunter.Thieves
         {
         }
 
-        // Takes every passer-by away, with any waiting to come back.
+        // Takes every passer-by away, with any waiting to come in, and stops new ones coming.
         public void Clear()
         {
             StopAllCoroutines();
+            schedule = null;
             foreach (NpcWalker walker in walkers)
             {
                 if (walker == null) continue;
                 walker.Bumped -= OnBumped;
+                walker.Left -= OnLeft;
                 Destroy(walker.gameObject);
             }
 
             walkers.Clear();
+            kindOf.Clear();
+            waiting.Clear();
         }
 
         private void OnBumped(NpcWalker walker)

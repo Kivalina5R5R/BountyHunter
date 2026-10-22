@@ -11,8 +11,10 @@ namespace BountyHunter.Thieves
     // way of a thief running to hide, and does not stand about right next to others. So a bump is
     // always the player walking into it, an innocent officer grabbed by mistake: it raises Bumped
     // once and NpcCrowd hides it in the scuffle cloud; after that it is back on the same spot in
-    // its angry act (GetAngry) before it strolls on. It faces the way it walks (mirrored only); the
-    // frames are played by ThiefFrameAnimation on its body.
+    // its angry act (GetAngry) before it strolls on. Leave sends it off the floor over the closest
+    // edge it can reach without walking into a player (it can still be bumped on the way); Left
+    // says when it is out of sight. It faces the way it walks (mirrored only); the frames are played
+    // by ThiefFrameAnimation on its body.
     public sealed class NpcWalker : MonoBehaviour
     {
         [SerializeField] private string displayName = "Sloth";
@@ -65,6 +67,10 @@ namespace BountyHunter.Thieves
         // there is not fined twice; it walks off first.
         [SerializeField, Min(0f)] private float bumpGraceSeconds = 1.5f;
 
+        [Header("Leaving")]
+        // It is gone once this far past an edge, out of sight.
+        [SerializeField, Min(0.1f)] private float goneOutside = 0.45f;
+
         private readonly List<Vector3> playerPositions = new List<Vector3>();
         private readonly List<Vector3> walkerPositions = new List<Vector3>();
         private IReadOnlyList<IFloorWalkers> others;
@@ -78,6 +84,7 @@ namespace BountyHunter.Thieves
         private float restUntil;
         private bool walking;
         private bool entering;
+        private bool leaving;
         private bool bumped;
         // Until when it stands in its angry act, and until when it cannot be bumped.
         private float angryUntil = float.MinValue;
@@ -86,8 +93,12 @@ namespace BountyHunter.Thieves
         private float angerStartsAt = float.MaxValue;
 
         public string DisplayName => displayName;
+        // Still walking in from outside the floor.
+        public bool IsComingIn => entering;
 
         public event Action<NpcWalker> Bumped;
+        // Raised once it has walked off the floor after Leave.
+        public event Action<NpcWalker> Left;
 
         // Gives it the players to watch for, the others on the floor to keep from walking over (thieves,
         // passers-by; entries may be null), the hiding spots to keep clear of (may be null) and the
@@ -109,6 +120,7 @@ namespace BountyHunter.Thieves
             goal = inside;
             velocity = Vector3.zero;
             entering = true;
+            leaving = false;
             walking = true;
             bumped = false;
         }
@@ -120,9 +132,20 @@ namespace BountyHunter.Thieves
             transform.position = point;
             velocity = Vector3.zero;
             entering = false;
+            leaving = false;
             walking = false;
             bumped = false;
             restUntil = 0f;
+            StartTrip();
+        }
+
+        // Heads off the floor: at once, or after the angry act or scuffle it is in now.
+        public void Leave()
+        {
+            if (leaving) return;
+
+            leaving = true;
+            if (bumped || Time.time < angryUntil || angerStartsAt != float.MaxValue) return;
             StartTrip();
         }
 
@@ -151,6 +174,13 @@ namespace BountyHunter.Thieves
             {
                 bumped = true;
                 Bumped?.Invoke(this);
+                return;
+            }
+
+            if (leaving && OutsideBy() >= goneOutside)
+            {
+                bumped = true;
+                Left?.Invoke(this);
                 return;
             }
 
@@ -239,7 +269,7 @@ namespace BountyHunter.Thieves
 
             if (push.sqrMagnitude < 0.000001f) return;
             Vector3 next = position + push;
-            transform.position = entering ? next : Clamped(next, 0f);
+            transform.position = entering || leaving ? next : Clamped(next, 0f);
         }
 
         private void Walk()
@@ -256,6 +286,13 @@ namespace BountyHunter.Thieves
             toGoal.y = 0f;
             if (toGoal.magnitude < 0.08f)
             {
+                // On its way out it keeps going until it is out of sight.
+                if (leaving)
+                {
+                    StartTrip();
+                    return;
+                }
+
                 walking = false;
                 restUntil = Time.time + UnityEngine.Random.Range(pauseSeconds.x, pauseSeconds.y);
                 return;
@@ -314,8 +351,8 @@ namespace BountyHunter.Thieves
         {
             velocity = Vector3.MoveTowards(velocity, wanted, acceleration * Time.deltaTime);
             Vector3 next = transform.position + velocity * (Stride() * Time.deltaTime);
-            // Never off the floor once in (its trips aim further in, edgeMargin).
-            if (!entering) next = Clamped(next, 0f);
+            // Never off the floor once in (its trips aim further in, edgeMargin), until it leaves.
+            if (!entering && !leaving) next = Clamped(next, 0f);
             transform.position = next;
             Face(velocity.x);
         }
@@ -339,6 +376,11 @@ namespace BountyHunter.Thieves
             if (players != null) players.GetAll(playerPositions);
             else playerPositions.Clear();
             GatherWalkers();
+            if (leaving)
+            {
+                StartExit();
+                return;
+            }
 
             Vector3 from = transform.position;
             Vector3 best = from;
@@ -373,6 +415,55 @@ namespace BountyHunter.Thieves
 
             goal = best;
             walking = true;
+        }
+
+        // Off the floor over the closest edge whose way out keeps pathClearance from the players (the
+        // closest of any when none does), a little past where it is out of sight.
+        private void StartExit()
+        {
+            Vector3 from = transform.position;
+            Vector3 best = from;
+            float bestScore = float.MinValue;
+            for (int side = 0; side < 4; side++)
+            {
+                for (int step = -1; step <= 1; step++)
+                {
+                    Vector3 candidate = ExitSpot(from, side, step * 1.2f);
+                    float score = -FlatDistance(from, candidate) + UnityEngine.Random.Range(0f, 0.3f);
+                    if (PathClearance(from, candidate) < pathClearance) score -= 100f;
+                    if (score <= bestScore) continue;
+                    bestScore = score;
+                    best = candidate;
+                }
+            }
+
+            goal = best;
+            walking = true;
+        }
+
+        // A spot just past one side of the floor (0 left, 1 right, 2 near, 3 far), across from
+        // point and moved along that side by shift.
+        private Vector3 ExitSpot(Vector3 point, int side, float shift)
+        {
+            float past = goneOutside + 0.3f;
+            float x = Mathf.Clamp(point.x + shift, areaMin.x, areaMax.x);
+            float z = Mathf.Clamp(point.z + shift, areaMin.y, areaMax.y);
+            switch (side)
+            {
+                case 0: return new Vector3(areaMin.x - past, point.y, z);
+                case 1: return new Vector3(areaMax.x + past, point.y, z);
+                case 2: return new Vector3(x, point.y, areaMin.y - past);
+                default: return new Vector3(x, point.y, areaMax.y + past);
+            }
+        }
+
+        // How far past the floor's edges it stands (0 or less while on the floor).
+        private float OutsideBy()
+        {
+            Vector3 position = transform.position;
+            return Mathf.Max(
+                Mathf.Max(areaMin.x - position.x, position.x - areaMax.x),
+                Mathf.Max(areaMin.y - position.z, position.z - areaMax.y));
         }
 
         // Fills walkerPositions with the thieves and other passers-by in sight.
