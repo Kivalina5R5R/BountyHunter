@@ -87,6 +87,14 @@ namespace BountyHunter.Thieves
             return shown;
         }
 
+        // Takes every poster off the wall at once, without the tear-down (between stages, while the
+        // screen is dark, so the next stage's posters come in on an empty board).
+        public void TakeDownNow()
+        {
+            foreach (WantedPoster poster in shown) motions[poster].HideNow();
+            shown.Clear();
+        }
+
         // Stamps the caught thief's poster, tears it down and closes the row up around the centre.
         public void MarkCaught(WantedPoster poster)
         {

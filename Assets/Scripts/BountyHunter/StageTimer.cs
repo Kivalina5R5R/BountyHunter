@@ -55,6 +55,14 @@ namespace BountyHunter.Thieves
             Show();
         }
 
+        // Stops the clock where it is, without raising TimeUp (a mini game between stages); the next
+        // stage starts it over.
+        public void Stop()
+        {
+            running = false;
+            clockStage = 0;
+        }
+
         private void Update()
         {
             if (!running) return;

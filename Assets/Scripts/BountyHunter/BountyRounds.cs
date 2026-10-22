@@ -106,8 +106,17 @@ namespace BountyHunter.Thieves
             if (stopped) return;
 
             stopped = true;
+            ClearFloor();
+            Debug.Log("[BountyRounds] Game over", this);
+        }
+
+        // Takes the thieves, bombs and passers-by off the floor and the posters off the wall, and starts
+        // no new round, for a mini game between stages; the next StartStage brings it all back.
+        public void ClearFloor()
+        {
             CancelInvoke(nameof(NextRound));
             wanted.Clear();
+            if (board != null) board.TakeDownNow();
             if (spawner != null) spawner.RemoveThieves();
             if (bombs != null)
             {
@@ -116,8 +125,6 @@ namespace BountyHunter.Thieves
             }
 
             if (npcs != null) npcs.Clear();
-
-            Debug.Log("[BountyRounds] Game over", this);
         }
 
         private void StartRound(int roundNumber)

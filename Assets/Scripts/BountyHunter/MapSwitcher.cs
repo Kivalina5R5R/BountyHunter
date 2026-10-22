@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Fortal.Display;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -11,7 +12,10 @@ namespace BountyHunter.Thieves
     // lays out new hiding spots and starts the next stage from round 1 (BountyRounds). The first map is applied before anything spawns, so it decides what Play starts with.
     // The stage's clock running out (StageTimer.TimeUp) moves on to the next map the same way, and N
     // or the clock running out on the last map, once the game is under way, ends the game and brings
-    // up the result screen.
+    // up the result screen. A map can have a mini game after it (Interlude After, a StageInterlude):
+    // the screen fades to black, the floor is cleared (BountyRounds.ClearFloor) and the stage's
+    // pieces in hideDuringInterlude are put away, the mini game plays, and after another fade the
+    // next map starts. N during a mini game cuts it short; M jumps straight to the next mini game.
     [DefaultExecutionOrder(-100)]
     public sealed class MapSwitcher : MonoBehaviour
     {
@@ -27,6 +31,8 @@ namespace BountyHunter.Thieves
             [SerializeField] private Vector2 sizeVsPlayer = new Vector2(1.15f, 2.3f);
             // Thrown out when a thief dives in or runs out; leave empty for none.
             [SerializeField] private Sprite[] burstSprites;
+            // Played once this map's stage is over, before the next map; leave empty for none.
+            [SerializeField] private StageInterlude interludeAfter;
 
             public string Name => name;
             public Texture2D Floor => floor;
@@ -34,6 +40,7 @@ namespace BountyHunter.Thieves
             public float MaxTiltDegrees => maxTiltDegrees;
             public Vector2 SizeVsPlayer => sizeVsPlayer;
             public Sprite[] BurstSprites => burstSprites;
+            public StageInterlude InterludeAfter => interludeAfter;
         }
 
         [SerializeField] private RawImage floorImage;
@@ -47,7 +54,16 @@ namespace BountyHunter.Thieves
         [SerializeField] private StageTimer timer;
         [SerializeField] private MapTheme[] maps;
 
+        [Header("Mini games between maps")]
+        [SerializeField] private FadeCurtain curtain;
+        // Put away while a mini game plays (the hiding spots, the game wall with its posters and dogs),
+        // back on before the next map fades in.
+        [SerializeField] private GameObject[] hideDuringInterlude;
+        [SerializeField, Min(0f)] private float fadeOutSeconds = 0.45f;
+        [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
+
         private int current;
+        private StageInterlude playing;
 
         // Which map is on now (0 first), and when the game moves on to another one.
         public int CurrentMap => current;
@@ -71,8 +87,37 @@ namespace BountyHunter.Thieves
 
         private void Update()
         {
-            if (Keyboard.current == null || !Keyboard.current.nKey.wasPressedThisFrame) return;
-            Advance();
+            if (Keyboard.current == null) return;
+            if (Keyboard.current.mKey.wasPressedThisFrame) JumpToInterlude();
+            if (!Keyboard.current.nKey.wasPressedThisFrame) return;
+            if (playing != null) playing.Skip();
+            else Advance();
+        }
+
+        // M, for trying the game out: ends the stage now and plays the next mini game, from this map
+        // or the first later map that has one, then carries on from the map after it as usual.
+        // Only once the game is under way (the clock lives on the game wall), never during the intro.
+        private void JumpToInterlude()
+        {
+            if (playing != null || (result != null && result.Ended) || maps == null) return;
+            if (timer != null && !timer.isActiveAndEnabled) return;
+
+            for (int map = current; map < maps.Length - 1; map++)
+            {
+                if (maps[map].InterludeAfter == null) continue;
+
+                if (map != current)
+                {
+                    current = map;
+                    Apply(maps[map]);
+                }
+
+                Debug.Log($"[MapSwitcher] M: straight to {maps[map].InterludeAfter.name}", this);
+                StartCoroutine(PlayThenSwitch(maps[map].InterludeAfter));
+                return;
+            }
+
+            Debug.Log("[MapSwitcher] M: no mini game left to jump to", this);
         }
 
         private void OnTimeUp()
@@ -83,13 +128,60 @@ namespace BountyHunter.Thieves
         // The next map, or the result once the last map is done.
         private void Advance()
         {
-            if (result != null && result.Ended) return;
+            if (playing != null || (result != null && result.Ended)) return;
             bool lastMap = maps == null || maps.Length < 2 || current == maps.Length - 1;
             if (lastMap && result != null && result.TryEndGame()) return;
             if (maps == null || maps.Length < 2) return;
 
+            StageInterlude interlude = maps[current].InterludeAfter;
+            if (interlude != null)
+            {
+                StartCoroutine(PlayThenSwitch(interlude));
+                return;
+            }
+
             current = (current + 1) % maps.Length;
             SwitchTo(maps[current]);
+        }
+
+        // The mini game after the current map, between two fades, then the next map.
+        private IEnumerator PlayThenSwitch(StageInterlude interlude)
+        {
+            yield return Enter(interlude);
+            yield return interlude.Run();
+
+            // Back to the stage while the screen is dark: its pieces come back on first, so the mini
+            // game can hand them what it settled (the money won) as it ends.
+            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            SetStagePieces(true);
+            interlude.End();
+            playing = null;
+            current = (current + 1) % maps.Length;
+            SwitchTo(maps[current]);
+            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+        }
+
+        // Fades out of the stage (its clock stopped, its floor cleared and its pieces put away) into
+        // the mini game.
+        private IEnumerator Enter(StageInterlude interlude)
+        {
+            playing = interlude;
+            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            if (timer != null) timer.Stop();
+            if (rounds != null) rounds.ClearFloor();
+            SetStagePieces(false);
+            interlude.Begin();
+            Debug.Log($"[MapSwitcher] {interlude.name} plays", this);
+            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+        }
+
+        private void SetStagePieces(bool shown)
+        {
+            if (hideDuringInterlude == null) return;
+            foreach (GameObject piece in hideDuringInterlude)
+            {
+                if (piece != null) piece.SetActive(shown);
+            }
         }
 
         private void SwitchTo(MapTheme map)
