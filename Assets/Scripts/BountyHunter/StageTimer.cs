@@ -55,6 +55,24 @@ namespace BountyHunter.Thieves
             Show();
         }
 
+        // Shows heading in place of the stage title and counts down from seconds, for a part of the
+        // game that is not a stage (the boss chase). Raises TimeUp at the end like a stage.
+        public void StartCountdown(string heading, float seconds)
+        {
+            if (title != null) RollingLabel.On(title).Roll(heading, titleRollSeconds);
+            clockStage = -1;
+            remaining = seconds;
+            running = true;
+            shownSeconds = -1;
+            Show();
+        }
+
+        // Rolls the title to heading without touching the clock.
+        public void SetHeading(string heading)
+        {
+            if (title != null) RollingLabel.On(title).Roll(heading, titleRollSeconds);
+        }
+
         // Stops the clock where it is, without raising TimeUp (a mini game between stages); the next
         // stage starts it over.
         public void Stop()

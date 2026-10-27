@@ -21,6 +21,7 @@ namespace BountyHunter.Thieves
         private float standSeconds;
         private float offSeconds;
         private bool playerOnBush;
+        private bool otherPlayerOn;
 
         public ThiefController Occupant { get; private set; }
         public ThiefController ReservedBy { get; private set; }
@@ -28,7 +29,10 @@ namespace BountyHunter.Thieves
         public Vector3 Center => transform.position;
 
         // 0 while a player is off the bush, rising to 1 when the stand time flushes the thief.
-        public float FlushProgress => flushSeconds > 0f ? Mathf.Clamp01(standSeconds / flushSeconds) : 0f;
+        public float FlushProgress => Mathf.Max(OtherFlushProgress, flushSeconds > 0f ? Mathf.Clamp01(standSeconds / flushSeconds) : 0f);
+
+        // A thief or something else (the boss) is hiding in it.
+        public bool IsOccupied => Occupant != null || IsHeldByOther;
 
         // Raised when a thief jumps in; the direction points from the bush centre to the side it came from.
         public event Action<HidingBush, Vector3> ThiefEntered;
@@ -36,7 +40,40 @@ namespace BountyHunter.Thieves
         // Raised when a thief comes out; the direction points from the bush centre to the side it runs to.
         public event Action<HidingBush, Vector3> ThiefExited;
 
-        public bool PlayerIsStandingOn => playerOnBush;
+        public bool PlayerIsStandingOn => playerOnBush || (IsHeldByOther && otherPlayerOn);
+
+        // Something other than a thief is hiding in it until this time (the boss), so it rustles as if
+        // a thief were in it, harder as the time comes or as a player stands on it (OtherFlushProgress,
+        // 0..1, kept by whatever is hiding) (BushReaction); nothing else takes it meanwhile.
+        public float HeldByOtherUntil { get; private set; } = -1f;
+        public bool IsHeldByOther => Time.time < HeldByOtherUntil;
+        public float OtherFlushProgress { get; private set; }
+
+        public void HoldOther(float seconds)
+        {
+            HeldByOtherUntil = Time.time + seconds;
+            OtherFlushProgress = 0f;
+        }
+
+        // What is hiding in it tells how far a player standing on it has got (and whether one is).
+        public void ShowOtherFlush(float progress, bool playerOn)
+        {
+            OtherFlushProgress = Mathf.Clamp01(progress);
+            otherPlayerOn = playerOn;
+        }
+
+        public void ReleaseOther()
+        {
+            HeldByOtherUntil = -1f;
+            OtherFlushProgress = 0f;
+            otherPlayerOn = false;
+        }
+
+        // Something other than a thief jumps in from a side: the same swell and burst as a thief.
+        public void PopIn(Vector3 fromSide)
+        {
+            ThiefEntered?.Invoke(this, fromSide);
+        }
 
         // radius is the area of leaves a player must stand inside; flushSeconds is how long they must stay.
         public void Initialize(IPlayerLocator playerLocator, float leafRadius, float secondsToFlush)

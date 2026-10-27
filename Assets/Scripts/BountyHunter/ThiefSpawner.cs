@@ -38,6 +38,9 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float entranceSpread = 3.5f;
         // Spots along the floor edges weighed for each entrance (with the free hiding spots).
         [SerializeField, Min(1)] private int edgeCandidates = 16;
+        // How often a thief is meant to come out of a hiding spot rather than over a floor edge. The
+        // way picked each time wins over spreading out, but not over safety or keeping entrances apart.
+        [SerializeField, Range(0f, 1f)] private float bushEntranceChance = 0.7f;
 
         [Header("Bushes")]
         [SerializeField, Min(0.1f)] private float secondsToFlushBush = 2f;
@@ -65,7 +68,6 @@ namespace BountyHunter.Thieves
         // Where thieves came in this round and last round, so entrances spread out and change.
         private readonly List<Vector3> roundEntrances = new List<Vector3>();
         private readonly List<Vector3> lastRoundEntrances = new List<Vector3>();
-        private bool lastEntranceWasBush;
 
         // A thief waiting off the floor for its turn to come in, and the way it planned to.
         private sealed class Arrival
@@ -250,7 +252,6 @@ namespace BountyHunter.Thieves
         {
             Entrance entrance = PickEntrance();
             roundEntrances.Add(entrance.Point);
-            lastEntranceWasBush = entrance.Bush != null;
             HidingBush bush = entrance.Bush;
             Vector3 position = bush != null ? entrance.Point : entrance.Point - entrance.Inward * walkInFromOutside;
             ThiefController thief = Instantiate(prefab, position, Quaternion.identity, transform);
@@ -319,10 +320,11 @@ namespace BountyHunter.Thieves
         // floor edges, and takes the best: far from where the other thieves of this round came in (and
         // never within entranceSpread of one unless nothing else is left), on the halves of the floor
         // (left/right and top/bottom) fewer of them used, not where they came in last round, the other
-        // way in than the last thief (a bush after an edge and the other way round), and away from the
-        // players, with a little chance mixed in.
+        // way in rolled for this thief (a hiding spot bushEntranceChance of the time, else an edge), and
+        // away from the players, with a little chance mixed in.
         private Entrance PickEntrance()
         {
+            bool wantBush = Random.value < bushEntranceChance;
             var candidates = new List<Entrance>();
             foreach (HidingBush bush in hidingBushes)
             {
@@ -341,6 +343,7 @@ namespace BountyHunter.Thieves
             foreach (Entrance candidate in candidates)
             {
                 float score = EntranceScore(candidate);
+                if ((candidate.Bush != null) == wantBush) score += 30f;
                 if (score <= bestScore) continue;
                 bestScore = score;
                 best = candidate;
@@ -357,7 +360,6 @@ namespace BountyHunter.Thieves
                 float nearest = NearestOf(candidate.Point, roundEntrances, 12f);
                 score += nearest;
                 if (nearest < entranceSpread) score -= 40f;
-                if ((candidate.Bush != null) != lastEntranceWasBush) score += 2f;
 
                 // The left and right halves take turns, and so do the top and bottom halves, so even
                 // with the players crowding one end the thieves come in above and below them too.

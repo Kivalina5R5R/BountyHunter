@@ -136,7 +136,20 @@ namespace BountyHunter.Thieves
             bystanders = passersBy;
             areaMin = moveAreaMin;
             areaMax = moveAreaMax;
+            // Its picture stands up from the feet towards the wall (+z), so the feet stay its height
+            // below the top edge and the head does not stick out over the floor.
+            areaMax.y = Mathf.Max(areaMin.y, moveAreaMax.y - HeadRoom());
             BeginWander();
+        }
+
+        // How far its picture reaches above its feet (its tight outline, so empty margins do not count).
+        private float HeadRoom()
+        {
+            if (body == null || body.sprite == null) return 0f;
+
+            float top = 0f;
+            foreach (Vector2 point in body.sprite.vertices) top = Mathf.Max(top, point.y);
+            return top * body.transform.lossyScale.y;
         }
 
         // Starts the round unseen inside the bush and sneaks out after seconds (a player nearby

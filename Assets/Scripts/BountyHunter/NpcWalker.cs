@@ -93,6 +93,8 @@ namespace BountyHunter.Thieves
         private float angerStartsAt = float.MaxValue;
 
         public string DisplayName => displayName;
+        // Which way its pictures look when not flipped (the boss copies it to pass for one).
+        public bool ArtFacesRight => artFacesRight;
         // Still walking in from outside the floor.
         public bool IsComingIn => entering;
 
@@ -110,6 +112,19 @@ namespace BountyHunter.Thieves
             hidingSpots = spots;
             areaMin = moveAreaMin;
             areaMax = moveAreaMax;
+            // Its picture stands up from the feet towards the wall (+z), so the feet stay its height
+            // below the top edge and the head does not stick out over the floor.
+            areaMax.y = Mathf.Max(areaMin.y, moveAreaMax.y - HeadRoom());
+        }
+
+        // How far its picture reaches above its feet (its tight outline, so empty margins do not count).
+        private float HeadRoom()
+        {
+            if (body == null || body.sprite == null) return 0f;
+
+            float top = 0f;
+            foreach (Vector2 point in body.sprite.vertices) top = Mathf.Max(top, point.y);
+            return top * body.transform.lossyScale.y;
         }
 
         // Starts outside the floor and walks in toward inside. As soon as it is enterDepth past the edge

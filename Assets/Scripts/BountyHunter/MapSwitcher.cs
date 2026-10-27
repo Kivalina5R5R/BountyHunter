@@ -16,6 +16,8 @@ namespace BountyHunter.Thieves
     // the screen fades to black, the floor is cleared (BountyRounds.ClearFloor) and the stage's
     // pieces in hideDuringInterlude are put away, the mini game plays, and after another fade the
     // next map starts. N during a mini game cuts it short; M jumps straight to the next mini game.
+    // The finale (the boss chase) plays the same way once the last map is done, but on that map's
+    // floor with the stage's pieces left up (the score tags count along), and the result follows it.
     [DefaultExecutionOrder(-100)]
     public sealed class MapSwitcher : MonoBehaviour
     {
@@ -61,8 +63,11 @@ namespace BountyHunter.Thieves
         [SerializeField] private GameObject[] hideDuringInterlude;
         [SerializeField, Min(0f)] private float fadeOutSeconds = 0.45f;
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
+        // Played after the last map, before the result; leave empty to go straight to the result.
+        [SerializeField] private StageInterlude finale;
 
         private int current;
+        private bool finalePlayed;
         private StageInterlude playing;
 
         // Which map is on now (0 first), and when the game moves on to another one.
@@ -78,11 +83,19 @@ namespace BountyHunter.Thieves
         private void Start()
         {
             if (timer != null) timer.TimeUp += OnTimeUp;
+            if (result != null) result.GameEnded += OnGameEnded;
         }
 
         private void OnDestroy()
         {
             if (timer != null) timer.TimeUp -= OnTimeUp;
+            if (result != null) result.GameEnded -= OnGameEnded;
+        }
+
+        // The game ended some other way (R) while the finale plays: it winds up at once.
+        private void OnGameEnded()
+        {
+            if (playing != null && playing == finale) finale.Skip();
         }
 
         private void Update()
@@ -130,6 +143,12 @@ namespace BountyHunter.Thieves
         {
             if (playing != null || (result != null && result.Ended)) return;
             bool lastMap = maps == null || maps.Length < 2 || current == maps.Length - 1;
+            if (lastMap && finale != null && !finalePlayed && GameUnderWay())
+            {
+                StartCoroutine(PlayFinale());
+                return;
+            }
+
             if (lastMap && result != null && result.TryEndGame()) return;
             if (maps == null || maps.Length < 2) return;
 
@@ -159,6 +178,40 @@ namespace BountyHunter.Thieves
             current = (current + 1) % maps.Length;
             SwitchTo(maps[current]);
             if (curtain != null) yield return curtain.Open(fadeInSeconds);
+        }
+
+        // The game is past the intro (the clock lives on the game wall).
+        private bool GameUnderWay()
+        {
+            return timer == null || timer.isActiveAndEnabled;
+        }
+
+        // The finale, faded in, then the result.
+        private IEnumerator PlayFinale()
+        {
+            playing = finale;
+            finalePlayed = true;
+            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            if (timer != null) timer.Stop();
+            if (rounds != null) rounds.ClearFloor();
+            // A fault setting it up must not leave the screen dark: it is logged and the game goes on.
+            try
+            {
+                finale.Begin();
+            }
+            catch (Exception fault)
+            {
+                Debug.LogException(fault, this);
+            }
+
+            Debug.Log($"[MapSwitcher] {finale.name} plays", this);
+            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+            yield return finale.Run();
+
+            // The result fades the screen out itself.
+            playing = null;
+            if (result != null) result.TryEndGame();
+            finale.End();
         }
 
         // Fades out of the stage (its clock stopped, its floor cleared and its pieces put away) into

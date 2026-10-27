@@ -74,6 +74,10 @@ namespace BountyHunter.Thieves
         }
         private SpawnerPlayerLocator players;
 
+        // The kinds out on the floor now (or waiting to come in), and every kind there is.
+        public IReadOnlyCollection<NpcWalker> KindsOut => kindOf.Values;
+        public IReadOnlyList<NpcWalker> Kinds => kinds;
+
         // The passer-by and the player who bumped into it.
         public event Action<NpcWalker, UWBPlayerController> NpcBumped;
 
@@ -272,7 +276,7 @@ namespace BountyHunter.Thieves
             {
                 foreach (HidingBush bush in thieves.Bushes)
                 {
-                    if (bush == null || bush.Occupant != null || bush.ReservedBy != null || bush.PlayerIsStandingOn) continue;
+                    if (bush == null || bush.Occupant != null || bush.ReservedBy != null || bush.PlayerIsStandingOn || bush.IsHeldByOther) continue;
                     candidates.Add(new Entrance { Point = new Vector3(bush.Center.x, height, bush.Center.z), Bush = bush });
                 }
             }

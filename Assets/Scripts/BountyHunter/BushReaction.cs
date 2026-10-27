@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
-    // Makes a hiding bush show what is inside it: a soft rustle while a thief hides, a stronger
+    // Makes a hiding bush show what is inside it: a soft rustle while a thief (or the boss) hides, a stronger
     // rustle just before the thief comes out (sneaking out or being flushed by a player), and a
     // swell-and-settle with a burst of leaves on the side a thief jumps in or runs out. The rustle puffs the leaves
     // out and in (wider while shorter, then the other way) with only a slight tilt, so it reads
@@ -90,7 +90,7 @@ namespace BountyHunter.Thieves
 
             float dt = Time.deltaTime;
             // Eases in and out so stepping on or off the bush never snaps the motion.
-            shakeAmount = Mathf.MoveTowards(shakeAmount, bush.Occupant != null ? 1f : 0f, dt * 3f);
+            shakeAmount = Mathf.MoveTowards(shakeAmount, bush.Occupant != null || bush.IsHeldByOther ? 1f : 0f, dt * 3f);
             urgency = Mathf.MoveTowards(urgency, TargetUrgency(), dt * 2.5f);
 
             // Phases advance by the current speed, so speeding up stays smooth instead of jumping.
@@ -114,6 +114,12 @@ namespace BountyHunter.Thieves
         // 0 when the thief is settled, 1 just before it leaves on its own or a player flushes it.
         private float TargetUrgency()
         {
+            if (bush.IsHeldByOther)
+            {
+                float leaving = 1f - Mathf.Clamp01((bush.HeldByOtherUntil - Time.time) / urgentWindowSeconds);
+                return Mathf.Max(bush.FlushProgress, leaving);
+            }
+
             if (bush.Occupant == null) return 0f;
 
             float sneak = 1f - Mathf.Clamp01(bush.Occupant.SecondsUntilSneakOut / urgentWindowSeconds);

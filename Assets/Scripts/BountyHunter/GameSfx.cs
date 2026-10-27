@@ -264,7 +264,7 @@ namespace BountyHunter.Thieves
             HidingBush closest = null;
             foreach (HidingBush bush in heardBushes)
             {
-                if (bush == null || bush.Occupant == null || !bush.PlayerIsStandingOn) continue;
+                if (bush == null || !bush.IsOccupied || !bush.PlayerIsStandingOn) continue;
                 if (closest == null || bush.FlushProgress > closest.FlushProgress) closest = bush;
             }
 
@@ -276,7 +276,7 @@ namespace BountyHunter.Thieves
         // Only the spot given as loudest builds up.
         private void UpdateFlush(HidingBush bush, bool loudest)
         {
-            bool building = loudest && flushBuild != null && bush.Occupant != null && bush.PlayerIsStandingOn;
+            bool building = loudest && flushBuild != null && bush.IsOccupied && bush.PlayerIsStandingOn;
             flushVoices.TryGetValue(bush, out AudioSource voice);
             if (!building)
             {
