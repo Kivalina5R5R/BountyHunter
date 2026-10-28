@@ -8,6 +8,9 @@ namespace BountyHunter.Thieves
     // it is done, End while the screen is dark again, then the next map starts.
     public abstract class StageInterlude : MonoBehaviour
     {
+        // Called behind the curtain before Begin when background preparation is still running.
+        public virtual IEnumerator Prepare() { yield break; }
+
         // Sets it up on the floor and the wall, out of sight behind the fade curtain.
         public abstract void Begin();
 

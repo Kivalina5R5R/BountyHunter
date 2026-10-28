@@ -48,6 +48,8 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float warpMinDistance = 5f;
 
         [Header("When to do what")]
+        // Warp before shooting or disguising only when a player is within this distance.
+        [SerializeField, Min(0.1f)] private float skillClearance = 1.5f;
         // Shoots when two players stand this close together (water for the group), at most once every
         // shootEverySeconds.
         [SerializeField, Min(0.1f)] private float huddleRadius = 2f;
@@ -72,6 +74,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private Vector2 sneakOutSeconds = new Vector2(3f, 5f);
         [SerializeField, Min(0f)] private float routeClearance = 0.9f;
         [SerializeField, Min(0f)] private float exitGraceSeconds = 1f;
+        // Normal running stays catchable this long before another skill; a trapped boss exposes its smoke windup instead.
+        [SerializeField, Min(0f)] private float catchWindowSeconds = 1f;
 
         [Header("Moves")]
         // Besides the moves above, now and then (a time in this range, counted while it runs) it
@@ -142,6 +146,7 @@ namespace BountyHunter.Thieves
         public float Wobble => wobble;
         public float WobbleSeconds => wobbleSeconds;
         public float FleeRadius => fleeRadius;
+        public float SkillClearance => Mathf.Max(touchRadius, skillClearance);
         public float EdgeMargin => edgeMargin;
         public float CommitSeconds => commitSeconds;
         public float Acceleration => acceleration;
@@ -161,6 +166,7 @@ namespace BountyHunter.Thieves
         public Vector2 SneakOutSeconds => sneakOutSeconds;
         public float RouteClearance => routeClearance;
         public float ExitGraceSeconds => exitGraceSeconds;
+        public float CatchWindowSeconds => catchWindowSeconds;
         public Vector2 MoveEverySeconds => moveEverySeconds;
         public float ActionGapSeconds => actionGapSeconds;
         public Vector2Int FiringFrames => firingFrames;

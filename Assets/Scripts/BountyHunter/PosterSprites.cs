@@ -25,6 +25,7 @@ namespace BountyHunter.Thieves
         private static Sprite DrawPin()
         {
             var texture = NewTexture(PinPixels, "Poster Pin");
+            var pixels = new Color[PinPixels * PinPixels];
             float radius = PinPixels * 0.5f - 2f;
             var centre = new Vector2(PinPixels * 0.5f, PinPixels * 0.5f);
             for (int y = 0; y < PinPixels; y++)
@@ -36,7 +37,7 @@ namespace BountyHunter.Thieves
                     float alpha = Mathf.Clamp01((1f - distance) * radius + 0.5f);
                     if (alpha <= 0f)
                     {
-                        texture.SetPixel(x, y, Color.clear);
+                        pixels[y * PinPixels + x] = Color.clear;
                         continue;
                     }
 
@@ -47,26 +48,29 @@ namespace BountyHunter.Thieves
                     float rim = Mathf.SmoothStep(0.75f, 1f, distance) * 0.35f;
                     Color color = PinColor * (0.45f + 0.7f * light - rim) + Color.white * shine;
                     color.a = alpha;
-                    texture.SetPixel(x, y, color);
+                    pixels[y * PinPixels + x] = color;
                 }
             }
 
+            texture.SetPixels(pixels);
             return ToSprite(texture);
         }
 
         private static Sprite DrawDot()
         {
             var texture = NewTexture(DotPixels, "Poster Dot");
+            var pixels = new Color[DotPixels * DotPixels];
             float radius = DotPixels * 0.5f;
             for (int y = 0; y < DotPixels; y++)
             {
                 for (int x = 0; x < DotPixels; x++)
                 {
                     float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius)) / radius;
-                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, 1f - Mathf.SmoothStep(0.55f, 1f, distance)));
+                    pixels[y * DotPixels + x] = new Color(1f, 1f, 1f, 1f - Mathf.SmoothStep(0.55f, 1f, distance));
                 }
             }
 
+            texture.SetPixels(pixels);
             return ToSprite(texture);
         }
 
@@ -74,6 +78,7 @@ namespace BountyHunter.Thieves
         private static Sprite DrawRing()
         {
             var texture = NewTexture(RingPixels, "Shock Ring");
+            var pixels = new Color[RingPixels * RingPixels];
             float radius = RingPixels * 0.5f;
             for (int y = 0; y < RingPixels; y++)
             {
@@ -81,10 +86,11 @@ namespace BountyHunter.Thieves
                 {
                     float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius)) / radius;
                     float band = 1f - Mathf.Clamp01(Mathf.Abs(distance - 0.88f) / 0.1f);
-                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, band * band * (3f - 2f * band)));
+                    pixels[y * RingPixels + x] = new Color(1f, 1f, 1f, band * band * (3f - 2f * band));
                 }
             }
 
+            texture.SetPixels(pixels);
             return ToSprite(texture);
         }
 
@@ -100,7 +106,7 @@ namespace BountyHunter.Thieves
 
         private static Sprite ToSprite(Texture2D texture)
         {
-            texture.Apply();
+            texture.Apply(false, true);
             return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f));
         }
     }

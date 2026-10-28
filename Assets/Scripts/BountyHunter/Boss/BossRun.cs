@@ -14,6 +14,7 @@ namespace BountyHunter.Thieves
     {
         private const float TurnRadiansPerSecond = 6f;
         private const float StrollShare = 0.6f;
+        private const float ProgressSeconds = 0.75f;
         // The fan of ways out it weighs, and how far ahead it looks along each.
         private const int Ways = 16;
         private const float LookAhead = 1.2f;
@@ -29,6 +30,12 @@ namespace BountyHunter.Thieves
         private float lastAlarmAt = float.MinValue;
         private Vector3 committed;
         private float commitUntil;
+        private float blockedFor;
+        private Vector3 progressOrigin;
+        private float progressTime;
+        private float expectedProgress;
+        private bool circling;
+        private float escapeUntil;
 
         public BossRun(BossBody body)
         {
@@ -37,14 +44,35 @@ namespace BountyHunter.Thieves
 
         public bool Touchable => true;
         public bool CountsTouches => true;
+        // The controller can choose another action when even the alternate escape cannot move it.
+        public bool IsBlocked => Time.time >= escapeUntil && (blockedFor > 0f || circling);
 
-        public void Begin()
+        public void Begin(float escapeSeconds = 0f, bool animateWalk = true)
         {
-            body.PlayWalk();
+            escapeUntil = Time.time + escapeSeconds;
+            if (escapeSeconds > 0f)
+            {
+                body.Players.GetAll(playerPositions);
+                body.Heading = BestWayOut(body.Position);
+                speed = body.Settings.RunSpeed;
+                lastAlarmAt = Time.time;
+            }
+            if (animateWalk) body.PlayWalk();
             commitUntil = 0f;
+            blockedFor = 0f;
+            progressOrigin = body.Position;
+            progressTime = 0f;
+            expectedProgress = 0f;
+            circling = false;
         }
 
         public bool Tick()
+        {
+            return Tick(true);
+        }
+
+        // A disguised boss uses the same escape movement while its disguise animates separately.
+        public bool Tick(bool animateWalk)
         {
             BossSettings settings = body.Settings;
             Vector3 position = body.Position;
@@ -69,14 +97,53 @@ namespace BountyHunter.Thieves
             // Sways less the slower it goes, so a stroll does not zigzag wider than it moves on.
             float sway = settings.Wobble * wave * Mathf.Cos(runTime * wave) * speed / settings.RunSpeed;
             Vector3 velocity = heading * speed + side * sway;
-            body.Step(velocity);
+            bool avoidPlayers = Time.time >= escapeUntil;
+            body.Step(velocity, avoidPlayers);
+            if (Time.deltaTime > 0f && (body.Position - position).sqrMagnitude < 0.00000001f)
+            {
+                // A blocked turn or sway must not keep it pushing into the same player after hiding.
+                TryEscapeStep(position, avoidPlayers);
+            }
+
             body.FaceWhereMoving();
-            body.PaceWalk(velocity.magnitude);
+            float movedSpeed = Time.deltaTime > 0f ? BossBody.FlatDistance(position, body.Position) / Time.deltaTime : 0f;
+            if (Time.deltaTime > 0f)
+            {
+                blockedFor = speed > 0.05f && movedSpeed < speed * 0.1f ? blockedFor + Time.deltaTime : 0f;
+                progressTime += Time.deltaTime;
+                expectedProgress += speed * Time.deltaTime;
+                if (progressTime >= ProgressSeconds)
+                {
+                    // Moving back and forth against the edge is still a failed escape.
+                    circling = expectedProgress > 0.05f && BossBody.FlatDistance(progressOrigin, body.Position) < expectedProgress * 0.25f;
+                    progressOrigin = body.Position;
+                    progressTime = 0f;
+                    expectedProgress = 0f;
+                }
+            }
+            if (animateWalk) body.PaceWalk(movedSpeed);
             return true;
         }
 
         public void Stop()
         {
+        }
+
+        // Test actual steps too: a good distant destination may still have a blocked first step.
+        private void TryEscapeStep(Vector3 position, bool avoidPlayers)
+        {
+            Vector3 preferred = BestWayOut(position);
+            for (int i = 0; i < Ways; i++)
+            {
+                int offset = i % 2 == 0 ? -i / 2 : (i + 1) / 2;
+                Vector3 way = Quaternion.Euler(0f, offset * 360f / Ways, 0f) * preferred;
+                body.Step(way * speed, avoidPlayers);
+                if (BossBody.FlatDistance(position, body.Position) <= 0f) continue;
+                committed = way;
+                commitUntil = Time.time + body.Settings.CommitSeconds;
+                body.Heading = way;
+                return;
+            }
         }
 
         // The way out it is sticking to, chosen again once commitSeconds are up or it is blocked.
@@ -133,6 +200,12 @@ namespace BountyHunter.Thieves
                 float closest = 3f;
                 foreach (Vector3 player in playerPositions) closest = Mathf.Min(closest, BossBody.FlatDistance(ahead, player));
                 float score = closest + room * 1.5f + Vector3.Dot(way, preferred) * 0.6f + Vector3.Dot(way, body.Heading) * 0.3f;
+                float clearance = Mathf.Max(body.Settings.RouteClearance, body.Settings.TouchRadius + 0.05f);
+                foreach (Vector3 player in playerPositions)
+                {
+                    float minimum = Mathf.Min(clearance, BossBody.FlatDistance(position, player));
+                    if (BossBody.RouteDistance(position, ahead, player) < minimum) score -= 10f;
+                }
                 Vector3 further = position + way * LookAhead * 2f;
                 if (body.InCorner(ahead)) score -= 3f;
                 if (body.InCorner(further)) score -= 1.5f;

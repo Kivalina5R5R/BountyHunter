@@ -34,6 +34,7 @@ namespace BountyHunter.Thieves
         private BossRunOff runOff;
         // What it is doing now; null while it stands still (before its entrance, after the chase).
         private IBossAction doing;
+        private BossSkill? skillAfterWarp;
         private float nextSmokeAt;
         private float shootReadyAt;
         private float disguiseReadyAt;
@@ -43,6 +44,7 @@ namespace BountyHunter.Thieves
         private float actionReadyAt;
         // It runs off with a head start after any action: nobody can catch it before this.
         private float catchableAt;
+        private bool hideEscapePending;
         // It has disguised itself and done nothing else since: it must shoot or throw the smoke bomb
         // before it may disguise itself again (hiding does not count).
         private bool disguisedLast;
@@ -77,9 +79,9 @@ namespace BountyHunter.Thieves
             boss.body = body;
             boss.run = new BossRun(body);
             boss.shooting = new BossShooting(body, shoot, player => boss.Shot?.Invoke(player));
-            boss.smokeBomb = new BossSmokeBomb(body, smoke);
-            boss.disguising = new BossDisguising(body, cape, reveal, passersBy);
+            boss.disguising = new BossDisguising(body, cape, reveal, passersBy, boss.run);
             boss.hiding = new BossHiding(body, hidingSpots);
+            boss.smokeBomb = new BossSmokeBomb(body, smoke, boss.hiding.TryWarpIn);
             boss.runOff = new BossRunOff(body);
             body.Position = position;
             boss.Stand();
@@ -91,6 +93,7 @@ namespace BountyHunter.Thieves
         // and steps out, untouchable until it is out), then runs about: the start of the chase.
         public void ArriveAt(Vector3 position)
         {
+            skillAfterWarp = null;
             if (smokeBomb.IsEmpty)
             {
                 body.Position = position;
@@ -106,6 +109,7 @@ namespace BountyHunter.Thieves
         // Runs off the floor (nobody caught it in time); HasLeft once it is out of sight.
         public void RunOff()
         {
+            skillAfterWarp = null;
             doing?.Stop();
             runOff.Begin();
             doing = runOff;
@@ -141,16 +145,36 @@ namespace BountyHunter.Thieves
                     break;
             }
 
-            Use(skill);
-            return true;
+            return Use(skill);
         }
 
         private void Update()
         {
             if (doing == null) return;
+            hiding.ObservePlayers();
+            // Credit a player who already reached it before this frame's escape movement.
+            if (CheckTouches()) return;
 
             if (!doing.Tick())
             {
+                if (doing == smokeBomb && smokeBomb.Hid)
+                {
+                    hideEscapePending = false;
+                    doing = hiding;
+                    hideReadyAt = Time.time + body.Settings.HideEverySeconds;
+                    return;
+                }
+                if (doing == smokeBomb && skillAfterWarp.HasValue)
+                {
+                    BossSkill skill = skillAfterWarp.Value;
+                    skillAfterWarp = null;
+                    if (!PlayerNearSkillPosition())
+                    {
+                        Use(skill);
+                        return;
+                    }
+                }
+
                 if (doing == runOff)
                 {
                     doing = null;
@@ -158,13 +182,41 @@ namespace BountyHunter.Thieves
                     return;
                 }
 
+                float grace = body.Settings.ExitGraceSeconds;
+                hideEscapePending = doing == hiding && hiding.HasExited;
                 StartRunning();
-                catchableAt = Time.time + body.Settings.ExitGraceSeconds;
-                actionReadyAt = Time.time + Mathf.Max(body.Settings.ActionGapSeconds, body.Settings.ExitGraceSeconds);
+                run.Tick();
+                catchableAt = Time.time + grace;
+                actionReadyAt = Mathf.Max(Time.time + body.Settings.ActionGapSeconds, catchableAt + body.Settings.CatchWindowSeconds);
             }
 
-            if (doing == run && Time.time >= actionReadyAt && !React() && Time.time >= nextSmokeAt && !smokeBomb.IsEmpty) Use(BossSkill.SmokeBomb);
-            CheckTouches();
+            if (hideEscapePending && doing == run && Time.time >= catchableAt)
+            {
+                hideEscapePending = false;
+            }
+
+            if (CheckTouches()) return;
+            if (doing == disguising && disguising.IsBlocked)
+            {
+                WarpAway();
+                return;
+            }
+            if (doing != run) return;
+
+            // Keep acting when trapped; the throw itself provides the catch opportunity.
+            if (!hideEscapePending && run.IsBlocked)
+            {
+                if (!smokeBomb.IsEmpty)
+                {
+                    run.Stop();
+                    smokeBomb.Throw(!hideEscapePending);
+                    doing = smokeBomb;
+                }
+                return;
+            }
+
+            if (!hideEscapePending && Time.time >= actionReadyAt && !React() && !smokeBomb.IsEmpty && Time.time >= nextSmokeAt)
+                Use(BossSkill.SmokeBomb);
         }
 
         private void OnDestroy()
@@ -175,6 +227,7 @@ namespace BountyHunter.Thieves
         // Standing still on its first walk picture, doing nothing.
         private void Stand()
         {
+            skillAfterWarp = null;
             doing = null;
             body.Animator.Body.enabled = true;
             body.Animator.Play(body.Walk.Frames, body.Walk.FramesPerSecond, Vector2Int.zero, false);
@@ -182,7 +235,7 @@ namespace BountyHunter.Thieves
 
         private void StartRunning()
         {
-            run.Begin();
+            run.Begin(hideEscapePending ? body.Settings.ExitGraceSeconds : 0f);
             doing = run;
             Vector2 every = body.Settings.MoveEverySeconds;
             nextSmokeAt = Time.time + Random.Range(every.x, Mathf.Max(every.x, every.y));
@@ -193,18 +246,19 @@ namespace BountyHunter.Thieves
         {
             BossSettings settings = body.Settings;
             float now = Time.time;
+            bool nearby = body.Players.TryGetNearest(body.Position, out _, out float nearest);
+            if (now >= hideReadyAt && nearby && nearest < settings.FleeRadius && hiding.TryFind(settings.HideReach, true))
+                return Use(BossSkill.Hide);
+
             if (now >= shootReadyAt && shooting.CanShoot && shooting.Huddled())
             {
-                Use(BossSkill.Shoot);
-                return true;
+                return Use(BossSkill.Shoot);
             }
 
-            bool nearby = body.Players.TryGetNearest(body.Position, out _, out float nearest);
             Vector2 closingIn = settings.DisguiseWhenPlayerAt;
             if (!disguisedLast && now >= disguiseReadyAt && nearby && nearest >= closingIn.x && nearest <= closingIn.y && disguising.CanDisguise)
             {
-                Use(BossSkill.Disguise);
-                return true;
+                return Use(BossSkill.Disguise);
             }
 
             if (now >= hideReadyAt && nearby && nearest < settings.FleeRadius && hiding.TryFind(settings.HideReach))
@@ -216,9 +270,24 @@ namespace BountyHunter.Thieves
             return false;
         }
 
-        private void Use(BossSkill skill)
+        private bool PlayerNearSkillPosition()
+        {
+            return body.Players.TryGetWithin(body.Position, body.Settings.SkillClearance, out _);
+        }
+
+        private bool Use(BossSkill skill)
         {
             BossSettings settings = body.Settings;
+            if ((skill == BossSkill.Shoot || skill == BossSkill.Disguise) && PlayerNearSkillPosition())
+            {
+                if (smokeBomb.IsEmpty) return false;
+                doing?.Stop();
+                skillAfterWarp = skill;
+                smokeBomb.Warp(settings.FleeRadius, false);
+                doing = smokeBomb;
+                return true;
+            }
+
             Debug.Log($"[BossController] {skill}", this);
             if (skill == BossSkill.Disguise) disguisedLast = true;
             else if (skill != BossSkill.Hide) disguisedLast = false;
@@ -244,16 +313,18 @@ namespace BountyHunter.Thieves
                     doing = hiding;
                     break;
             }
+
+            return true;
         }
 
         // A player within touchRadius: it warps away; the touch counts (Touched) unless it was the
         // first of the chase or it was in disguise.
-        private void CheckTouches()
+        private bool CheckTouches()
         {
-            if (doing == null || !doing.Touchable || Time.time < catchableAt) return;
+            if (doing == null || hideEscapePending || !doing.Touchable || Time.time < catchableAt) return false;
 
             body.Players.GetPlayersWithin(body.Position, body.Settings.TouchRadius, nearPlayers);
-            if (nearPlayers.Count == 0) return;
+            if (nearPlayers.Count == 0) return false;
 
             UWBPlayerController player = nearPlayers[0];
             if (!doing.CountsTouches)
@@ -267,10 +338,14 @@ namespace BountyHunter.Thieves
             }
             else
             {
+                IBossAction touchedAction = doing;
                 Touched?.Invoke(player);
+                // The winning touch can finish the chase synchronously.
+                if (doing != touchedAction) return true;
             }
 
             WarpAway();
+            return true;
         }
 
         private void WarpAway()
@@ -283,7 +358,7 @@ namespace BountyHunter.Thieves
                 return;
             }
 
-            smokeBomb.Warp();
+            smokeBomb.Warp(body.Settings.FleeRadius);
             doing = smokeBomb;
         }
     }

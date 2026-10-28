@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -46,8 +47,8 @@ namespace BountyHunter.Thieves
         // Whether the video should be playing: started and, if it does not loop, not yet at its end.
         // Hiding the wall stops a video player; this brings it back when the wall shows again.
         private bool wanted;
-        // Hidden while still getting ready, which may cut the preparing short.
-        private bool hiddenBeforeReady;
+        private ScenePreload.Ticket preparation;
+        private ScenePreload.Ticket sparePreparation;
 
         // The video frame once it is playing, else null. Raised with the frame when playback starts.
         public RenderTexture Frame { get; private set; }
@@ -79,11 +80,31 @@ namespace BountyHunter.Thieves
             player.loopPointReached += OnEnd;
             playWhenPrepared = playOnAwake;
             wanted = playOnAwake;
-            player.Prepare();
+            QueuePreparation();
+        }
 
-            if (!UsesSpare) return;
-            spare = CreatePlayer("Video Spare");
+        private void QueuePreparation()
+        {
+            if (preparation != null && !preparation.Completed) return;
+            preparation = ScenePreload.Enqueue(this, loop ? 10 : 0, PreparePrimary());
+        }
+
+        private IEnumerator PreparePrimary()
+        {
+            if (!isActiveAndEnabled || player == null) yield break;
+            player.Prepare();
+            float deadline = Time.realtimeSinceStartup + 8f;
+            while (isActiveAndEnabled && !player.isPrepared && Time.realtimeSinceStartup < deadline) yield return null;
+            if (!player.isPrepared && isActiveAndEnabled) Debug.LogWarning($"[WallVideo] Preparation timed out: {name}; keeping the still picture", this);
+        }
+
+        private IEnumerator PrepareSpare()
+        {
+            if (!isActiveAndEnabled || player == null) yield break;
+            if (spare == null) spare = CreatePlayer("Video Spare");
             spare.Prepare();
+            float deadline = Time.realtimeSinceStartup + 8f;
+            while (isActiveAndEnabled && !spare.isPrepared && Time.realtimeSinceStartup < deadline) yield return null;
         }
 
         private VideoPlayer CreatePlayer(string label)
@@ -94,7 +115,7 @@ namespace BountyHunter.Thieves
             created.clip = clip;
             created.renderMode = VideoRenderMode.RenderTexture;
             created.targetTexture = target;
-            created.isLooping = loop && !seamlessLoop;
+            created.isLooping = loop;
             created.skipOnDrop = skipFramesToKeepUp;
             created.audioOutputMode = VideoAudioOutputMode.None;
             created.playbackSpeed = playbackSpeed;
@@ -104,17 +125,23 @@ namespace BountyHunter.Thieves
         // Starts the video, at once if it is ready, else as soon as it is.
         public void Play()
         {
-            if (player == null) return;
             wanted = true;
-            if (prepared) player.Play();
-            else playWhenPrepared = true;
+            if (prepared && player != null) player.Play();
+            else
+            {
+                playWhenPrepared = true;
+                if (player != null) QueuePreparation();
+            }
+            if (preparation != null) preparation.Prioritize();
         }
 
         private void OnPrepared(VideoPlayer source)
         {
             source.prepareCompleted -= OnPrepared;
             prepared = true;
-            if (playWhenPrepared) source.Play();
+            if (playWhenPrepared && isActiveAndEnabled) source.Play();
+            if (UsesSpare && (sparePreparation == null || sparePreparation.Completed))
+                sparePreparation = ScenePreload.Enqueue(this, 20, PrepareSpare());
         }
 
         private void OnEnd(VideoPlayer source)
@@ -129,36 +156,37 @@ namespace BountyHunter.Thieves
         // wall shows again, a seamless hand-over cut short starting over cleanly.
         private void OnEnable()
         {
-            if (player == null || !wanted) return;
+            if (player == null) return;
 
             if (handingOver)
             {
                 spare.frameReady -= OnSpareFrame;
                 spare.sendFrameReadyEvents = false;
                 spare.Stop();
-                spare.Prepare();
                 handingOver = false;
+                player.isLooping = loop;
             }
 
+            prepared = player.isPrepared;
             if (prepared)
             {
-                player.Play();
+                if (wanted) player.Play();
+                if (UsesSpare && (spare == null || !spare.isPrepared) && (sparePreparation == null || sparePreparation.Completed))
+                    sparePreparation = ScenePreload.Enqueue(this, 20, PrepareSpare());
                 return;
             }
 
             // Hidden before it was ready: get it ready again and play once it is.
-            if (!hiddenBeforeReady) return;
-
-            hiddenBeforeReady = false;
-            playWhenPrepared = true;
+            playWhenPrepared = wanted;
             player.prepareCompleted -= OnPrepared;
             player.prepareCompleted += OnPrepared;
-            player.Prepare();
+            QueuePreparation();
         }
 
         private void OnDisable()
         {
-            if (!prepared) hiddenBeforeReady = true;
+            preparation?.Cancel();
+            sparePreparation?.Cancel();
         }
 
         // Swaps the still for the video once there is a picture to show, then stops the per-frame events.
@@ -176,12 +204,13 @@ namespace BountyHunter.Thieves
         // Starts the waiting player a moment before the end, so its first frame is ready in time.
         private void Update()
         {
-            if (!UsesSpare || handingOver || player == null || !player.isPlaying) return;
+            if (!UsesSpare || handingOver || player == null || !player.isPlaying || spare == null || !spare.isPrepared) return;
 
             double framesLeft = (clip.length - player.time) * clip.frameRate;
             if (framesLeft > HandOverFrames + Time.deltaTime * playbackSpeed * clip.frameRate) return;
 
             handingOver = true;
+            player.isLooping = false;
             spare.sendFrameReadyEvents = true;
             spare.frameReady += OnSpareFrame;
             spare.Play();
@@ -197,9 +226,10 @@ namespace BountyHunter.Thieves
 
             VideoPlayer finished = player;
             player = source;
+            player.isLooping = true;
             spare = finished;
             finished.Stop();
-            finished.Prepare();
+            sparePreparation = ScenePreload.Enqueue(this, 20, PrepareSpare());
             handingOver = false;
         }
 

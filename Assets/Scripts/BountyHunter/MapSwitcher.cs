@@ -195,6 +195,7 @@ namespace BountyHunter.Thieves
             if (timer != null) timer.Stop();
             if (rounds != null) rounds.ClearFloor();
             // A fault setting it up must not leave the screen dark: it is logged and the game goes on.
+            yield return finale.Prepare();
             try
             {
                 finale.Begin();
@@ -223,6 +224,7 @@ namespace BountyHunter.Thieves
             if (timer != null) timer.Stop();
             if (rounds != null) rounds.ClearFloor();
             SetStagePieces(false);
+            yield return interlude.Prepare();
             interlude.Begin();
             Debug.Log($"[MapSwitcher] {interlude.name} plays", this);
             if (curtain != null) yield return curtain.Open(fadeInSeconds);

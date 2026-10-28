@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Fortal.Players;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -20,12 +21,14 @@ namespace BountyHunter.Thieves
         // so nothing else takes it on the way.
         private const float AtSpot = 0.15f;
         private const float HoldOnTheWay = 3f;
-        // It goes only where it gets well before any player: its way at most this share of theirs.
-        private const float LeadShare = 0.7f;
+        private const float ArrivalMarginSeconds = 0.15f;
         // Its picture fades away this fast as it jumps in, instead of blinking out.
         private const float JumpInFadeSeconds = 0.12f;
 
         private readonly List<Vector3> playerPositions = new List<Vector3>();
+        private readonly List<UWBPlayerController> trackedPlayers = new List<UWBPlayerController>();
+        private readonly Dictionary<UWBPlayerController, (Vector3 position, float speed, float time)> motion =
+            new Dictionary<UWBPlayerController, (Vector3 position, float speed, float time)>();
         private readonly BossBody body;
         private readonly IHidingSpots hidingSpots;
         // The spot it is heading for or hiding in, and how long a player has stood on it.
@@ -46,12 +49,78 @@ namespace BountyHunter.Thieves
 
         public bool Touchable => !hidden;
         public bool CountsTouches => true;
+        public bool HasExited { get; private set; }
 
-
-        // The nearest free hiding spot within reach, out of the floor's corners, that it gets to well
-        // before any player and that has no player near it; remembered for Begin.
-        public bool TryFind(float reach)
+        // Track the rendered floor positions, so UWB and simulation use the same speed estimate.
+        public void ObservePlayers()
         {
+            body.Players.GetPlayersWithin(body.Position, float.MaxValue, trackedPlayers);
+            foreach (UWBPlayerController player in trackedPlayers)
+            {
+                Vector3 position = player.transform.position;
+                float speed = body.Settings.RunSpeed;
+                if (motion.TryGetValue(player, out var previous))
+                {
+                    float elapsed = Time.time - previous.time;
+                    if (elapsed <= 0f) continue;
+                    if (elapsed < 0.5f)
+                    {
+                        float measured = BossBody.FlatDistance(previous.position, position) / elapsed;
+                        speed = Mathf.Lerp(previous.speed, measured, 1f - Mathf.Exp(-elapsed / 0.15f));
+                    }
+                }
+                motion[player] = (position, speed, Time.time);
+            }
+        }
+
+        private bool CanReachFirst(HidingBush bush, Vector3 position)
+        {
+            float bossTime = Mathf.Max(0f, BossBody.FlatDistance(position, bush.Center) - AtSpot) / body.Settings.RunSpeed;
+            foreach (UWBPlayerController player in trackedPlayers)
+            {
+                float distance = BossBody.FlatDistance(player.transform.position, bush.Center);
+                float clearance = Mathf.Max(bush.Radius + StayOnMargin, body.Settings.TouchRadius);
+                if (distance <= clearance) return false;
+                float speed = motion.TryGetValue(player, out var sample) ? sample.speed : body.Settings.RunSpeed;
+                // Keep some reaction allowance for a currently stationary player starting to chase.
+                speed = Mathf.Max(body.Settings.RunSpeed * 0.5f, speed);
+                if (bossTime + ArrivalMarginSeconds >= (distance - clearance) / speed) return false;
+            }
+            return true;
+        }
+
+        // Pick at the moment of teleport so a newly occupied bush cannot receive the boss.
+        public bool TryWarpIn()
+        {
+            if (hidingSpots == null) return false;
+            HidingBush destination = null;
+            float best = float.MinValue;
+            foreach (HidingBush bush in hidingSpots.Bushes)
+            {
+                if (bush == null || !bush.isActiveAndEnabled || bush == lastLeft) continue;
+                if (bush.Occupant != null || bush.ReservedBy != null || bush.IsHeldByOther || bush.PlayerIsStandingOn) continue;
+                if (body.InCorner(bush.Center)) continue;
+                bool nearby = body.Players.TryGetNearest(bush.Center, out _, out float distance);
+                if (nearby && distance <= Mathf.Max(body.Settings.HideClearance, bush.Radius + StayOnMargin)) continue;
+                float score = nearby ? distance : BossBody.FlatDistance(body.Position, bush.Center);
+                if (score <= best) continue;
+                best = score;
+                destination = bush;
+            }
+            if (destination == null) return false;
+            hideout = destination;
+            HasExited = false;
+            body.Position = hideout.Center;
+            hideout.PopIn(Vector3.zero);
+            EnterHideout();
+            return true;
+        }
+
+
+        // Compare arrival times instead of rejecting every box near a pursuing player.
+        public bool TryFind(float reach, bool aheadOnly = false)
+        {
+            ObservePlayers();
             hideout = null;
             if (hidingSpots == null) return false;
 
@@ -63,10 +132,12 @@ namespace BountyHunter.Thieves
                 if (bush == lastLeft || bush.Occupant != null || bush.ReservedBy != null || bush.IsHeldByOther || bush.PlayerIsStandingOn) continue;
 
                 Vector3 spot = bush.Center;
+                Vector3 toward = spot - position;
+                toward.y = 0f;
+                if (aheadOnly && Vector3.Dot(toward, body.Heading) <= 0f) continue;
                 float distance = BossBody.FlatDistance(position, spot);
                 if (distance > best || body.InCorner(spot)) continue;
-                bool playerNear = body.Players.TryGetNearest(spot, out _, out float playerDistance);
-                if (playerNear && (playerDistance < body.Settings.HideClearance || distance > playerDistance * LeadShare)) continue;
+                if (!CanReachFirst(bush, position)) continue;
                 if (!SafeRoute(position, spot)) continue;
 
                 best = distance;
@@ -79,6 +150,7 @@ namespace BountyHunter.Thieves
         // Heads for the spot TryFind picked.
         public void Begin()
         {
+            HasExited = false;
             hidden = false;
             hideout.HoldOther(body.Settings.HideSeconds + HoldOnTheWay);
         }
@@ -102,8 +174,9 @@ namespace BountyHunter.Thieves
             BossSettings settings = body.Settings;
             Vector3 position = body.Position;
             var spot = new Vector3(hideout.Center.x, BossBody.Height, hideout.Center.z);
-            bool playerNear = body.Players.TryGetNearest(spot, out _, out float playerDistance);
-            if (playerNear && playerDistance < Mathf.Min(settings.HideClearance, BossBody.FlatDistance(position, spot)))
+            ObservePlayers();
+            if (!hideout.isActiveAndEnabled || hideout.Occupant != null || hideout.ReservedBy != null ||
+                hideout.PlayerIsStandingOn || !SafeRoute(position, spot) || !CanReachFirst(hideout, position))
             {
                 Debug.Log("[BossController] A player got to the hiding spot first");
                 Release();
@@ -113,20 +186,31 @@ namespace BountyHunter.Thieves
             Vector3 toward = spot - position;
             toward.y = 0f;
             body.MoveTo(Vector3.MoveTowards(position, spot, settings.RunSpeed * Time.deltaTime));
+            if (Time.deltaTime > 0f && BossBody.FlatDistance(position, body.Position) < settings.RunSpeed * Time.deltaTime * 0.1f &&
+                BossBody.FlatDistance(body.Position, spot) > AtSpot)
+            {
+                Release();
+                return false;
+            }
             body.FaceWhereMoving();
             body.PaceWalk(settings.RunSpeed);
             if (BossBody.FlatDistance(body.Position, spot) > AtSpot) return true;
 
             hideout.PopIn(toward.sqrMagnitude > 0.0001f ? -toward.normalized : Vector3.right);
-            hideout.HoldOther(settings.HideSeconds);
             SpriteFadeOut.LeaveBehind(body.Animator.Body, null, 0f, Vector2Int.zero, JumpInFadeSeconds, body.Parent);
+            EnterHideout();
+            return true;
+        }
+
+        private void EnterHideout()
+        {
+            hideout.HoldOther(body.Settings.HideSeconds);
             body.Animator.Body.enabled = false;
             hidden = true;
             hiddenFor = 0f;
             stoodOn = 0f;
             sneakOutAt = SneakOutTime();
             Debug.Log($"[BossController] Hides in {hideout.name}");
-            return true;
         }
 
         // Waits in the spot; out when its time is up or a player has stood on it long enough.
@@ -153,6 +237,7 @@ namespace BountyHunter.Thieves
             lastLeft = hideout;
             Release();
             hidden = false;
+            HasExited = true;
             body.Animator.Body.enabled = true;
             body.Heading = away;
             return false;

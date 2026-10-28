@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
@@ -17,6 +18,8 @@ namespace BountyHunter.Thieves
         private const float GoneMargin = 0.4f;
 
         private SpriteRenderer picture;
+        private Image wallPicture;
+        private float wallScale;
         private Vector3 velocity;
         private Vector3 across;
         private float sway;
@@ -38,14 +41,28 @@ namespace BountyHunter.Thieves
         // along its longer side, drawn at sortingOrder, shade (0..1) dimming it and motion scaling how
         // much it sways and turns; it fades out from fadeOutAt (Time.time) and goes once it has.
         public static void Blow(Sprite petal, Vector3 start, Vector3 velocity, float size, int sortingOrder, float shade, float motion,
-            float fadeOutAt, Rect floor, Transform parent)
+            float fadeOutAt, Rect floor, Transform parent, float wallScale = 0f)
         {
-            var blown = new GameObject("Rose Petal").AddComponent<BossPetal>();
+            var blown = new GameObject("Rose Petal", typeof(RectTransform)).AddComponent<BossPetal>();
             blown.transform.SetParent(parent, false);
-            blown.picture = blown.gameObject.AddComponent<SpriteRenderer>();
-            blown.picture.sprite = petal;
-            blown.picture.sortingOrder = sortingOrder;
-            blown.picture.flipX = Random.value < 0.5f;
+            blown.wallScale = wallScale;
+            if (wallScale > 0f)
+            {
+                blown.wallPicture = blown.gameObject.AddComponent<Image>();
+                blown.wallPicture.sprite = petal;
+                blown.wallPicture.raycastTarget = false;
+                Vector2 nativeSize = petal.rect.size;
+                blown.wallPicture.rectTransform.sizeDelta = nativeSize * (size * wallScale / Mathf.Max(nativeSize.x, nativeSize.y));
+                blown.wallPicture.color = Color.clear;
+            }
+            else
+            {
+                blown.picture = blown.gameObject.AddComponent<SpriteRenderer>();
+                blown.picture.sprite = petal;
+                blown.picture.sortingOrder = sortingOrder;
+                blown.picture.flipX = Random.value < 0.5f;
+                blown.picture.color = Color.clear;
+            }
             blown.velocity = new Vector3(velocity.x, 0f, velocity.z);
             blown.across = new Vector3(-velocity.z, 0f, velocity.x).normalized;
             blown.sway = Random.Range(0.08f, 0.22f) * motion;
@@ -65,7 +82,7 @@ namespace BountyHunter.Thieves
 
             Vector3 bounds = petal.bounds.size;
             float native = Mathf.Max(bounds.x, bounds.y);
-            blown.transform.localScale = Vector3.one * (native > 0f ? size / native : 0f);
+            if (wallScale <= 0f) blown.transform.localScale = Vector3.one * (native > 0f ? size / native : 0f);
             blown.Place(0f);
         }
 
@@ -78,7 +95,9 @@ namespace BountyHunter.Thieves
 
             float fadeIn = Mathf.Clamp01(elapsed / FadeInSeconds);
             float fadeOut = 1f - Mathf.Clamp01((Time.time - fadeOutAt) / FadeOutSeconds);
-            picture.color = new Color(shade, shade, shade, Mathf.Min(fadeIn, fadeOut));
+            Color colour = new Color(shade, shade, shade, Mathf.Min(fadeIn, fadeOut));
+            if (wallPicture != null) wallPicture.color = colour;
+            else picture.color = colour;
 
             bool gone = drifted.x < floor.xMin - GoneMargin || drifted.z < floor.yMin - GoneMargin;
             if (gone || fadeOut <= 0f) Destroy(gameObject);
@@ -93,12 +112,15 @@ namespace BountyHunter.Thieves
             spinAngle += spinDegreesPerSecond * dt;
 
             float swing = Mathf.Sin(phase + elapsed * swaysPerSecond * 2f * Mathf.PI) * sway;
-            transform.position = drifted + across * swing;
+            Vector3 position = drifted + across * swing;
+            if (wallPicture != null) wallPicture.rectTransform.anchoredPosition = new Vector2(position.x, position.z) * wallScale;
+            else transform.position = position;
 
             Vector3 axis = Quaternion.AngleAxis(axisAngle, Vector3.forward) * Vector3.right;
             Quaternion tumble = Quaternion.AngleAxis(tumbleAngle, axis);
             Quaternion spin = Quaternion.AngleAxis(spinAngle, Vector3.forward);
-            transform.rotation = Quaternion.Euler(90f, 0f, 0f) * spin * tumble;
+            if (wallPicture != null) transform.localRotation = spin * tumble;
+            else transform.rotation = Quaternion.Euler(90f, 0f, 0f) * spin * tumble;
         }
     }
 }

@@ -10,9 +10,9 @@ namespace BountyHunter.Thieves
 {
     // The Most Wanted boss chase, played after the last map and before the result (MapSwitcher's
     // finale). First its entrance, entranceSeconds with the wall reading BOSS CHASE!: rose petals
-    // blow across the whole floor (BossPetalShower), and once they are about half way through
+    // blow across the floor and wall (BossPetalShower), and once they are about half way through
     // (roseFromShare of the entrance) the boss's calling card, a red rose, drifts down onto the
-    // middle of the floor (BossRoseFall). The last petals leave as the rose lands; there a cloud of
+    // bottom and out of the wall (BossRoseFall). As the rose leaves the screen, on the floor a cloud of
     // smoke puffs up and the boss shows in it and steps out (the smoke bomb's
     // arrival), then up to chaseSeconds of chasing from the rose landing. A touch makes the boss warp
     // far away (BossController); every one that counts pays catchReward at once (not the very first,
@@ -106,16 +106,40 @@ namespace BountyHunter.Thieves
         private bool skipping;
         private bool ready;
         private BossRoseFall falling;
+        private BossPetalShower wallPetals;
         private PictureSwap floorSwap;
         private readonly List<GameObject> putAway = new List<GameObject>();
         private readonly List<Behaviour> switchedOff = new List<Behaviour>();
         private BossHelicopter hovering;
         private int touches;
+        private ScenePreload.Ticket preparation;
 
         private void Awake()
         {
             if (wallPanel != null) wallPanel.SetActive(false);
             players = new SpawnerPlayerLocator(playerSpawner);
+            preparation = ScenePreload.Enqueue(this, 100, PrepareMoves());
+        }
+
+        private IEnumerator PrepareMoves()
+        {
+            foreach (BossSheet sheet in new[] { walk, smokeBomb, shoot, capeWrap, capeReveal })
+            {
+                IEnumerator steps = sheet.Preload(boss.PixelsPerUnit);
+                while (steps.MoveNext()) yield return null;
+            }
+        }
+
+        public override IEnumerator Prepare()
+        {
+            if (preparation == null) preparation = ScenePreload.Enqueue(this, 100, PrepareMoves());
+            preparation.Prioritize();
+            while (!preparation.Completed) yield return null;
+        }
+
+        private void OnDestroy()
+        {
+            foreach (BossSheet sheet in new[] { walk, smokeBomb, shoot, capeWrap, capeReveal }) sheet?.Release();
         }
 
         public override void Begin()
@@ -151,14 +175,19 @@ namespace BountyHunter.Thieves
 
             float start = Time.time;
             Vector3 middle = Middle();
-            if (rosePetal != null) BossPetalShower.Begin(rosePetal, PetalFloor(), entranceSeconds, transform);
+            Canvas.ForceUpdateCanvases();
+            RectTransform wall = wallPanel != null ? wallPanel.transform as RectTransform : null;
+            if (rosePetal != null && floorImage != null && floorImage.canvas != null)
+                BossPetalShower.Begin(rosePetal, PetalFloor(), entranceSeconds, transform, floorImage.canvas.worldCamera);
+            if (rosePetal != null && wall != null) wallPetals = BossPetalShower.BeginOnWall(rosePetal, wall, entranceSeconds);
             float roseFrom = entranceSeconds * roseFromShare;
             yield return Until(start + roseFrom);
-            if (rose != null) falling = BossRoseFall.Drop(rose, middle, entranceSeconds - roseFrom, transform);
+            if (rose != null && wall != null) falling = BossRoseFall.Drop(rose, wall, entranceSeconds - roseFrom);
             yield return Until(start + entranceSeconds);
-            if (falling != null) falling.FadeAway();
+            while (falling != null && !falling.HasPassed && !skipping) yield return null;
+            if (falling != null) Destroy(falling.gameObject);
             chased.ArriveAt(middle);
-            Debug.Log("[BossChase] The rose lands; the boss appears in a cloud of smoke", this);
+            Debug.Log("[BossChase] The rose leaves the wall; the boss appears in a cloud of smoke", this);
             float timeUp = start + entranceSeconds + chaseSeconds;
             while (Time.time < timeUp && !skipping && !Caught) yield return null;
 
@@ -201,6 +230,8 @@ namespace BountyHunter.Thieves
             ClearWater();
             if (falling != null) Destroy(falling.gameObject);
             falling = null;
+            if (wallPetals != null) Destroy(wallPetals.gameObject);
+            wallPetals = null;
             foreach (BossPetalShower shower in GetComponentsInChildren<BossPetalShower>()) Destroy(shower.gameObject);
             if (chased != null)
             {

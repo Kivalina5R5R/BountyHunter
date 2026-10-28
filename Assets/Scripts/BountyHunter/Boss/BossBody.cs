@@ -17,6 +17,7 @@ namespace BountyHunter.Thieves
         private const float FaceSmoothing = 10f;
 
         private readonly List<Vector3> passerPositions = new List<Vector3>();
+        private readonly List<Vector3> playerPositions = new List<Vector3>();
         private readonly Transform root;
         private readonly NpcCrowd passersBy;
         private float facedAt = -100f;
@@ -62,16 +63,28 @@ namespace BountyHunter.Thieves
         }
 
         // Moves by velocity for this frame, round any passer-by and inside the floor.
-        public void Step(Vector3 velocity)
+        public void Step(Vector3 velocity, bool avoidPlayers = true)
         {
             FindPassers();
-            MoveTo(KeepOnFloor(KeepClearOfPassers(Position + velocity * Time.deltaTime)));
+            MoveTo(KeepOnFloor(KeepClearOfPassers(Position + velocity * Time.deltaTime)), avoidPlayers);
         }
 
-        // Moves straight to next (nothing in the way), keeping track of how it moves.
-        public void MoveTo(Vector3 next)
+        // Stops a step that would cross a player, but allows escape if they already reached it.
+        public void MoveTo(Vector3 next, bool avoidPlayers = true)
         {
             Vector3 from = Position;
+            Players.GetAll(playerPositions);
+            float clearance = Mathf.Max(Settings.RouteClearance, Settings.TouchRadius + 0.05f);
+            foreach (Vector3 player in playerPositions)
+            {
+                // During the protected hide exit, steer like a thief without cancelling escape steps.
+                if (!avoidPlayers) break;
+                float minimum = Mathf.Min(clearance, FlatDistance(from, player));
+                if (RouteDistance(from, next, player) >= minimum) continue;
+                next = from;
+                break;
+            }
+
             Position = next;
             if (Time.deltaTime <= 0f) return;
 
@@ -199,6 +212,15 @@ namespace BountyHunter.Thieves
         public static float FlatDistance(Vector3 a, Vector3 b)
         {
             return SpawnerPlayerLocator.FlatDistance(a, b);
+        }
+
+        // The closest a floor movement segment comes to a player, including both ends.
+        internal static float RouteDistance(Vector3 from, Vector3 to, Vector3 player)
+        {
+            var line = new Vector2(to.x - from.x, to.z - from.z);
+            var offset = new Vector2(player.x - from.x, player.z - from.z);
+            float along = line.sqrMagnitude > 0f ? Mathf.Clamp01(Vector2.Dot(offset, line) / line.sqrMagnitude) : 0f;
+            return (offset - line * along).magnitude;
         }
 
         private float CornerSize => Mathf.Min(Settings.CornerSize, (AreaMax.x - AreaMin.x) * 0.5f, (AreaMax.y - AreaMin.y) * 0.5f);

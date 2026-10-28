@@ -19,16 +19,20 @@ namespace BountyHunter.Thieves
         // The cape thrown off, finely cut; empty to use cape's revealFrames instead.
         private readonly BossMove reveal;
         private readonly NpcCrowd passersBy;
+        private readonly BossRun run;
         private Step step;
         private float stepTime;
         private Vector3 strollTarget;
+        private bool fleeing;
+        private float lastThreatAt;
 
-        public BossDisguising(BossBody body, BossMove cape, BossMove reveal, NpcCrowd passersBy)
+        public BossDisguising(BossBody body, BossMove cape, BossMove reveal, NpcCrowd passersBy, BossRun run)
         {
             this.body = body;
             this.cape = cape;
             this.reveal = reveal;
             this.passersBy = passersBy;
+            this.run = run;
         }
 
         // There is a cape to wrap in and a passer-by kind to pass for.
@@ -36,9 +40,12 @@ namespace BountyHunter.Thieves
         // Not while it stands changing back and throwing the cape off, so nobody gains by waiting beside it.
         public bool Touchable => step != Step.ChangingOut && step != Step.Revealing;
         public bool CountsTouches => step == Step.Wrapping;
+        public bool IsBlocked => step == Step.Strolling && fleeing && run.IsBlocked;
 
         public void Begin()
         {
+            fleeing = false;
+            lastThreatAt = float.MinValue;
             Enter(Step.Wrapping);
             body.Animator.Play(cape.Frames, cape.FramesPerSecond, body.Settings.WrapFrames, false);
         }
@@ -106,16 +113,30 @@ namespace BountyHunter.Thieves
             strollTarget = body.RandomSpot();
         }
 
-        // Strolls like a passer-by: slowly, from one random spot to the next, round the others.
+        // Keeps its disguise while fleeing nearby players; only strolls while nobody threatens it.
         private void Stroll()
         {
             Vector3 position = body.Position;
-            if (BossBody.FlatDistance(position, strollTarget) < 0.3f) strollTarget = body.RandomSpot();
-            Vector3 toward = strollTarget - position;
-            toward.y = 0f;
-            Vector3 velocity = (toward.normalized + body.PasserPush(position)).normalized * body.Settings.DisguiseSpeed;
-            body.Step(velocity);
-            body.Disguise.Walk(velocity);
+            if (body.Players.TryGetWithin(position, body.Settings.FleeRadius, out _)) lastThreatAt = Time.time;
+            bool threatened = Time.time - lastThreatAt < body.Settings.CalmSeconds;
+            if (threatened)
+            {
+                if (!fleeing) run.Begin(0f, false);
+                fleeing = true;
+                run.Tick(false);
+            }
+            else
+            {
+                if (fleeing) strollTarget = body.RandomSpot();
+                fleeing = false;
+                if (BossBody.FlatDistance(position, strollTarget) < 0.3f) strollTarget = body.RandomSpot();
+                Vector3 toward = strollTarget - position;
+                toward.y = 0f;
+                Vector3 velocity = (toward.normalized + body.PasserPush(position)).normalized * body.Settings.DisguiseSpeed;
+                body.Step(velocity);
+            }
+            Vector3 moved = Time.deltaTime > 0f ? (body.Position - position) / Time.deltaTime : Vector3.zero;
+            body.Disguise.Walk(moved);
         }
 
         // Stops and shows the wrapped boss (the reveal's first picture) under the passer-by, to fade into.

@@ -71,6 +71,20 @@ namespace BountyHunter.Thieves
             if (introShow != null) introShow.Idling -= RevealCards;
         }
 
+        private void Start()
+        {
+            ScenePreload.Enqueue(this, 5, PrepareEffects());
+        }
+
+        private IEnumerator PrepareEffects()
+        {
+            _ = PosterSprites.Dot;
+            yield return null;
+            _ = PosterSprites.Pin;
+            yield return null;
+            _ = PosterSprites.Ring;
+        }
+
         // The cards wait hidden until the wall's patrol car has parked and the dogs are idling.
         private void HoldCardsForWall()
         {

@@ -13,11 +13,14 @@ namespace BountyHunter.Thieves
         private float playSeconds;
         private float fadeSeconds;
         private float elapsed;
+        private bool fadeWhilePlaying;
+        private float startingAlpha;
 
         // Plays sheet's frames stretch.x..stretch.y (both included) at framesPerSecond, then fades over
         // fadeSeconds. An empty sheet just fades the picture original shows now.
         // sortingOffset puts the copy over (or under) the original.
-        public static void LeaveBehind(SpriteRenderer original, Sprite[] sheet, float framesPerSecond, Vector2Int stretch, float fadeSeconds, Transform parent, int sortingOffset = 0)
+        // fadeWhilePlaying spreads a smooth fade across the animation and tail without extending its lifetime.
+        public static void LeaveBehind(SpriteRenderer original, Sprite[] sheet, float framesPerSecond, Vector2Int stretch, float fadeSeconds, Transform parent, int sortingOffset = 0, bool fadeWhilePlaying = false)
         {
             var left = new GameObject($"{original.name} Left Behind");
             left.transform.SetParent(parent, true);
@@ -31,6 +34,8 @@ namespace BountyHunter.Thieves
             fade.copy.sortingLayerID = original.sortingLayerID;
             fade.copy.sortingOrder = original.sortingOrder + sortingOffset;
             fade.copy.color = original.color;
+            fade.startingAlpha = original.color.a;
+            fade.fadeWhilePlaying = fadeWhilePlaying;
             fade.fadeSeconds = Mathf.Max(0.05f, fadeSeconds);
 
             bool plays = sheet != null && sheet.Length > 0 && framesPerSecond > 0f;
@@ -40,6 +45,11 @@ namespace BountyHunter.Thieves
             fade.framesPerSecond = framesPerSecond;
             fade.stretch = new Vector2Int(Mathf.Clamp(stretch.x, 0, sheet.Length - 1), Mathf.Clamp(stretch.y, 0, sheet.Length - 1));
             fade.playSeconds = Mathf.Max(0, fade.stretch.y - fade.stretch.x) / framesPerSecond;
+            if (fadeWhilePlaying)
+            {
+                fade.fadeSeconds += fade.playSeconds;
+                fade.playSeconds = 0f;
+            }
             fade.copy.sprite = sheet[fade.stretch.x];
         }
 
@@ -56,7 +66,9 @@ namespace BountyHunter.Thieves
             if (fading <= 0f) return;
 
             Color color = copy.color;
-            color.a = Mathf.Clamp01(1f - fading / fadeSeconds);
+            float progress = Mathf.Clamp01(fading / fadeSeconds);
+            if (fadeWhilePlaying) progress = Mathf.SmoothStep(0f, 1f, progress);
+            color.a = startingAlpha * (1f - progress);
             copy.color = color;
             if (fading >= fadeSeconds) Destroy(gameObject);
         }

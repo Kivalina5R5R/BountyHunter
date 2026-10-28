@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
@@ -53,25 +55,65 @@ namespace BountyHunter.Thieves
         private const float Offside = 0.4f;
 
         private Sprite petal;
+        private Camera floorCamera;
         private Rect floor;
         private float allGoneSeconds;
         private float fadeOutAt;
         private float elapsed;
         private float owed;
+        private float wallScale;
+
+        // Reuses the floor petal motion in the wall canvas's own plane and clips at its edges.
+        public static BossPetalShower BeginOnWall(Sprite petal, RectTransform wall, float allGoneSeconds)
+        {
+            var root = new GameObject("Wall Rose Petals", typeof(RectTransform), typeof(RectMask2D));
+            var rect = (RectTransform)root.transform;
+            rect.SetParent(wall, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var shower = root.AddComponent<BossPetalShower>();
+            shower.wallScale = Mathf.Max(1f, wall.rect.height) / 5f;
+            float width = wall.rect.width / shower.wallScale;
+            shower.floor = new Rect(-width * 0.5f, -2.5f, width, 5f);
+            shower.petal = petal;
+            shower.allGoneSeconds = Mathf.Max(0.5f, allGoneSeconds);
+            shower.fadeOutAt = Time.time + shower.allGoneSeconds - FadeOutSeconds;
+            return shower;
+        }
 
         // Its time is up and every petal has gone.
         public bool IsOver => elapsed >= allGoneSeconds && transform.childCount == 0;
 
         // floor is the floor seen (x and world z); every petal has faded out allGoneSeconds from now.
-        public static BossPetalShower Begin(Sprite petal, Rect floor, float allGoneSeconds, Transform parent)
+        public static BossPetalShower Begin(Sprite petal, Rect floor, float allGoneSeconds, Transform parent, Camera floorCamera)
         {
             var shower = new GameObject("Rose Petal Shower").AddComponent<BossPetalShower>();
             shower.transform.SetParent(parent, false);
             shower.petal = petal;
+            shower.floorCamera = floorCamera;
             shower.floor = floor;
             shower.allGoneSeconds = Mathf.Max(0.5f, allGoneSeconds);
             shower.fadeOutAt = Time.time + shower.allGoneSeconds - FadeOutSeconds;
             return shower;
+        }
+
+        private void OnEnable()
+        {
+            RenderPipelineManager.beginCameraRendering += BeforeCamera;
+        }
+
+        private void OnDisable()
+        {
+            RenderPipelineManager.beginCameraRendering -= BeforeCamera;
+        }
+
+        private void BeforeCamera(ScriptableRenderContext context, Camera camera)
+        {
+            foreach (Transform child in transform)
+            {
+                if (child.TryGetComponent(out SpriteRenderer picture)) picture.forceRenderingOff = camera != floorCamera;
+            }
         }
 
         private void Update()
@@ -99,7 +141,7 @@ namespace BountyHunter.Thieves
             float speed = Random.Range(layer.Speed.x, layer.Speed.y);
             Vector3 start = Random.value < FromEdgeShare ? EdgeStart() : new Vector3(Random.Range(floor.xMin, floor.xMax), 0f, Random.Range(floor.yMin, floor.yMax));
             float size = Random.Range(layer.Size.x, layer.Size.y);
-            BossPetal.Blow(petal, start, way * speed, size, layer.SortingOrder, layer.Shade, layer.Motion, fadeOutAt, floor, transform);
+            BossPetal.Blow(petal, start, way * speed, size, layer.SortingOrder, layer.Shade, layer.Motion, fadeOutAt, floor, transform, wallScale);
         }
 
         // Just over the top or the right edge, in proportion to their lengths.

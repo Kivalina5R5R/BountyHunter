@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -15,6 +16,9 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(1)] private int frames = 90;
         [SerializeField, Min(1f)] private float framesPerSecond = 15f;
         [SerializeField] private Vector2 pivot = new Vector2(0.5f, 0.02f);
+        private Sprite[] cached;
+        private int preparedFrames;
+        private float cachedPixelsPerUnit;
 
         public BossSheet()
         {
@@ -35,19 +39,51 @@ namespace BountyHunter.Thieves
         public Sprite[] Slice(float pixelsPerUnit)
         {
             if (texture == null) return Array.Empty<Sprite>();
+            EnsureCache(pixelsPerUnit);
+            while (preparedFrames < cached.Length) PrepareFrame(pixelsPerUnit);
+            return cached;
+        }
 
+        // Eight small sprite creations per frame, reused if the consumer arrives early.
+        public IEnumerator Preload(float pixelsPerUnit)
+        {
+            if (texture == null) yield break;
+            EnsureCache(pixelsPerUnit);
+            while (preparedFrames < cached.Length)
+            {
+                int end = Mathf.Min(preparedFrames + 8, cached.Length);
+                while (preparedFrames < end) PrepareFrame(pixelsPerUnit);
+                yield return null;
+            }
+        }
+
+        private void EnsureCache(float pixelsPerUnit)
+        {
+            if (cached != null && cachedPixelsPerUnit == pixelsPerUnit) return;
+            Release();
+            cached = new Sprite[frames];
+            cachedPixelsPerUnit = pixelsPerUnit;
+        }
+
+        private void PrepareFrame(float pixelsPerUnit)
+        {
             int rows = Mathf.CeilToInt(frames / (float)columns);
             float cellWidth = texture.width / (float)columns;
             float cellHeight = texture.height / (float)rows;
-            var sprites = new Sprite[frames];
-            for (int i = 0; i < frames; i++)
-            {
-                var cell = new Rect((i % columns) * cellWidth, texture.height - (i / columns + 1) * cellHeight, cellWidth, cellHeight);
-                sprites[i] = Sprite.Create(texture, cell, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
-                sprites[i].name = $"{texture.name}_{i:00}";
-            }
+            int i = preparedFrames;
+            var cell = new Rect((i % columns) * cellWidth, texture.height - (i / columns + 1) * cellHeight, cellWidth, cellHeight);
+            cached[i] = Sprite.Create(texture, cell, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
+            cached[i].name = $"{texture.name}_{i:00}";
+            preparedFrames++;
+        }
 
-            return sprites;
+        public void Release()
+        {
+            if (cached != null)
+                foreach (Sprite sprite in cached)
+                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
+            cached = null;
+            preparedFrames = 0;
         }
     }
 }
