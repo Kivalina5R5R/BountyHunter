@@ -18,6 +18,8 @@ namespace BountyHunter.Thieves
     // next map starts. N during a mini game cuts it short; M jumps straight to the next mini game.
     // The finale (the boss chase) plays the same way once the last map is done, but on that map's
     // floor with the stage's pieces left up (the score tags count along), and the result follows it.
+    // With a boss transition set, the stage freezes the moment it ends (its clock, thieves and
+    // passers-by stop where they are) and the wall plays the boss cut-in instead of the fade.
     [DefaultExecutionOrder(-100)]
     public sealed class MapSwitcher : MonoBehaviour
     {
@@ -65,10 +67,15 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
         // Played after the last map, before the result; leave empty to go straight to the result.
         [SerializeField] private StageInterlude finale;
+        // The cut-in on the wall into the finale (the floor fades dark under it); leave empty to
+        // fade into the finale like a mini game.
+        [SerializeField] private BossTransition bossTransition;
 
         private int current;
         private bool finalePlayed;
         private StageInterlude playing;
+        // True while the stage is frozen under the boss cut-in.
+        private bool frozen;
 
         // Which map is on now (0 first), and when the game moves on to another one.
         public int CurrentMap => current;
@@ -90,6 +97,7 @@ namespace BountyHunter.Thieves
         {
             if (timer != null) timer.TimeUp -= OnTimeUp;
             if (result != null) result.GameEnded -= OnGameEnded;
+            Unfreeze();
         }
 
         // The game ended some other way (R) while the finale plays: it winds up at once.
@@ -169,15 +177,62 @@ namespace BountyHunter.Thieves
             yield return Enter(interlude);
             yield return interlude.Run();
 
-            // Back to the stage while the screen is dark: its pieces come back on first, so the mini
-            // game can hand them what it settled (the money won) as it ends.
-            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            // Back to the stage while the screen is covered (by the mini game's own way out, or dark):
+            // its pieces come back on first, so the mini game can hand them what it settled (the
+            // money won) as it ends.
+            WallTransition way = interlude.ExitTransition;
+            if (way != null && way.WipesOver && interlude.WallPanel != null)
+            {
+                yield return WipeOff(interlude, way);
+                yield break;
+            }
+
+            if (way != null)
+            {
+                Coroutine floorDark = curtain != null ? StartCoroutine(curtain.CloseFloor(fadeOutSeconds)) : null;
+                yield return way.Close();
+                if (floorDark != null) yield return floorDark;
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Close(fadeOutSeconds);
+            }
+
             SetStagePieces(true);
             interlude.End();
             playing = null;
             current = (current + 1) % maps.Length;
             SwitchTo(maps[current]);
-            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+            if (way != null)
+            {
+                // The floor stays dark until the way out has shown the new map on the wall.
+                yield return way.Open();
+                if (curtain != null) yield return curtain.OpenFloor(fadeInSeconds);
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Open(fadeInSeconds);
+            }
+        }
+
+        // The way out starts wiping the mini game's wall panel off at once, the stage's wall pieces
+        // showing behind it; the floor keeps the mini game's look as it fades dark over the first half
+        // of the wipe, and only then do the stage's floor pieces come back with the next map. Once the
+        // wipe is done the mini game ends (handing over what it settled) and the floor comes back.
+        private IEnumerator WipeOff(StageInterlude interlude, WallTransition way)
+        {
+            Transform wall = interlude.WallPanel.parent;
+            SetStagePieces(true, piece => wall != null && piece.transform.IsChildOf(wall));
+            Coroutine wipe = StartCoroutine(way.Wipe(interlude.WallPanel));
+            float floorDark = way.WipeSeconds > 0f ? way.WipeSeconds * 0.5f : fadeOutSeconds;
+            if (curtain != null) yield return curtain.CloseFloor(floorDark);
+            SetStagePieces(true);
+            current = (current + 1) % maps.Length;
+            SwitchTo(maps[current]);
+            yield return wipe;
+            interlude.End();
+            playing = null;
+            if (curtain != null) yield return curtain.OpenFloor(fadeInSeconds);
         }
 
         // The game is past the intro (the clock lives on the game wall).
@@ -186,14 +241,18 @@ namespace BountyHunter.Thieves
             return timer == null || timer.isActiveAndEnabled;
         }
 
-        // The finale, faded in, then the result.
+        // The finale, faded or cut in, then the result.
         private IEnumerator PlayFinale()
         {
             playing = finale;
             finalePlayed = true;
-            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            bool cutIn = bossTransition != null && bossTransition.IsSetUp;
+            if (cutIn) yield return CoverWithCutIn();
+            else if (curtain != null) yield return curtain.Close(fadeOutSeconds);
             if (timer != null) timer.Stop();
             if (rounds != null) rounds.ClearFloor();
+            // The stage is gone from the floor, so nothing is left to act; time runs again for the chase.
+            Unfreeze();
             // A fault setting it up must not leave the screen dark: it is logged and the game goes on.
             yield return finale.Prepare();
             try
@@ -206,13 +265,42 @@ namespace BountyHunter.Thieves
             }
 
             Debug.Log($"[MapSwitcher] {finale.name} plays", this);
-            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+            if (cutIn)
+            {
+                if (curtain != null) StartCoroutine(curtain.OpenFloor(fadeInSeconds));
+                yield return bossTransition.Close();
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Open(fadeInSeconds);
+            }
+
             yield return finale.Run();
 
             // The result fades the screen out itself.
             playing = null;
             if (result != null) result.TryEndGame();
             finale.End();
+        }
+
+        // Freezes the stage where it is and plays the boss cut-in on the wall until it covers it, the
+        // floor fading dark meanwhile.
+        private IEnumerator CoverWithCutIn()
+        {
+            if (timer != null) timer.Stop();
+            Time.timeScale = 0f;
+            frozen = true;
+            Coroutine floorDark = curtain != null ? StartCoroutine(curtain.CloseFloor(fadeOutSeconds)) : null;
+            yield return bossTransition.Open();
+            if (floorDark != null) yield return floorDark;
+        }
+
+        private void Unfreeze()
+        {
+            if (!frozen) return;
+
+            Time.timeScale = 1f;
+            frozen = false;
         }
 
         // Fades out of the stage (its clock stopped, its floor cleared and its pieces put away) into
@@ -230,12 +318,13 @@ namespace BountyHunter.Thieves
             if (curtain != null) yield return curtain.Open(fadeInSeconds);
         }
 
-        private void SetStagePieces(bool shown)
+        // Shows or hides the stage's pieces, or only those which picks.
+        private void SetStagePieces(bool shown, Func<GameObject, bool> which = null)
         {
             if (hideDuringInterlude == null) return;
             foreach (GameObject piece in hideDuringInterlude)
             {
-                if (piece != null) piece.SetActive(shown);
+                if (piece != null && (which == null || which(piece))) piece.SetActive(shown);
             }
         }
 

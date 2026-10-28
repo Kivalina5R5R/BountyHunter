@@ -56,6 +56,10 @@ namespace BountyHunter.Thieves
         // Raised as a player locks in an answer (or changes it), with the player and the suspect.
         public event Action<UWBPlayerController, int> PlayerLocked;
 
+        // Raised the moment a player steps into a ring, with the player and the ring, so the floor can
+        // answer the touch before the hold fills.
+        public event Action<UWBPlayerController, int> PlayerEntered;
+
         // 0 to 1: the fullest hold on ring index by a player not yet locked in on it.
         public float Fill(int ring)
         {
@@ -81,6 +85,7 @@ namespace BountyHunter.Thieves
             // Stepping from one ring straight into another starts the hold over.
             bool sameRing = inRing.TryGetValue(id, out int was) && was == ring;
             inRing[id] = ring;
+            if (ring >= 0 && !sameRing) PlayerEntered?.Invoke(player, ring);
             if (ring < 0) free.Add(id);
 
             bool alreadyThere = locked.TryGetValue(id, out Answer answer) && answer.Suspect == ring;

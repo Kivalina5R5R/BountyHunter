@@ -81,6 +81,15 @@ namespace BountyHunter.Thieves
             ringFill.SetPropertyBlock(fillBlock);
         }
 
+        // 0 a black silhouette, 1 the suspect in its own colours (its fade is kept).
+        public void SetLit(float lit)
+        {
+            if (body == null) return;
+
+            float shade = Mathf.Clamp01(lit);
+            body.color = new Color(shade, shade, shade, body.color.a);
+        }
+
         // Fades only the suspect's picture, leaving its row clear (the others at the reveal, so what
         // they carried can still be compared).
         public void SetBodyAlpha(float alpha)

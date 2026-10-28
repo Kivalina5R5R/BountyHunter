@@ -5,18 +5,20 @@ namespace BountyHunter.Thieves
 {
     // Makes a fresh lineup puzzle: six suspects of six different species, every thief species and
     // passers-by for the rest, in a random order, the culprit any one of them; each carries 1 to
-    // MostItems random things (a hat, disguises, the money bag), no more than MostFullRows carrying
-    // the most and at least one carrying a single thing. The witness's four clues close in
-    // on the culprit at the pace the design asks for: after the first clue 3 or 4 suspects still fit,
-    // after the second 2 or 3, after the third 1 or 2 (only one in about uniqueAfterThirdShare of the
-    // puzzles, so reading well pays off) and after the fourth exactly one. Every clue rules at least
-    // one more suspect out, except the fourth when the third already left one. The first two clues
-    // are about whether the culprit has a thing at all; the last two may name the kind of hat. At
-    // most one clue is about hats (a hat at all, a cap or a beanie), since two would give it away.
+    // MostItems random things (a hat, disguises, the money bag), no two carrying the very same things,
+    // no more than MostFullRows carrying the most and at least one carrying a single thing. The
+    // witness's four clues start broad and close in step by step, so only the last one makes the
+    // answer sure: after the first clue 4 or 5 suspects still fit, after the second 3, after the
+    // third 2 and after the fourth exactly one. Two clues say the culprit has a thing and two that it
+    // has not, in any order, so the cards mix ticks and crosses. The first two clues are about
+    // whether the culprit has a thing at all; the last two may name the kind of hat. At most one clue
+    // is about hats (a hat at all, a cap or a beanie), since two would give it away.
     public sealed class LineupCaseGenerator
     {
         private const int SuspectCount = 6;
         private const int ClueCount = 4;
+        // How many of the clues say the culprit has the thing (the rest say it has not).
+        private const int HasClues = 2;
         private const int Attempts = 400;
         // Each suspect carries 1 to MostItems things; at most MostFullRows of them carry MostItems, and at
         // least one carries just one, so the rows over their heads differ in length.
@@ -33,15 +35,13 @@ namespace BountyHunter.Thieves
 
         private readonly IReadOnlyList<LineupSpecies> species;
         private readonly Random random;
-        private readonly double uniqueAfterThirdShare;
         private readonly List<int> thieves = new List<int>();
         private readonly List<int> passersBy = new List<int>();
 
-        public LineupCaseGenerator(IReadOnlyList<LineupSpecies> species, Random random, double uniqueAfterThirdShare = 0.4)
+        public LineupCaseGenerator(IReadOnlyList<LineupSpecies> species, Random random)
         {
             this.species = species;
             this.random = random;
-            this.uniqueAfterThirdShare = uniqueAfterThirdShare;
             for (int i = 0; i < species.Count; i++)
             {
                 (species[i].IsThief ? thieves : passersBy).Add(i);
@@ -56,14 +56,11 @@ namespace BountyHunter.Thieves
                 throw new InvalidOperationException($"The lineup needs {SuspectCount} species in all.");
             }
 
-            // Picked once: a pace that is harder to meet must not be swapped for the other on a retry,
-            // or the share of each would drift away from uniqueAfterThirdShare.
-            int leftAfterThird = random.NextDouble() < uniqueAfterThirdShare ? 1 : 2;
             for (int attempt = 0; attempt < Attempts; attempt++)
             {
                 List<LineupSuspect> suspects = MakeSuspects();
                 int culprit = random.Next(suspects.Count);
-                List<LineupClue> clues = FindClues(suspects, culprit, leftAfterThird);
+                List<LineupClue> clues = FindClues(suspects, culprit);
                 if (clues != null) return Arrange(suspects, culprit, clues);
             }
 
@@ -118,10 +115,25 @@ namespace BountyHunter.Thieves
             var suspects = new List<LineupSuspect>(SuspectCount);
             for (int i = 0; i < kinds.Count; i++)
             {
-                suspects.Add(MakeSuspect(kinds[i], counts[i]));
+                // Dealt again until nobody else carries the very same things.
+                LineupSuspect suspect;
+                do
+                {
+                    suspect = MakeSuspect(kinds[i], counts[i]);
+                }
+                while (suspects.Exists(other => SameThings(other, suspect)));
+
+                suspects.Add(suspect);
             }
 
             return suspects;
+        }
+
+        // Whether two suspects carry exactly the same things (a cap and a beanie are different).
+        private static bool SameThings(LineupSuspect a, LineupSuspect b)
+        {
+            return a.Hat == b.Hat && a.Mask == b.Mask && a.Glasses == b.Glasses && a.FaceMask == b.FaceMask
+                   && a.Mustache == b.Mustache && a.Newspaper == b.Newspaper && a.Gloves == b.Gloves && a.Bag == b.Bag;
         }
 
         // How many things each suspect carries: 1 to MostItems each, no more than MostFullRows full rows
@@ -172,7 +184,7 @@ namespace BountyHunter.Thieves
         }
 
         // Clues true of the culprit, in an order that narrows the lineup as the rules say; null if none.
-        private List<LineupClue> FindClues(List<LineupSuspect> suspects, int culprit, int leftAfterThird)
+        private List<LineupClue> FindClues(List<LineupSuspect> suspects, int culprit)
         {
             var candidates = new List<LineupClue>();
             foreach (LineupFeature feature in Features)
@@ -185,26 +197,29 @@ namespace BountyHunter.Thieves
             var chosen = new List<LineupClue>(ClueCount);
             var fitting = new List<int>();
             for (int i = 0; i < suspects.Count; i++) fitting.Add(i);
-            return Search(suspects, candidates, chosen, fitting, leftAfterThird) ? chosen : null;
+            return Search(suspects, candidates, chosen, fitting) ? chosen : null;
         }
 
-        private bool Search(List<LineupSuspect> suspects, List<LineupClue> candidates, List<LineupClue> chosen, List<int> fitting, int leftAfterThird)
+        private bool Search(List<LineupSuspect> suspects, List<LineupClue> candidates, List<LineupClue> chosen, List<int> fitting)
         {
             if (chosen.Count == ClueCount) return true;
 
             int step = chosen.Count;
+            int has = chosen.FindAll(said => said.Has).Count;
             foreach (LineupClue clue in candidates)
             {
                 if (step < 2 && !clue.IsShared) continue;
+                // Keeps to two ticks and two crosses.
+                if (clue.Has ? has >= HasClues : step - has >= ClueCount - HasClues) continue;
                 if (chosen.Exists(said => said.Feature == clue.Feature)) continue;
                 // One clue about hats at most: a second (HAT and then BEANIE) gives the answer away.
                 if (IsAboutHats(clue.Feature) && chosen.Exists(said => IsAboutHats(said.Feature))) continue;
 
                 List<int> left = fitting.FindAll(suspect => LineupCase.Has(suspects[suspect], clue.Feature) == clue.Has);
-                if (!Allowed(step, fitting.Count, left.Count, leftAfterThird)) continue;
+                if (!Allowed(step, fitting.Count, left.Count)) continue;
 
                 chosen.Add(clue);
-                if (Search(suspects, candidates, chosen, left, leftAfterThird)) return true;
+                if (Search(suspects, candidates, chosen, left)) return true;
                 chosen.RemoveAt(chosen.Count - 1);
             }
 
@@ -217,14 +232,14 @@ namespace BountyHunter.Thieves
         }
 
         // Whether going from before to after suspects at this clue (0 = the first) keeps to the pace.
-        private static bool Allowed(int step, int before, int after, int leftAfterThird)
+        private static bool Allowed(int step, int before, int after)
         {
             switch (step)
             {
-                case 0: return after == 3 || after == 4;
-                case 1: return after < before && (after == 2 || after == 3);
-                case 2: return after < before && after == leftAfterThird;
-                default: return after == 1 && (after < before || before == 1);
+                case 0: return after == 4 || after == 5;
+                case 1: return after == 3;
+                case 2: return after == 2;
+                default: return after == 1;
             }
         }
 

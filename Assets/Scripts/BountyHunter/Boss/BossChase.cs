@@ -79,7 +79,7 @@ namespace BountyHunter.Thieves
         [Header("Timing (seconds)")]
         [SerializeField, Min(0.5f)] private float entranceSeconds = 4.5f;
         [SerializeField, Range(0f, 0.9f)] private float roseFromShare = 0.5f;
-        [SerializeField, Min(1f)] private float chaseSeconds = 62f;
+        [SerializeField, Min(1f)] private float chaseSeconds = 85.5f;
         [SerializeField, Min(0f)] private float outroSeconds = 5f;
         // How many touches (after the first, which it warps away from) catch it.
         [SerializeField, Min(1)] private int touchesToCatch = 3;

@@ -32,6 +32,16 @@ namespace BountyHunter.Thieves.EditorTools
             // A wall prefab made before it had its fixed Display 2 size gets it.
             if (!LineupPrefabBuilder.WallFitsDisplay()) LineupPrefabBuilder.FitWall();
             if (!LineupPrefabBuilder.SuspectHasItemRow()) LineupPrefabBuilder.RebuildSuspect();
+            if (!LineupPrefabBuilder.WallHasLineupRow()) LineupPrefabBuilder.RebuildWall();
+            LineupPrefabBuilder.TuneWallRow();
+            LineupPrefabBuilder.MatchRowAndRewardOnce();
+            LineupPrefabBuilder.KeepPanelsStill();
+            LineupPrefabBuilder.FitWallBackground();
+            LineupPrefabBuilder.AddTitleShineIfMissing();
+            LineupPrefabBuilder.SlowEntranceOnce();
+            LineupPrefabBuilder.FortySecondsOnce();
+            LineupPrefabBuilder.DropCaseClosed();
+            LineupPrefabBuilder.AddCaughtStampIfMissing();
             LineupPrefabBuilder.UpdateCastIfOld();
             LineupPrefabBuilder.DropSuspectNumber();
             LineupPrefabBuilder.SetPickMarkIfMissing();
@@ -53,26 +63,27 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Folder = "Assets/Prefabs/Lineup";
         public const string SuspectPath = Folder + "/Lineup Suspect.prefab";
         public const string WallPath = Folder + "/Lineup Wall.prefab";
-        private const string Art = "Assets/ART/Lineup/";
+        private const string Art = "Assets/ART/Minigame/Lineup/";
 
         // The character cards' ring art and radial fill material, the game's font and its outlined material.
-        private const string RingBackGuid = "8758dec64893bbe49a5f1000e9815246";
-        private const string RingFillGuid = "8e2e7c8a2047803448ea7332356dea0e";
-        private const string RingFillMaterialGuid = "c336646ec748937479367356284f07bf";
-        private const string FontGuid = "d4e98a79a56adb245b3f28d26d672faf";
-        private const string OutlinedFontGuid = "ba7aada5ab4287b478f894e8210a4181";
-        private const string WallBackgroundPath = "Assets/ART/Lineup/WallBackground.png";
+        internal const string RingBackGuid = "8758dec64893bbe49a5f1000e9815246";
+        internal const string RingFillGuid = "8e2e7c8a2047803448ea7332356dea0e";
+        internal const string RingFillMaterialGuid = "c336646ec748937479367356284f07bf";
+        internal const string FontGuid = "d4e98a79a56adb245b3f28d26d672faf";
+        internal const string OutlinedFontGuid = "ba7aada5ab4287b478f894e8210a4181";
+        private const string WallBackgroundPath = "Assets/ART/Minigame/Lineup/WallBackground.png";
         private const string WitnessPath = "Assets/ART/Police/Bunny.png";
 
         private const float RingRadius = 0.6f;
         // The wall panel's size in the wall canvas's units: as tall as the canvas (435) and as wide as
         // Display 2 shows at that height (8192 x 2160), a little wider than the canvas itself (1536),
         // so the panel covers the whole wall and opens in its prefab at the wall's real proportions.
-        private static readonly Vector2 WallSize = new Vector2(435f * 8192f / 2160f, 435f);
+        internal static readonly Vector2 WallSize = new Vector2(435f * 8192f / 2160f, 435f);
         private static readonly Color Gold = new Color(1f, 0.82f, 0.25f, 1f);
         private static readonly Color Ink = new Color(0.17f, 0.09f, 0.06f, 1f);
 
         // Who can stand in the lineup and where things sit on each (see LineupLook), tuned on the art.
+        // The sloth is left out: it is a police officer in this game, not a suspect.
         private static readonly Cast[] Lineup =
         {
             new Cast("Cat", "Assets/ART/Thif/Cat/Cat.png", true),
@@ -84,7 +95,6 @@ namespace BountyHunter.Thieves.EditorTools
             new Cast("Otter", "Assets/ART/NPC/Otter/Idle/OtterIdle_00.png", false),
             new Cast("Pig", "Assets/ART/NPC/Pig/Idle/PigIdle_00.png", false),
             new Cast("Raccoon", "Assets/ART/NPC/Raccoon/Idle/RaccoonIdle_00.png", false),
-            new Cast("Sloth", "Assets/ART/NPC/Sloth/Idle/SlothIdle_00.png", false),
         };
 
         // The witness's picture and words for each feature, in LineupFeature order.
@@ -169,7 +179,7 @@ namespace BountyHunter.Thieves.EditorTools
         public static void AddRewardPanelIfMissing()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
-            if (prefab == null || prefab.HasRewardPanel) return;
+            if (prefab == null || prefab.HasRewardPanel || prefab.HasLineupRow) return;
 
             GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
             var serialized = new SerializedObject(contents.GetComponent<LineupWall>());
@@ -201,7 +211,7 @@ namespace BountyHunter.Thieves.EditorTools
         public static void AddCulpritPanelIfMissing()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
-            if (prefab == null || prefab.HasCulpritPanel) return;
+            if (prefab == null || prefab.HasCulpritPanel || prefab.HasLineupRow) return;
 
             GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
             var serialized = new SerializedObject(contents.GetComponent<LineupWall>());
@@ -227,7 +237,7 @@ namespace BountyHunter.Thieves.EditorTools
         public static void CentreCulpritPanel()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
-            if (prefab == null || !prefab.HasCulpritPanel) return;
+            if (prefab == null || !prefab.HasCulpritPanel || prefab.HasLineupRow) return;
 
             GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
             var wall = contents.GetComponent<LineupWall>();
@@ -386,7 +396,7 @@ namespace BountyHunter.Thieves.EditorTools
             if (current) return;
 
             ApplyCast(puzzle);
-            Debug.Log("[LineupPrefabBuilder] The lineup's clues are now only what the suspects carry; save the scene to keep it.");
+            Debug.Log("[LineupPrefabBuilder] The lineup's cast and clue pictures are up to date (the sloth, a police officer, no longer stands in it); save the scene to keep it.");
         }
 
         private static void ApplyCast(LineupPuzzle puzzle)
@@ -516,73 +526,529 @@ namespace BountyHunter.Thieves.EditorTools
             return saved.GetComponent<LineupSuspectView>();
         }
 
-        // Laid out in the wall canvas's units (1536 x 435).
+        // The wall's art (from the mini game's design), in the order it sits back to front.
+        private const string WallArt = Art + "Wall/";
+        private static readonly string[] WallPictures = { "WallBG", "TitleTape", "CluePanel", "TimePanel", "WantedPoster", "ItemPlate" };
+        private static readonly Color Title = new Color(1f, 0.86f, 0.2f, 1f);
+        private const int RowSlots = 6;
+        private const float RowSpacing = 262f;
+
+        // True when the wall prefab has the row of suspects along the bottom (or there is no wall prefab).
+        public static bool WallHasLineupRow()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            return prefab == null || prefab.HasLineupRow;
+        }
+
+        // Remakes only the wall prefab, in the mini game's design; the scene's panel follows it.
+        public static void RebuildWall()
+        {
+            BuildWall();
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall remade in the new design: clues on top, the suspects and what they carry along the bottom.");
+        }
+
+        // Makes the wall's art sprites (they come in as plain textures), the background at full size.
+        private static void UseWallArtAsSprites()
+        {
+            foreach (string name in WallPictures)
+            {
+                string path = WallArt + name + ".png";
+                if (!(AssetImporter.GetAtPath(path) is TextureImporter importer)) continue;
+                if (importer.textureType == TextureImporterType.Sprite) continue;
+
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.maxTextureSize = name == "WallBG" ? 8192 : 4096;
+                importer.SaveAndReimport();
+            }
+        }
+
+        // Laid out in the wall canvas's units, at Display 2's proportions (about 1650 x 435), on the
+        // mini game's design: the title tape top left of centre, the clue panel under it, the time
+        // and the WANTED poster to their right, and the six suspects on their plates along the bottom.
         private static LineupWall BuildWall()
         {
+            UseWallArtAsSprites();
             var root = new GameObject("Lineup Wall", typeof(RectTransform));
             var rect = root.GetComponent<RectTransform>();
             Place(rect, Vector2.zero, WallSize);
             var wall = root.AddComponent<LineupWall>();
-
-            Image background = UiImage("Background", rect, Load<Sprite>(WallBackgroundPath), Color.white);
-            Stretch(background.rectTransform);
-            Image shade = UiImage("Shade", rect, null, new Color(0.02f, 0.03f, 0.08f, 0.25f));
-            Stretch(shade.rectTransform);
-
-            TMP_Text title = UiText("Title", rect, "WHO IS THE BIG BOSS?", 62f, Gold, new Vector2(0f, 162f), new Vector2(1100f, 80f));
-            TMP_Text line = UiText("Line", rect, "STAND ON A SUSPECT TO LOCK IN", 30f, Color.white, new Vector2(0f, 112f), new Vector2(1100f, 40f));
-
-            Image witness = UiImage("Witness", rect, Load<Sprite>(WitnessPath), Color.white);
-            witness.preserveAspect = true;
-            Place(witness.rectTransform, new Vector2(-615f, -15f), new Vector2(300f, 300f));
-            UiText("Witness Label", rect, "WITNESS", 28f, Gold, new Vector2(-615f, -185f), new Vector2(260f, 36f));
-
             var serialized = new SerializedObject(wall);
+
+            Image background = UiImage("Background", rect, Load<Sprite>(WallArt + "WallBG.png"), Color.white);
+            FillWall(background.rectTransform);
+
+            // The title on the black part of the tape (the handcuff hangs off its right end).
+            Image tape = Fitted("Title Tape", rect, "TitleTape", new Vector2(-158f, 138f), 116f);
+            Vector2 tapeSize = tape.rectTransform.sizeDelta;
+            TMP_Text title = UiText("Title", tape.rectTransform, "WHO IS THE BIG BOSS?", 40f, Title, new Vector2(-0.07f * tapeSize.x, -0.21f * tapeSize.y), new Vector2(0.72f * tapeSize.x, 0.48f * tapeSize.y));
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 20f;
+            title.fontSizeMax = 44f;
+            AddTitleShine(tape);
+
+            // The clues, side by side on the cream panel: each a picture with a tick or a cross.
+            Image panel = Fitted("Clue Panel", rect, "CluePanel", new Vector2(-96f, 31f), 112f);
             SerializedProperty cards = serialized.FindProperty("cards");
             cards.arraySize = 4;
             for (int i = 0; i < 4; i++)
             {
-                RectTransform card = UiRect($"Clue {i + 1}", rect);
-                Place(card, new Vector2((i - 1.5f) * 215f, -40f), new Vector2(190f, 230f));
-                Image panel = UiImage("Panel", card, Load<Sprite>(Art + "Card.png"), new Color(0.98f, 0.93f, 0.8f, 1f));
-                panel.type = Image.Type.Sliced;
-                Stretch(panel.rectTransform);
-                Image icon = UiImage("Icon", card, Load<Sprite>(Art + "Icon_Earring.png"), Color.white);
+                RectTransform card = UiRect($"Clue {i + 1}", panel.rectTransform);
+                Place(card, new Vector2((i - 1.5f) * 120f, 4f), new Vector2(100f, 90f));
+                Image icon = UiImage("Icon", card, Load<Sprite>(Art + "Icon_Hat.png"), Color.white);
                 icon.preserveAspect = true;
-                Place(icon.rectTransform, new Vector2(0f, 22f), new Vector2(150f, 150f));
+                Place(icon.rectTransform, Vector2.zero, new Vector2(78f, 78f));
                 Image badge = UiImage("Badge", card, Load<Sprite>(Art + "Badge_Yes.png"), Color.white);
                 badge.preserveAspect = true;
-                Place(badge.rectTransform, new Vector2(66f, 92f), new Vector2(70f, 70f));
-                TMP_Text label = UiText("Label", card, "EARRING", 30f, Ink, new Vector2(0f, -86f), new Vector2(180f, 44f));
-                label.enableAutoSizing = true;
-                label.fontSizeMin = 18f;
-                label.fontSizeMax = 30f;
+                Place(badge.rectTransform, new Vector2(30f, -26f), new Vector2(32f, 32f));
 
                 SerializedProperty entry = cards.GetArrayElementAtIndex(i);
                 entry.FindPropertyRelative("root").objectReferenceValue = card;
                 entry.FindPropertyRelative("icon").objectReferenceValue = icon;
                 entry.FindPropertyRelative("badge").objectReferenceValue = badge;
-                entry.FindPropertyRelative("label").objectReferenceValue = label;
+                entry.FindPropertyRelative("label").objectReferenceValue = null;
             }
 
-            RectTransform group = UiRect("Countdown", rect);
-            Place(group, new Vector2(615f, -10f), new Vector2(260f, 260f));
-            TMP_Text countdown = UiText("Seconds", group, "25", 120f, Gold, new Vector2(0f, 10f), new Vector2(260f, 140f));
-            UiText("Label", group, "LOCK IN!", 30f, Color.white, new Vector2(0f, -100f), new Vector2(260f, 40f));
+            // The time left, on the blue part of the TIME panel.
+            Image time = Fitted("Time", rect, "TimePanel", new Vector2(142f, 122f), 77f);
+            Vector2 timeSize = time.rectTransform.sizeDelta;
+            TMP_Text countdown = UiText("Seconds", time.rectTransform, "00:24", 40f, Color.white, new Vector2(0.17f * timeSize.x, -0.12f * timeSize.y), new Vector2(0.5f * timeSize.x, 0.55f * timeSize.y));
+            countdown.enableAutoSizing = true;
+            countdown.fontSizeMin = 16f;
+            countdown.fontSizeMax = 44f;
 
-            AddCulpritPanel(rect, serialized);
-            AddRewardPanel(rect, serialized);
+            // The WANTED poster: what a right answer pays now on its strip, and at the reveal the
+            // culprit in its picture, stamped CAUGHT.
+            Image wanted = Fitted("Wanted", rect, "WantedPoster", new Vector2(251f, 52f), 156f);
+            Vector2 wantedSize = wanted.rectTransform.sizeDelta;
+            TMP_Text reward = UiText("Reward", wanted.rectTransform, "20$", 30f, Ink, new Vector2(0f, -0.32f * wantedSize.y), new Vector2(0.7f * wantedSize.x, 0.13f * wantedSize.y));
+            reward.enableAutoSizing = true;
+            reward.fontSizeMin = 12f;
+            reward.fontSizeMax = 32f;
+            RectTransform culprit = UiRect("Culprit", wanted.rectTransform);
+            Place(culprit, new Vector2(0f, 0.1f * wantedSize.y), new Vector2(0.78f * wantedSize.x, 0.42f * wantedSize.y));
+            // The poster's own photo brown, over its question mark.
+            Image photo = UiImage("Photo", culprit, null, new Color(0.62f, 0.47f, 0.34f, 1f));
+            Stretch(photo.rectTransform);
+            Image culpritPicture = UiImage("Picture", culprit, Load<Sprite>("Assets/ART/Thif/Cat/Cat.png"), Color.white);
+            culpritPicture.preserveAspect = true;
+            Stretch(culpritPicture.rectTransform);
+            TMP_Text stamp = UiText("Stamp", culprit, "CAUGHT", 34f, new Color(0.86f, 0.12f, 0.1f, 1f), Vector2.zero, new Vector2(150f, 44f));
+            stamp.fontSharedMaterial = LoadGuid<Material>(OutlinedFontGuid);
+            stamp.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 14f);
+            culprit.gameObject.SetActive(false);
+
+            // The suspects along the bottom, each over its plate of what it carries.
+            Sprite plate = Load<Sprite>(WallArt + "ItemPlate.png");
+            SerializedProperty row = serialized.FindProperty("lineup");
+            row.arraySize = RowSlots;
+            for (int i = 0; i < RowSlots; i++)
+            {
+                RectTransform slot = UiRect($"Suspect {i + 1}", rect);
+                Place(slot, new Vector2((i - (RowSlots - 1) * 0.5f) * RowSpacing, -110f), new Vector2(170f, 140f));
+                // The body is behind its plate, its feet tucked a little under the plate's top edge.
+                Image body = UiImage("Body", slot, Load<Sprite>("Assets/ART/Thif/Cat/Cat.png"), Color.white);
+                body.preserveAspect = true;
+                Place(body.rectTransform, RowBodySpot, RowBodySize);
+                Image plateImage = UiImage("Plate", slot, plate, Color.white);
+                plateImage.preserveAspect = true;
+                Place(plateImage.rectTransform, new Vector2(0f, -35f), new Vector2(160f, 54f));
+                SerializedProperty entry = row.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("root").objectReferenceValue = slot;
+                entry.FindPropertyRelative("body").objectReferenceValue = body;
+                SerializedProperty items = entry.FindPropertyRelative("items");
+                items.arraySize = 3;
+                for (int k = 0; k < 3; k++)
+                {
+                    Image item = UiImage($"Item {k + 1}", slot, Load<Sprite>(Art + "Cap.png"), Color.white);
+                    item.preserveAspect = true;
+                    Place(item.rectTransform, new Vector2((k - 1) * 42f, -35f), new Vector2(38f, 38f));
+                    items.GetArrayElementAtIndex(k).objectReferenceValue = item;
+                }
+            }
+
             serialized.FindProperty("title").objectReferenceValue = title;
-            serialized.FindProperty("line").objectReferenceValue = line;
-            serialized.FindProperty("countdownGroup").objectReferenceValue = group.gameObject;
+            serialized.FindProperty("line").objectReferenceValue = null;
+            serialized.FindProperty("countdownGroup").objectReferenceValue = time.gameObject;
             serialized.FindProperty("countdown").objectReferenceValue = countdown;
+            serialized.FindProperty("countdownFormat").stringValue = "{1:00}:{2:00}";
             serialized.FindProperty("yes").objectReferenceValue = Load<Sprite>(Art + "Badge_Yes.png");
             serialized.FindProperty("no").objectReferenceValue = Load<Sprite>(Art + "Badge_No.png");
+            serialized.FindProperty("rewardPanel").objectReferenceValue = reward.rectTransform;
+            serialized.FindProperty("rewardText").objectReferenceValue = reward;
+            serialized.FindProperty("rewardFormat").stringValue = "{0}$";
+            serialized.FindProperty("culprit").objectReferenceValue = culprit;
+            serialized.FindProperty("culpritPicture").objectReferenceValue = culpritPicture;
+            serialized.FindProperty("culpritStamp").objectReferenceValue = stamp.rectTransform;
+            serialized.FindProperty("culpritStrip").objectReferenceValue = null;
+            serialized.FindProperty("culpritItems").arraySize = 0;
+            FillSpeciesFits(serialized);
+            AddCaughtStamp(rect, serialized);
+            serialized.FindProperty("cardFloat").floatValue = ClueFloat;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, WallPath);
             Object.DestroyImmediate(root);
             return saved.GetComponent<LineupWall>();
+        }
+
+        // Each suspect's body in its slot: bigger than its plate, standing a little into it.
+        private static readonly Vector2 RowBodySpot = new Vector2(0f, 42f);
+        private static readonly Vector2 RowBodySize = new Vector2(150f, 130f);
+        private const string SlowEntranceKey = "BountyHunter.Lineup.SlowEntrance.v1";
+
+        // Once per machine: the suspects' entrance plays slower (asked for after the first try), on the
+        // wall prefab and on the open scene's floor and puzzle. Only a value still at the first try's
+        // number changes; one already set by hand stays.
+        public static void SlowEntranceOnce()
+        {
+            if (EditorPrefs.GetBool(SlowEntranceKey, false)) return;
+            var puzzle = Object.FindFirstObjectByType<LineupPuzzle>(FindObjectsInactive.Include);
+            if (puzzle == null || AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath) == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var wall = new SerializedObject(contents.GetComponent<LineupWall>());
+            bool wallChanged = Slow(wall, ("dropSeconds", 0.35f, 0.5f), ("silhouetteSeconds", 0.3f, 0.45f), ("litSeconds", 0.25f, 0.4f), ("itemGap", 0.08f, 0.12f));
+            if (wallChanged) PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+
+            bool sceneChanged = Slow(new SerializedObject(puzzle), ("suspectGapSeconds", 0.45f, 0.65f));
+            var floor = puzzle.GetComponent<LineupFloor>();
+            if (floor != null) sceneChanged |= Slow(new SerializedObject(floor), ("silhouetteSeconds", 0.3f, 0.45f), ("litSeconds", 0.25f, 0.4f), ("spotFlashSeconds", 0.6f, 0.8f));
+            if (sceneChanged) EditorSceneManager.MarkSceneDirty(puzzle.gameObject.scene);
+
+            EditorPrefs.SetBool(SlowEntranceKey, true);
+            Debug.Log("[LineupPrefabBuilder] The suspects now come in more slowly; save the scene to keep it.");
+        }
+
+        private const string FortySecondsKey = "BountyHunter.Lineup.FortySeconds.v1";
+
+        // Once per machine: the open scene's lineup gives 40 seconds to answer instead of 28 (clues 9
+        // seconds apart instead of 6, 10 seconds after the last instead of 7). Values set by hand stay.
+        public static void FortySecondsOnce()
+        {
+            if (EditorPrefs.GetBool(FortySecondsKey, false)) return;
+            var puzzle = Object.FindFirstObjectByType<LineupPuzzle>(FindObjectsInactive.Include);
+            if (puzzle == null) return;
+
+            if (Slow(new SerializedObject(puzzle), ("clueGapSeconds", 6f, 9f), ("lastClueSeconds", 7f, 10f)))
+            {
+                EditorSceneManager.MarkSceneDirty(puzzle.gameObject.scene);
+                Debug.Log("[LineupPrefabBuilder] The lineup now gives 40 seconds to answer; save the scene to keep it.");
+            }
+
+            EditorPrefs.SetBool(FortySecondsKey, true);
+        }
+
+        // Sets each field from its old value to its new one, if it still has the old one.
+        private static bool Slow(SerializedObject target, params (string Field, float Was, float Now)[] fields)
+        {
+            bool changed = false;
+            foreach ((string field, float was, float now) in fields)
+            {
+                SerializedProperty property = target.FindProperty(field);
+                if (property == null || !Mathf.Approximately(property.floatValue, was)) continue;
+
+                property.floatValue = now;
+                changed = true;
+            }
+
+            if (changed) target.ApplyModifiedPropertiesWithoutUndo();
+            return changed;
+        }
+
+        // The CAUGHT stamp that slams onto the culprit at the reveal: big red outlined words, tilted,
+        // hidden until then.
+        private static void AddCaughtStamp(RectTransform wall, SerializedObject serialized)
+        {
+            TMP_Text stamp = UiText("Caught Stamp", wall, "CAUGHT", 96f, new Color(0.86f, 0.12f, 0.1f, 1f), new Vector2(-52f, -12f), new Vector2(460f, 120f));
+            stamp.fontSharedMaterial = LoadGuid<Material>(OutlinedFontGuid);
+            stamp.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 14f);
+            stamp.gameObject.SetActive(false);
+            serialized.FindProperty("caughtStamp").objectReferenceValue = stamp.rectTransform;
+        }
+
+        // Gives a wall prefab in the new design the CAUGHT stamp for the culprit, if it has none.
+        public static void AddCaughtStampIfMissing()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || !prefab.HasLineupRow || prefab.HasCaughtStamp) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var serialized = new SerializedObject(contents.GetComponent<LineupWall>());
+            AddCaughtStamp(contents.GetComponent<RectTransform>(), serialized);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall: CAUGHT now slams onto the culprit itself; the poster keeps its question mark.");
+        }
+
+        // Takes out the CASE CLOSED stamp a wall prefab was given for a while (it was not wanted).
+        public static void DropCaseClosed()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || prefab.transform.Find("Case Closed") == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            Transform stamp = contents.transform.Find("Case Closed");
+            if (stamp != null) Object.DestroyImmediate(stamp.gameObject);
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall no longer has the CASE CLOSED stamp.");
+        }
+
+        // A band of light sweeping across the title tape now and then (the words too), clipped to the
+        // tape's shape: the same make as the result screen's shine (a ShineSweep on a Mask).
+        private static void AddTitleShine(Image tape)
+        {
+            RectTransform host = UiRect("Shine Mask", tape.rectTransform);
+            Stretch(host);
+            host.SetAsLastSibling();
+            Image shape = host.gameObject.AddComponent<Image>();
+            shape.sprite = tape.sprite;
+            shape.raycastTarget = false;
+            host.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+
+            RectTransform band = UiRect("Shine", host);
+            band.anchorMin = new Vector2(0.45f, -0.35f);
+            band.anchorMax = new Vector2(0.55f, 1.35f);
+            band.offsetMin = Vector2.zero;
+            band.offsetMax = Vector2.zero;
+            band.localRotation = Quaternion.Euler(0f, 0f, -20f);
+            var light = band.gameObject.AddComponent<RawImage>();
+            light.color = new Color(1f, 1f, 1f, 0.3f);
+            light.raycastTarget = false;
+
+            var sweep = host.gameObject.AddComponent<ShineSweep>();
+            var serialized = new SerializedObject(sweep);
+            serialized.FindProperty("band").objectReferenceValue = band;
+            serialized.FindProperty("delaySeconds").floatValue = 1f;
+            serialized.FindProperty("everySeconds").floatValue = 3.5f;
+            serialized.FindProperty("sweepSeconds").floatValue = 0.9f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // Gives a wall prefab in the new design the shine over its title, if it has none.
+        public static void AddTitleShineIfMissing()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || !prefab.HasLineupRow) return;
+
+            Transform tape = prefab.transform.Find("Title Tape");
+            if (tape == null || tape.Find("Shine Mask") != null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var inside = contents.transform.Find("Title Tape")?.GetComponent<Image>();
+            if (inside != null)
+            {
+                AddTitleShine(inside);
+                PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+                Debug.Log("[LineupPrefabBuilder] A band of light now sweeps across WHO IS THE BIG BOSS? now and then.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        // The background is exactly the wall's size, which is the art's own shape (8192 x 2160), so
+        // nothing of it is squeezed or cut off.
+        private static void FillWall(RectTransform background)
+        {
+            Place(background, Vector2.zero, WallSize);
+        }
+
+        // The scene's Lineup Wall once had its size set to stretch over SideDisplay (1536 x 435,
+        // narrower than the wall), which squeezed the background and left the wall's edges black: the
+        // scene's copy goes back to the prefab's size, and a background made 10% too big to hide those
+        // edges goes back to the wall's size.
+        public static void FitWallBackground()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || !prefab.HasLineupRow) return;
+
+            foreach (LineupWall wall in Object.FindObjectsByType<LineupWall>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var rect = (RectTransform)wall.transform;
+                if (PrefabUtility.GetCorrespondingObjectFromSource(wall) != prefab || rect.anchorMin == rect.anchorMax) continue;
+
+                PrefabUtility.RevertObjectOverride(rect, InteractionMode.AutomatedAction);
+                EditorSceneManager.MarkSceneDirty(wall.gameObject.scene);
+                Debug.Log("[LineupPrefabBuilder] The scene's Lineup Wall is back to the wall's own size, so the background is no longer squeezed; save the scene to keep it.");
+            }
+
+            var background = prefab.transform.Find("Background") as RectTransform;
+            if (background == null || Mathf.Abs(background.sizeDelta.x - WallSize.x * 1.1f) > 1f) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            if (contents.transform.Find("Background") is RectTransform inside) FillWall(inside);
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall's background is the wall's own size again (the whole picture shows).");
+        }
+
+        // One entry per species in the cast, at size 1 and no nudge, to tune by hand in the prefab.
+        private static void FillSpeciesFits(SerializedObject wall)
+        {
+            SerializedProperty fits = wall.FindProperty("speciesFits");
+            fits.arraySize = Lineup.Length;
+            for (int i = 0; i < Lineup.Length; i++)
+            {
+                SerializedProperty fit = fits.GetArrayElementAtIndex(i);
+                fit.FindPropertyRelative("species").stringValue = Lineup[i].Species;
+                fit.FindPropertyRelative("body").objectReferenceValue = Load<Sprite>(Lineup[i].Body);
+                fit.FindPropertyRelative("scale").floatValue = 1f;
+                fit.FindPropertyRelative("offset").vector2Value = Vector2.zero;
+            }
+        }
+
+        // Gives a wall prefab made in the new design before these were tuned: a background that
+        // overfills the wall, bigger suspects standing behind their plates, and per-species sizes.
+        // Everything else in the prefab is kept.
+        public static void TuneWallRow()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || !prefab.HasLineupRow || prefab.HasSpeciesFits) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var serialized = new SerializedObject(contents.GetComponent<LineupWall>());
+            Transform background = contents.transform.Find("Background");
+            if (background is RectTransform backgroundRect && backgroundRect.anchorMax == Vector2.one) FillWall(backgroundRect);
+
+            SerializedProperty row = serialized.FindProperty("lineup");
+            for (int i = 0; i < row.arraySize; i++)
+            {
+                var body = (Image)row.GetArrayElementAtIndex(i).FindPropertyRelative("body").objectReferenceValue;
+                if (body == null) continue;
+
+                Place(body.rectTransform, RowBodySpot, RowBodySize);
+                body.transform.SetAsFirstSibling();
+            }
+
+            FillSpeciesFits(serialized);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall: the background fills the wall, the suspects are bigger behind their plates, and each species' size can be set under Species Fits.");
+        }
+
+        // The wall's poster price looks like the bounty posters' (Prefabs/UI/Post*.prefab): Bebas bold
+        // in near-black red, no outline, a fifth of the poster tall, a third of the way down from
+        // the poster's middle.
+        private static readonly Color PosterInk = new Color(0.098f, 0f, 0f, 1f);
+        private const float PriceHeightShare = 0.2f;
+        private const float PriceDropShare = 0.337f;
+        private const string MatchedRowKey = "BountyHunter.LineupWall.MatchedRow.v1";
+
+        // Once per machine: the layout of Suspect 1 (tuned by hand) goes to the other suspects, and the
+        // poster price takes the bounty posters' look.
+        public static void MatchRowAndRewardOnce()
+        {
+            if (EditorPrefs.GetBool(MatchedRowKey, false)) return;
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || !prefab.HasLineupRow) return;
+
+            CopyFirstSuspectLayout();
+            StyleRewardLikePosters();
+            EditorPrefs.SetBool(MatchedRowKey, true);
+        }
+
+        // Tools > Bounty Hunter > Copy Suspect 1 Layout To All: every suspect in the wall's row takes
+        // Suspect 1's layout (where its body, plate and items sit and how big), keeping its own place
+        // along the row.
+        [MenuItem("Tools/Bounty Hunter/Copy Suspect 1 Layout To All")]
+        public static void CopyFirstSuspectLayout()
+        {
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            Transform first = contents.transform.Find("Suspect 1");
+            if (first == null)
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+                Debug.LogError("[LineupPrefabBuilder] Lineup Wall has no Suspect 1 to copy");
+                return;
+            }
+
+            for (int slot = 2; contents.transform.Find($"Suspect {slot}") is Transform other; slot++)
+            {
+                var otherRect = (RectTransform)other;
+                otherRect.sizeDelta = ((RectTransform)first).sizeDelta;
+                otherRect.anchoredPosition = new Vector2(otherRect.anchoredPosition.x, ((RectTransform)first).anchoredPosition.y);
+                otherRect.localScale = first.localScale;
+                foreach (Transform piece in first)
+                {
+                    if (!(other.Find(piece.name) is RectTransform target)) continue;
+
+                    var source = (RectTransform)piece;
+                    target.anchorMin = source.anchorMin;
+                    target.anchorMax = source.anchorMax;
+                    target.pivot = source.pivot;
+                    target.anchoredPosition = source.anchoredPosition;
+                    target.sizeDelta = source.sizeDelta;
+                    target.localScale = source.localScale;
+                    target.localRotation = source.localRotation;
+                    target.SetSiblingIndex(piece.GetSiblingIndex());
+                }
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Every suspect in Lineup Wall's row now has Suspect 1's layout.");
+        }
+
+        // The price on the wall's WANTED poster in the bounty posters' look, sized to the poster.
+        public static void StyleRewardLikePosters()
+        {
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            var wanted = contents.transform.Find("Wanted") as RectTransform;
+            var reward = wanted != null ? wanted.Find("Reward")?.GetComponent<TMP_Text>() : null;
+            if (reward != null)
+            {
+                Vector2 poster = wanted.sizeDelta;
+                var font = LoadGuid<TMP_FontAsset>(FontGuid);
+                reward.font = font;
+                if (font != null) reward.fontSharedMaterial = font.material;
+                reward.color = PosterInk;
+                reward.fontStyle = FontStyles.Bold;
+                reward.enableAutoSizing = false;
+                reward.fontSize = poster.y * PriceHeightShare;
+                reward.alignment = TextAlignmentOptions.Center;
+                reward.textWrappingMode = TextWrappingModes.NoWrap;
+                Place(reward.rectTransform, new Vector2(0f, -PriceDropShare * poster.y), new Vector2(poster.x, poster.y * 0.3f));
+                PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+                Debug.Log("[LineupPrefabBuilder] The WANTED poster's price on Lineup Wall now looks like the bounty posters'.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        // How far the clues float up and down on their panel (wall units).
+        private const float ClueFloat = 2f;
+
+        // Takes the rocking off the wall's panels and background (it made people dizzy): a wall prefab
+        // with an Idle Sway on its root loses it. The suspects, what they carry and the clues still move.
+        public static void KeepPanelsStill()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<LineupWall>(WallPath);
+            if (prefab == null || prefab.GetComponent<IdleSway>() == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            Object.DestroyImmediate(contents.GetComponent<IdleSway>());
+            var wall = new SerializedObject(contents.GetComponent<LineupWall>());
+            wall.FindProperty("cardFloat").floatValue = ClueFloat;
+            wall.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[LineupPrefabBuilder] Lineup Wall's panels and background stay still now.");
+        }
+
+        // A picture of the wall's art at height (wall units), as wide as its own shape makes it.
+        private static Image Fitted(string name, Transform parent, string art, Vector2 position, float height)
+        {
+            Sprite sprite = Load<Sprite>(WallArt + art + ".png");
+            Image image = UiImage(name, parent, sprite, Color.white);
+            float width = sprite != null ? height * sprite.rect.width / sprite.rect.height : height;
+            Place(image.rectTransform, position, new Vector2(width, height));
+            return image;
         }
 
         private static void WireScene(LineupSuspectView suspectPrefab, LineupWall wallPrefab)

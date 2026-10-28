@@ -5,24 +5,18 @@ using UnityEngine;
 namespace BountyHunter.Thieves
 {
     // The suspect lineup on the floor: six suspects (each a Lineup Suspect prefab, see
-    // LineupSuspectView) standing in a row across the middle on a dark band, each showing over its
-    // head what the case gives it to carry (a hat, disguises, the money bag).
+    // LineupSuspectView) standing in a row across the middle on a dark band. What the case gives each
+    // to carry (a hat, disguises, the money bag) shows on the wall under it, or over its head here
+    // when Items Over Heads is on.
     // A player locks an answer in by standing on a suspect's ring until it fills (LineupPuzzle drives the fill); the suspect bounces
     // to say so. Answers stay secret: a player who has answered only gets a tick in the middle of
-    // their marker, which follows them about. At the reveal the others fade back (their rows stay
-    // clear) and the culprit swells under its spotlight (the CAUGHT stamp is on the wall only); then
-    // the whole lineup swells a little and shrinks away, one after another, before the wall shows the
-    // culprit. Lies flat on the floor, its top toward the wall.
+    // their marker, which follows them about. At the reveal the whole lineup shrinks away, one after
+    // another (the wall shows the culprit). Lies flat on the floor, its top toward the wall.
     public sealed class LineupFloor : MonoBehaviour
     {
         private const float Height = 0.03f;
         private const int BandOrder = 1;
         private const int PickOrder = 23;
-        // Parts of the reveal's swellSeconds: the light comes up over the first LightPart, the others
-        // fade back over the first DimPart, and the culprit's swell starts SwellDelay in.
-        private const float LightPart = 0.5f;
-        private const float DimPart = 0.6f;
-        private const float SwellDelay = 0.2f;
 
         [SerializeField] private LineupSuspectView suspectPrefab;
 
@@ -34,6 +28,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private Color bandColor = new Color(0.05f, 0.06f, 0.12f, 0.55f);
 
         [Header("Worn by the suspects")]
+        // Off: the floor shows the suspects only, and what they carry is on the wall's row.
+        [SerializeField] private bool itemsOverHeads;
         [SerializeField] private Sprite cap;
         [SerializeField] private Sprite beanie;
         [SerializeField] private Sprite mask;
@@ -53,21 +49,18 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.05f)] private float pickBounceSeconds = 0.35f;
 
         [Header("Motion")]
-        [SerializeField, Min(0f)] private float entranceStagger = 0.12f;
         [SerializeField, Min(0.05f)] private float popSeconds = 0.4f;
+        // A suspect's entrance (Introduce): it pops up as a black silhouette, and silhouetteSeconds
+        // later its spotlight flashes on and it is lit up over litSeconds.
+        [SerializeField, Min(0f)] private float silhouetteSeconds = 0.45f;
+        [SerializeField, Min(0.05f)] private float litSeconds = 0.4f;
+        [SerializeField, Min(0.05f)] private float spotFlashSeconds = 0.8f;
         [SerializeField, Range(0f, 0.1f)] private float breathe = 0.02f;
-        // How long the culprit takes to swell up and shrink back at the reveal, and how much it swells.
-        [SerializeField, Min(0.05f)] private float swellSeconds = 1.2f;
-        [SerializeField, Range(0f, 1f)] private float revealSwell = 0.35f;
-        // A breath after the culprit's swell, before the lineup shrinks away.
-        [SerializeField, Min(0f)] private float afterSwellSeconds = 0.5f;
-        // The lineup leaving the floor: each suspect swells by shrinkSwell and shrinks to nothing over
-        // shrinkSeconds, one shrinkStagger after another, the band fading with them.
+        // The reveal (Reveal): the lineup leaves the floor, each suspect swelling by shrinkSwell and
+        // shrinking to nothing over shrinkSeconds, one shrinkStagger after another, the band fading.
         [SerializeField, Min(0.05f)] private float shrinkSeconds = 0.55f;
         [SerializeField, Min(0f)] private float shrinkStagger = 0.07f;
         [SerializeField, Range(0f, 0.5f)] private float shrinkSwell = 0.12f;
-        // How much the others fade at the reveal (their alpha).
-        [SerializeField, Range(0f, 1f)] private float revealDim = 0.3f;
 
         private readonly List<LineupSuspectView> suspects = new List<LineupSuspectView>();
         private readonly List<List<Sprite>> carriedBy = new List<List<Sprite>>();
@@ -115,13 +108,63 @@ namespace BountyHunter.Thieves
                 view.transform.localPosition = new Vector3(x, Height, rowZ);
                 List<Sprite> carried = Carried(suspect);
                 carriedBy.Add(carried);
-                view.Show(looks[suspect.Species], carried);
+                view.Show(looks[suspect.Species], itemsOverHeads ? carried : (IReadOnlyList<Sprite>)System.Array.Empty<Sprite>());
                 suspects.Add(view);
                 phases.Add(Random.Range(0f, 6f));
                 figureSizes.Add(view.Figure.localScale);
-                StartCoroutine(Pop(view.Figure, view.Figure.localScale, i * entranceStagger));
-                if (view.Items != null) StartCoroutine(Pop(view.Items, view.Items.localScale, i * entranceStagger + 0.1f));
+                // Off the floor until it is introduced.
+                view.Figure.localScale = Vector3.zero;
+                if (view.Items != null) view.Items.gameObject.SetActive(false);
+                view.SetLit(0f);
             }
+        }
+
+        // How long one suspect's entrance takes, until it is fully lit and its spotlight has faded.
+        public float EntranceSeconds => Mathf.Max(popSeconds, silhouetteSeconds + Mathf.Max(litSeconds, spotFlashSeconds));
+
+        // Brings suspect index in: a silhouette pops up, its spotlight flashes on and it is lit up.
+        public void Introduce(int index)
+        {
+            if (index < 0 || index >= suspects.Count) return;
+            StartCoroutine(Entrance(index));
+        }
+
+        private IEnumerator Entrance(int index)
+        {
+            LineupSuspectView view = suspects[index];
+            StartCoroutine(Pop(view.Figure, figureSizes[index], 0f));
+            if (silhouetteSeconds > 0f) yield return new WaitForSeconds(silhouetteSeconds);
+
+            if (view.Spotlight != null) StartCoroutine(FlashSpot(view.Spotlight));
+            if (itemsOverHeads && view.Items != null)
+            {
+                view.Items.gameObject.SetActive(true);
+                StartCoroutine(Pop(view.Items, view.Items.localScale, 0.1f));
+            }
+
+            for (float time = 0f; time < litSeconds; time += Time.deltaTime)
+            {
+                view.SetLit(Smooth(time / litSeconds));
+                yield return null;
+            }
+
+            view.SetLit(1f);
+        }
+
+        // The spotlight comes up bright under the suspect and fades away again, back off as before.
+        private IEnumerator FlashSpot(SpriteRenderer spot)
+        {
+            float alpha = spot.color.a;
+            spot.gameObject.SetActive(true);
+            for (float time = 0f; time < spotFlashSeconds; time += Time.deltaTime)
+            {
+                float u = time / spotFlashSeconds;
+                SetAlpha(spot, alpha * (u < 0.2f ? u / 0.2f : 1f - Smooth((u - 0.2f) / 0.8f)));
+                yield return null;
+            }
+
+            SetAlpha(spot, alpha);
+            spot.gameObject.SetActive(false);
         }
 
         public void Hide()
@@ -179,74 +222,13 @@ namespace BountyHunter.Thieves
             bounces[index] = StartCoroutine(Swell(index));
         }
 
-        public IEnumerator Reveal(int culprit)
-        {
-            if (culprit < 0 || culprit >= suspects.Count) yield break;
-
-            LineupSuspectView caught = suspects[culprit];
-            SpriteRenderer spot = caught.Spotlight;
-            Vector3 spotScale = spot != null ? spot.transform.localScale : Vector3.one;
-            float spotAlpha = spot != null ? spot.color.a : 0f;
-            if (spot != null)
-            {
-                SetAlpha(spot, 0f);
-                spot.gameObject.SetActive(true);
-            }
-
-            // Three overlapping moves, each eased in and out so nothing snaps: the spotlight brightens
-            // and opens up under the culprit, the others fade back, and a moment after the light the
-            // culprit swells up and settles back to its size.
-            Vector3 figureScale = caught.Figure.localScale;
-            for (float time = 0f; time < swellSeconds; time += Time.deltaTime)
-            {
-                float u = time / swellSeconds;
-                float light = Smooth(u / LightPart);
-                if (spot != null)
-                {
-                    spot.transform.localScale = spotScale * Mathf.Lerp(0.6f, 1f, light);
-                    SetAlpha(spot, spotAlpha * light);
-                }
-
-                float dim = Smooth(u / DimPart);
-                for (int i = 0; i < suspects.Count; i++)
-                {
-                    if (i != culprit) suspects[i].SetBodyAlpha(Mathf.Lerp(1f, revealDim, dim));
-                }
-
-                float swell = Smooth((u - SwellDelay) / (1f - SwellDelay));
-                caught.Figure.localScale = figureScale * (1f + revealSwell * Mathf.Sin(Mathf.PI * swell));
-                yield return null;
-            }
-
-            if (spot != null)
-            {
-                spot.transform.localScale = spotScale;
-                SetAlpha(spot, spotAlpha);
-            }
-
-            caught.Figure.localScale = figureScale;
-            if (afterSwellSeconds > 0f) yield return new WaitForSeconds(afterSwellSeconds);
-        }
-
-        // Clamped to 0..1 and eased in and out.
-        private static float Smooth(float u)
-        {
-            u = Mathf.Clamp01(u);
-            return u * u * (3f - 2f * u);
-        }
-
-        // The whole lineup swells a little and shrinks away, left to right, the band fading with it.
-        public IEnumerator ShrinkAway()
+        // The reveal on the floor: the whole lineup, culprit and all, swells a little and shrinks away
+        // one after another, left to right, the band fading with it (the wall shows who it was).
+        public IEnumerator Reveal()
         {
             var sizes = new List<Vector3>();
             foreach (LineupSuspectView suspect in suspects) sizes.Add(suspect.transform.localScale);
             float bandAlpha = band != null ? band.color.a : 0f;
-            var spots = new List<(SpriteRenderer Light, float Alpha)>();
-            foreach (LineupSuspectView suspect in suspects)
-            {
-                if (suspect.Spotlight != null && suspect.Spotlight.gameObject.activeSelf) spots.Add((suspect.Spotlight, suspect.Spotlight.color.a));
-            }
-
             float total = shrinkSeconds + shrinkStagger * Mathf.Max(0, suspects.Count - 1);
             for (float time = 0f; time < total; time += Time.deltaTime)
             {
@@ -256,14 +238,19 @@ namespace BountyHunter.Thieves
                     suspects[i].transform.localScale = sizes[i] * ShrinkCurve(u);
                 }
 
-                float left = 1f - Smooth(time / total);
-                if (band != null) SetAlpha(band, bandAlpha * left);
-                foreach ((SpriteRenderer light, float alpha) in spots) SetAlpha(light, alpha * left);
+                if (band != null) SetAlpha(band, bandAlpha * (1f - Smooth(time / total)));
                 yield return null;
             }
 
             foreach (LineupSuspectView suspect in suspects) suspect.gameObject.SetActive(false);
             if (band != null) SetAlpha(band, 0f);
+        }
+
+        // Clamped to 0..1 and eased in and out.
+        private static float Smooth(float u)
+        {
+            u = Mathf.Clamp01(u);
+            return u * u * (3f - 2f * u);
         }
 
         // 1 at the start, up to 1 + shrinkSwell a third of the way, then down to nothing, easing in.

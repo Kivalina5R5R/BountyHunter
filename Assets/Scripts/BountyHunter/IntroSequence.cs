@@ -41,6 +41,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private FadeCurtain curtain;
         [SerializeField, Min(0f)] private float fadeOutSeconds = 0.45f;
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
+        // Shuts over the wall instead of the fade (the floor still fades dark under it); leave empty
+        // to fade through black.
+        [SerializeField] private CageTransition cage;
 
         private Texture gameFloor;
         private float gameFloorAspect;
@@ -126,7 +129,7 @@ namespace BountyHunter.Thieves
         // Raised once the game is on: the first round has begun and the picture is fading back in.
         public event Action GameStarted;
 
-        // Leaves the intro and starts the first round, fading through black.
+        // Leaves the intro and starts the first round, behind the jail cage (or a fade through black).
         public void StartGame()
         {
             if (!showing) return;
@@ -138,7 +141,17 @@ namespace BountyHunter.Thieves
 
         private IEnumerator Transition()
         {
-            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            bool caged = cage != null && cage.IsSetUp;
+            if (caged)
+            {
+                Coroutine floorDark = curtain != null ? StartCoroutine(curtain.CloseFloor(fadeOutSeconds)) : null;
+                yield return cage.Close();
+                if (floorDark != null) yield return floorDark;
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Close(fadeOutSeconds);
+            }
 
             if (introWall != null) introWall.SetActive(false);
             if (playWall != null) playWall.SetActive(true);
@@ -154,7 +167,17 @@ namespace BountyHunter.Thieves
             yield return null;
             if (rounds != null) rounds.Begin();
             GameStarted?.Invoke();
-            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+            if (caged)
+            {
+                // The floor comes back as the doors slide open, over just as long.
+                yield return cage.Hold();
+                if (curtain != null) StartCoroutine(curtain.OpenFloor(cage.OpenSeconds));
+                yield return cage.Open();
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Open(fadeInSeconds);
+            }
         }
 
         // The players who picked a character play; tags that connect from now on are kept out. When
