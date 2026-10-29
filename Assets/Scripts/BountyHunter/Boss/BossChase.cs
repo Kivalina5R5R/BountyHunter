@@ -4,17 +4,16 @@ using Fortal.Players;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
     // The Most Wanted boss chase, played after the last map and before the result (MapSwitcher's
-    // finale). First its entrance, entranceSeconds with the wall reading BOSS CHASE!: rose petals
-    // blow across the floor and wall (BossPetalShower), and once they are about half way through
-    // (roseFromShare of the entrance) the boss's calling card, a red rose, drifts down onto the
-    // bottom and out of the wall (BossRoseFall). As the rose leaves the screen, on the floor a cloud of
-    // smoke puffs up and the boss shows in it and steps out (the smoke bomb's
-    // arrival), then up to chaseSeconds of chasing from the rose landing. A touch makes the boss warp
+    // finale). First its entrance, entranceSeconds with the wall reading BOSS CHASE!: pigeon feathers
+    // blow across the floor and wall (BossFeatherShower). As they go, on the floor a cloud of smoke
+    // puffs up and the boss shows in it and steps out (the smoke bomb's arrival), then up to
+    // chaseSeconds of chasing. A touch makes the boss warp
     // far away (BossController); every one that counts pays catchReward at once (not the very first,
     // nor one while it is disguised). touchesToCatch of them catch it: the clock stops, it is
     // caught in a scuffle and the game waits outroSeconds before the result. When the time runs out
@@ -37,10 +36,9 @@ namespace BountyHunter.Thieves
         // Its footfalls while it runs and the dust it kicks up, as for the thieves; either may be left empty.
         [SerializeField] private GameSfx sounds;
         [SerializeField] private Sprite[] dustSprites;
-        // The rose that drifts down where the boss appears; leave empty to go straight to the smoke.
-        [SerializeField] private Sprite rose;
-        // The petals blowing across the floor while it falls; leave empty for none.
-        [SerializeField] private Sprite rosePetal;
+        // The feathers blowing across the floor and wall in the entrance; leave empty for none.
+        [FormerlySerializedAs("rosePetal")]
+        [SerializeField] private Sprite feather;
 
         [Header("Rooftop")]
         // The boss's own map for the chase: its floor picture (put back afterwards), its wall (the Boss
@@ -57,8 +55,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private Behaviour[] switchOffDuringChase;
         [SerializeField] private Sprite helicopter;
         [SerializeField] private Sprite helicopterRotor;
-        // The petals blow in over this much past the boss's floor (the edges of the floor seen).
-        [SerializeField, Min(0f)] private float petalFloorMargin = 0.35f;
+        // The feathers blow in over this much past the boss's floor (the edges of the floor seen).
+        [FormerlySerializedAs("petalFloorMargin")]
+        [SerializeField, Min(0f)] private float featherFloorMargin = 0.35f;
         // Shows the heading and the time left on the wall.
         [SerializeField] private StageTimer timer;
         // The scuffle played where the boss is caught at the end.
@@ -78,7 +77,6 @@ namespace BountyHunter.Thieves
 
         [Header("Timing (seconds)")]
         [SerializeField, Min(0.5f)] private float entranceSeconds = 4.5f;
-        [SerializeField, Range(0f, 0.9f)] private float roseFromShare = 0.5f;
         [SerializeField, Min(1f)] private float chaseSeconds = 85.5f;
         [SerializeField, Min(0f)] private float outroSeconds = 5f;
         // How many touches (after the first, which it warps away from) catch it.
@@ -105,8 +103,7 @@ namespace BountyHunter.Thieves
         private SpawnerPlayerLocator players;
         private bool skipping;
         private bool ready;
-        private BossRoseFall falling;
-        private BossPetalShower wallPetals;
+        private BossFeatherShower wallFeathers;
         private PictureSwap floorSwap;
         private readonly List<GameObject> putAway = new List<GameObject>();
         private readonly List<Behaviour> switchedOff = new List<Behaviour>();
@@ -177,17 +174,12 @@ namespace BountyHunter.Thieves
             Vector3 middle = Middle();
             Canvas.ForceUpdateCanvases();
             RectTransform wall = wallPanel != null ? wallPanel.transform as RectTransform : null;
-            if (rosePetal != null && floorImage != null && floorImage.canvas != null)
-                BossPetalShower.Begin(rosePetal, PetalFloor(), entranceSeconds, transform, floorImage.canvas.worldCamera);
-            if (rosePetal != null && wall != null) wallPetals = BossPetalShower.BeginOnWall(rosePetal, wall, entranceSeconds);
-            float roseFrom = entranceSeconds * roseFromShare;
-            yield return Until(start + roseFrom);
-            if (rose != null && wall != null) falling = BossRoseFall.Drop(rose, wall, entranceSeconds - roseFrom);
+            if (feather != null && floorImage != null && floorImage.canvas != null)
+                BossFeatherShower.Begin(feather, FeatherFloor(), entranceSeconds, transform, floorImage.canvas.worldCamera);
+            if (feather != null && wall != null) wallFeathers = BossFeatherShower.BeginOnWall(feather, wall, entranceSeconds);
             yield return Until(start + entranceSeconds);
-            while (falling != null && !falling.HasPassed && !skipping) yield return null;
-            if (falling != null) Destroy(falling.gameObject);
             chased.ArriveAt(middle);
-            Debug.Log("[BossChase] The rose leaves the wall; the boss appears in a cloud of smoke", this);
+            Debug.Log("[BossChase] The feathers settle; the boss appears in a cloud of smoke", this);
             float timeUp = start + entranceSeconds + chaseSeconds;
             while (Time.time < timeUp && !skipping && !Caught) yield return null;
 
@@ -228,11 +220,9 @@ namespace BountyHunter.Thieves
         {
             StopAllCoroutines();
             ClearWater();
-            if (falling != null) Destroy(falling.gameObject);
-            falling = null;
-            if (wallPetals != null) Destroy(wallPetals.gameObject);
-            wallPetals = null;
-            foreach (BossPetalShower shower in GetComponentsInChildren<BossPetalShower>()) Destroy(shower.gameObject);
+            if (wallFeathers != null) Destroy(wallFeathers.gameObject);
+            wallFeathers = null;
+            foreach (BossFeatherShower shower in GetComponentsInChildren<BossFeatherShower>()) Destroy(shower.gameObject);
             if (chased != null)
             {
                 chased.Touched -= OnTouched;
@@ -334,9 +324,9 @@ namespace BountyHunter.Thieves
             switchedOff.Clear();
         }
 
-        private Rect PetalFloor()
+        private Rect FeatherFloor()
         {
-            return Rect.MinMaxRect(areaMin.x - petalFloorMargin, areaMin.y - petalFloorMargin, areaMax.x + petalFloorMargin, areaMax.y + petalFloorMargin);
+            return Rect.MinMaxRect(areaMin.x - featherFloorMargin, areaMin.y - featherFloorMargin, areaMax.x + featherFloorMargin, areaMax.y + featherFloorMargin);
         }
 
         private Vector3 Middle()

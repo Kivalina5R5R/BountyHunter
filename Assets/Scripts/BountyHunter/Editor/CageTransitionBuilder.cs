@@ -31,6 +31,7 @@ namespace BountyHunter.Thieves.EditorTools
             }
 
             CageTransitionBuilder.UseNewDoor();
+            CageTransitionBuilder.MeetDoorsAtJoin();
             if (Object.FindFirstObjectByType<CageTransition>(FindObjectsInactive.Include) == null) CageTransitionBuilder.Wire();
         }
     }
@@ -138,6 +139,37 @@ namespace BountyHunter.Thieves.EditorTools
             PrefabUtility.UnloadPrefabContents(contents);
         }
 
+        // Each door is exactly half the wall, so their lock posts meet edge to edge at the join instead
+        // of one covering the other.
+        private static void PlaceDoors(RectTransform left, RectTransform right)
+        {
+            Vector2 wall = LineupPrefabBuilder.WallSize;
+            var doorSize = new Vector2(wall.x * 0.5f, wall.y);
+            Place(left, new Vector2(-wall.x * 0.25f, 0f), doorSize);
+            Place(right, new Vector2(wall.x * 0.25f, 0f), doorSize);
+        }
+
+        // A cage prefab made with the doors overlapping at the join gets them meeting edge to edge,
+        // keeping everything else in it.
+        public static void MeetDoorsAtJoin()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+            var leftDoor = prefab != null ? prefab.transform.Find("Shaker/Left Door") as RectTransform : null;
+            if (leftDoor == null || Mathf.Approximately(leftDoor.sizeDelta.x, LineupPrefabBuilder.WallSize.x * 0.5f)) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+            var left = contents.transform.Find("Shaker/Left Door") as RectTransform;
+            var right = contents.transform.Find("Shaker/Right Door") as RectTransform;
+            if (left != null && right != null)
+            {
+                PlaceDoors(left, right);
+                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+                Debug.Log("[CageTransitionBuilder] The cage doors now meet edge to edge at the join instead of overlapping.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
         // Back to front: the dark cell and the two doors meeting in the middle.
         private static void BuildPrefab()
         {
@@ -153,13 +185,10 @@ namespace BountyHunter.Thieves.EditorTools
             Stretch(shaker);
 
             Sprite door = Load<Sprite>(Door);
-            // Each door is half the wall, a little more so they overlap at the join.
-            var doorSize = new Vector2(wall.x * 0.5f + 20f, wall.y);
             Image left = UiImage("Left Door", shaker, door, Color.white);
-            Place(left.rectTransform, new Vector2(-wall.x * 0.25f + 10f, 0f), doorSize);
             Image right = UiImage("Right Door", shaker, door, Color.white);
-            Place(right.rectTransform, new Vector2(wall.x * 0.25f - 10f, 0f), doorSize);
             right.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+            PlaceDoors(left.rectTransform, right.rectTransform);
 
 
             var serialized = new SerializedObject(cage);

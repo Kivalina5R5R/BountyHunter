@@ -34,14 +34,17 @@ namespace BountyHunter.Thieves.EditorTools
             }
 
             CctvPrefabBuilder.DropFloorBand();
+            CctvPrefabBuilder.UseMonitorDesignIfOld();
+            CctvPrefabBuilder.StandBinsUpright();
             if (Object.FindFirstObjectByType<CctvPuzzle>(FindObjectsInactive.Include) == null) CctvPrefabBuilder.Wire();
         }
     }
 
     // Tools > Bounty Hunter > Build CCTV Prefabs: makes the security camera mini game's prefabs in
     // Assets/Prefabs/Cctv: Cctv Bin (one bin on the floor), Cctv Floor (four Cctv Bins in a row, each
-    // with its own picture) and Cctv Wall (the camera on the wall, its four bins the
-    // same pictures in the same order, all as tall as each other), and wires the open scene to them: a Cctv Puzzle object next to the Lineup Puzzle
+    // with its own picture) and Cctv Wall (the camera on the wall in the mini game's monitor design,
+    // its four bins the same pictures in the same order, all as tall as each other, and the banana
+    // peels that fly out of them), and wires the open scene to them: a Cctv Puzzle object next to the Lineup Puzzle
     // (taking its players, score tags and money font), the wall panel over the game wall just behind
     // the fade curtain, and the mini game hooked up after map 2 if nothing is there yet. Run it again
     // to start the prefabs over (it overwrites them, so changes made in them by hand are lost); save
@@ -53,23 +56,28 @@ namespace BountyHunter.Thieves.EditorTools
         public const string FloorPath = Folder + "/Cctv Floor.prefab";
         public const string WallPath = Folder + "/Cctv Wall.prefab";
         private const string LineupArt = "Assets/ART/Minigame/Lineup/";
-        private const string BinArt = "Assets/ART/BG/Map1/";
+        // The mini game's own art: the monitor background, the title strip, the note, the TIME panel,
+        // the banana peel and the bins.
+        private const string Art = "Assets/ART/Minigame/Cctv/";
+        private static readonly string[] ArtPictures = { "CctvBG", "TitleStrip", "Note", "TimePanel", "BananaPeel", "Bin1", "Bin2", "Bin3", "Bin4" };
 
         private const float RingRadius = 0.7f;
         private const int Bins = 4;
         private const float FloorSpacing = 2f;
         private const int Thieves = 3;
-        // Where the bins stand on the camera screen and how far apart (screen units): their bottoms on
+        // The monitor's screen in the background picture (wall units), which the camera's clip plays in.
+        private static readonly Vector2 ScreenSpot = new Vector2(-76f, -20f);
+        private static readonly Vector2 ScreenSize = new Vector2(851f, 394f);
+        // Where the bins stand on the screen and how far apart (screen units): their bottoms on
         // BinBottom, each WallBinHeight tall counting only what is drawn of its picture.
-        private const float BinY = -70f;
-        private const float BinSpacing = 230f;
-        private const float BinBottom = -130f;
-        private const float WallBinHeight = 120f;
-        private static readonly Vector2 ScreenSize = new Vector2(1090f, 300f);
-        private static readonly Color Gold = new Color(1f, 0.82f, 0.25f, 1f);
-        // The camera shows the bins and thieves in their own colours on a dark screen, its words in soft white.
-        private static readonly Color ScreenColor = new Color(0.1f, 0.11f, 0.13f, 1f);
-        private static readonly Color CameraText = new Color(0.9f, 0.9f, 0.9f, 1f);
+        private const float BinY = -103f;
+        private const float BinSpacing = 180f;
+        private const float BinBottom = -168f;
+        private const float WallBinHeight = 130f;
+        // A banana peel's size once it is stuck on the screen.
+        private static readonly Vector2 PeelSize = new Vector2(290f, 272f);
+        private static readonly Color Title = new Color(1f, 0.86f, 0.2f, 1f);
+        private static readonly Color Ink = new Color(0.17f, 0.09f, 0.06f, 1f);
 
         private static readonly string[] ThiefBodies =
         {
@@ -79,15 +87,18 @@ namespace BountyHunter.Thieves.EditorTools
             "Assets/ART/Thif/Rat/Rat.png",
         };
 
-        // Bin i shows BinPictures[i % length], on the floor and on the camera. The upright bins only:
-        // the long dumpster (Been4) does not sit well beside them.
-        private static readonly string[] BinPictures = { "Been1", "Been2", "Been3" };
+        // Bin i shows BinPictures[i % length], on the floor and on the camera.
+        private static readonly string[] BinPictures = { "Bin1", "Bin2", "Bin3", "Bin4" };
+        // How far each of those pictures is turned (degrees, anticlockwise) to stand it upright: the
+        // art draws the bins leaning a little.
+        private static readonly float[] BinUpright = { -3.7f, -4.5f, 8f, 9.9f };
 
         [MenuItem("Tools/Bounty Hunter/Build CCTV Prefabs")]
         public static void Build()
         {
             if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Prefabs", "Cctv");
 
+            UseArtAsSprites();
             BuildBin();
             BuildFloor();
             BuildWall();
@@ -219,7 +230,7 @@ namespace BountyHunter.Thieves.EditorTools
 
             var figure = new GameObject("Figure").transform;
             figure.SetParent(root.transform, false);
-            SpriteRenderer bin = Picture("Bin", figure, Load<Sprite>(BinArt + BinPictures[0] + ".png"), 6);
+            SpriteRenderer bin = Picture("Bin", figure, Load<Sprite>(BinPicture(0)), 6);
             if (bin.sprite != null) figure.localScale = Vector3.one * (0.9f / bin.sprite.bounds.size.y);
 
             // The thief pops out over the bin's top, the money bag over its head.
@@ -263,6 +274,7 @@ namespace BountyHunter.Thieves.EditorTools
                 picture.sprite = Load<Sprite>(BinPicture(i));
                 Transform figure = picture.transform.parent;
                 if (picture.sprite != null) figure.localScale = Vector3.one * (0.9f / picture.sprite.bounds.size.y);
+                picture.transform.localRotation = Upright(i);
             }
 
             PrefabUtility.SaveAsPrefabAsset(root, FloorPath);
@@ -290,7 +302,118 @@ namespace BountyHunter.Thieves.EditorTools
 
         private static string BinPicture(int bin)
         {
-            return BinArt + BinPictures[bin % BinPictures.Length] + ".png";
+            return Art + BinPictures[bin % BinPictures.Length] + ".png";
+        }
+
+        private static Quaternion Upright(int bin)
+        {
+            return Quaternion.Euler(0f, 0f, BinUpright[bin % BinUpright.Length]);
+        }
+
+        // Turns the bins on the floor and on the camera upright when they are not yet, keeping
+        // everything else in the prefabs.
+        public static void StandBinsUpright()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(FloorPath) != null)
+            {
+                GameObject floor = PrefabUtility.LoadPrefabContents(FloorPath);
+                CctvBinView[] views = floor.GetComponentsInChildren<CctvBinView>(true);
+                var pictures = new Transform[views.Length];
+                for (int i = 0; i < views.Length; i++)
+                {
+                    var picture = (SpriteRenderer)new SerializedObject(views[i]).FindProperty("bin").objectReferenceValue;
+                    pictures[i] = picture != null ? picture.transform : null;
+                }
+
+                SaveIfTurned(floor, FloorPath, pictures);
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallPath) == null) return;
+
+            GameObject wall = PrefabUtility.LoadPrefabContents(WallPath);
+            SerializedProperty bins = new SerializedObject(wall.GetComponent<CctvWall>()).FindProperty("bins");
+            var rects = new Transform[bins.arraySize];
+            for (int i = 0; i < rects.Length; i++)
+            {
+                var bin = (Image)bins.GetArrayElementAtIndex(i).objectReferenceValue;
+                rects[i] = bin != null ? bin.transform : null;
+            }
+
+            SaveIfTurned(wall, WallPath, rects);
+        }
+
+        // Turns picture i to Upright(i), saving the prefab only when one of them moved.
+        private static void SaveIfTurned(GameObject contents, string path, Transform[] pictures)
+        {
+            bool turned = false;
+            for (int i = 0; i < pictures.Length; i++)
+            {
+                if (pictures[i] == null || Quaternion.Angle(pictures[i].localRotation, Upright(i)) < 0.01f) continue;
+
+                pictures[i].localRotation = Upright(i);
+                turned = true;
+            }
+
+            if (turned)
+            {
+                PrefabUtility.SaveAsPrefabAsset(contents, path);
+                Debug.Log($"[CctvPrefabBuilder] The bins in {path} now stand upright.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        // Puts the wall and the floor's bins in the monitor design (the art in Assets/ART/Minigame/Cctv)
+        // when the wall prefab is not in it yet. The wall is remade, so changes made in it by hand are
+        // lost; the floor keeps its layout and only its bins' pictures change.
+        public static void UseMonitorDesignIfOld()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<CctvWall>(WallPath);
+            if (prefab == null || prefab.HasBananaPeels) return;
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(Art + "CctvBG.png") == null) return;
+
+            UseArtAsSprites();
+            BuildWall();
+            UseNewBinsOnFloor();
+            Debug.Log("[CctvPrefabBuilder] Cctv Wall is now in the monitor design with banana peels, and the floor's bins have the new pictures.");
+        }
+
+        // The floor's bins, left to right, get the new bin pictures, each fitted to its height again.
+        private static void UseNewBinsOnFloor()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(FloorPath) == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(FloorPath);
+            CctvBinView[] views = contents.GetComponentsInChildren<CctvBinView>(true);
+            for (int i = 0; i < views.Length; i++)
+            {
+                var picture = (SpriteRenderer)new SerializedObject(views[i]).FindProperty("bin").objectReferenceValue;
+                if (picture == null) continue;
+
+                picture.sprite = Load<Sprite>(BinPicture(i));
+                if (picture.sprite != null) picture.transform.parent.localScale = Vector3.one * (0.9f / picture.sprite.bounds.size.y);
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(contents, FloorPath);
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        // Makes the mini game's art sprites (it comes in as plain textures), the background at full size.
+        private static void UseArtAsSprites()
+        {
+            foreach (string name in ArtPictures)
+            {
+                string path = Art + name + ".png";
+                if (!(AssetImporter.GetAtPath(path) is TextureImporter importer)) continue;
+                if (importer.textureType == TextureImporterType.Sprite) continue;
+
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.maxTextureSize = name == "CctvBG" ? 8192 : 2048;
+                importer.SaveAndReimport();
+            }
         }
 
         // Sizes the camera's bin so what is drawn of its picture (a tight sprite mesh's bounds leave
@@ -312,7 +435,10 @@ namespace BountyHunter.Thieves.EditorTools
             bin.rectTransform.anchoredPosition = drawnCentre - drawnFromMiddle * scale;
         }
 
-        // Laid out in the wall canvas's units, at Display 2's proportions like the lineup's wall.
+        // Laid out in the wall canvas's units, at Display 2's proportions like the lineup's wall, on the
+        // mini game's design: the monitor background filling the wall, the clip playing in its screen
+        // with the bins along the bottom, the question on a black strip over the screen with the TIME
+        // panel beside it, and FIND THE BAG on a note stuck over the newspaper on the left.
         private static void BuildWall()
         {
             var root = new GameObject("Cctv Wall", typeof(RectTransform));
@@ -320,18 +446,13 @@ namespace BountyHunter.Thieves.EditorTools
             Place(rect, Vector2.zero, LineupPrefabBuilder.WallSize);
             var wall = root.AddComponent<CctvWall>();
 
-            Image background = UiImage("Background", rect, null, new Color(0.02f, 0.03f, 0.04f, 1f));
-            Stretch(background.rectTransform);
-            TMP_Text title = UiText("Title", rect, "WATCH THE MONEY BAG!", 56f, Gold, new Vector2(0f, 172f), new Vector2(1200f, 72f));
-            TMP_Text line = UiText("Line", rect, "WHICH BIN DOES IT END UP IN?", 28f, Color.white, new Vector2(0f, 130f), new Vector2(1200f, 38f));
+            Image background = UiImage("Background", rect, Load<Sprite>(Art + "CctvBG.png"), Color.white);
+            Place(background.rectTransform, Vector2.zero, LineupPrefabBuilder.WallSize);
 
-            Image frame = UiImage("Screen Frame", rect, Load<Sprite>(LineupArt + "Card.png"), new Color(0.16f, 0.17f, 0.18f, 1f));
-            frame.type = Image.Type.Sliced;
-            Place(frame.rectTransform, new Vector2(0f, -50f), ScreenSize + new Vector2(30f, 30f));
-            Image screen = UiImage("Screen", rect, null, ScreenColor);
-            Place(screen.rectTransform, new Vector2(0f, -50f), ScreenSize);
-            screen.gameObject.AddComponent<RectMask2D>();
-            RectTransform view = screen.rectTransform;
+            // The screen only shows what is inside it, so a thief running in comes from behind its edge.
+            RectTransform view = UiRect("Screen", rect);
+            Place(view, ScreenSpot, ScreenSize);
+            view.gameObject.AddComponent<RectMask2D>();
 
             // The thieves come before the bins so a thief inside a bin is hidden behind it.
             var serialized = new SerializedObject(wall);
@@ -360,42 +481,79 @@ namespace BountyHunter.Thieves.EditorTools
                 bin.preserveAspect = true;
                 Place(bin.rectTransform, Vector2.zero, Vector2.one);
                 FitOnScreen(bin, (i - (Bins - 1) * 0.5f) * BinSpacing);
+                bin.rectTransform.localRotation = Upright(i);
                 bins.GetArrayElementAtIndex(i).objectReferenceValue = bin;
             }
+
+            // The peels go over the bins and the thieves; the box they fly in is the whole screen.
+            RectTransform peelArea = UiRect("Banana Peels", view);
+            Stretch(peelArea);
+            var peels = peelArea.gameObject.AddComponent<CctvBananaPeels>();
+            Image peel = UiImage("Peel", peelArea, Load<Sprite>(Art + "BananaPeel.png"), Color.white);
+            peel.preserveAspect = true;
+            Place(peel.rectTransform, Vector2.zero, PeelSize);
+            peel.gameObject.SetActive(false);
+            var peelSettings = new SerializedObject(peels);
+            peelSettings.FindProperty("peel").objectReferenceValue = peel;
+            peelSettings.ApplyModifiedPropertiesWithoutUndo();
 
             TMP_Text stamp = UiText("Stamp", view, "CAUGHT", 72f, new Color(0.86f, 0.12f, 0.1f, 1f), new Vector2(0f, 40f), new Vector2(360f, 96f));
             stamp.fontSharedMaterial = LoadGuid<Material>(LineupPrefabBuilder.OutlinedFontGuid);
             stamp.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 14f);
             stamp.gameObject.SetActive(false);
 
-            TMP_Text rec = UiText("Rec", view, "<color=#FF3B30>●</color> REC", 30f, CameraText, new Vector2(-470f, 120f), new Vector2(140f, 40f));
-            TMP_Text camera = UiText("Camera", view, "CAM 02 - PARK", 26f, CameraText, new Vector2(-440f, -128f), new Vector2(220f, 34f));
-            camera.alpha = 0.8f;
-            TMP_Text clock = UiText("Clock", view, "23:41:07", 30f, CameraText, new Vector2(460f, 120f), new Vector2(160f, 40f));
+            // The question on the black strip over the top of the screen.
+            Image strip = Fitted("Title Strip", rect, "TitleStrip", new Vector2(-102f, 135f), 65f);
+            Vector2 stripSize = strip.rectTransform.sizeDelta;
+            TMP_Text title = UiText("Title", strip.rectTransform, "WHERE IS THE MONEY BAG?", 40f, Title, Vector2.zero, new Vector2(0.86f * stripSize.x, 0.8f * stripSize.y));
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 18f;
+            title.fontSizeMax = 44f;
 
-            // Beside the screen: what to find on the left, the seconds left to pick on the right.
-            Image wanted = UiImage("Find The Bag", rect, Load<Sprite>(LineupArt + "Icon_Bag.png"), Color.white);
+            // The seconds left to pick, on the blue part of the TIME panel.
+            Image time = Fitted("Time", rect, "TimePanel", new Vector2(198f, 128f), 72f);
+            Vector2 timeSize = time.rectTransform.sizeDelta;
+            TMP_Text countdown = UiText("Seconds", time.rectTransform, "00:24", 40f, Color.white, new Vector2(0.06f * timeSize.x, -0.14f * timeSize.y), new Vector2(0.75f * timeSize.x, 0.55f * timeSize.y));
+            countdown.enableAutoSizing = true;
+            countdown.fontSizeMin = 16f;
+            countdown.fontSizeMax = 44f;
+            time.gameObject.SetActive(false);
+
+            // What to find, on a note stuck over the newspaper.
+            Image note = Fitted("Find The Bag", rect, "Note", new Vector2(-632f, 98f), 146f);
+            Vector2 noteSize = note.rectTransform.sizeDelta;
+            Image wanted = UiImage("Bag", note.rectTransform, Load<Sprite>(LineupArt + "Icon_Bag.png"), Color.white);
             wanted.preserveAspect = true;
-            Place(wanted.rectTransform, new Vector2(-695f, -20f), new Vector2(150f, 150f));
-            UiText("Find Label", rect, "FIND THE BAG", 28f, Gold, new Vector2(-695f, -120f), new Vector2(240f, 36f));
-            RectTransform group = UiRect("Countdown", rect);
-            Place(group, new Vector2(695f, -20f), new Vector2(240f, 240f));
-            TMP_Text countdown = UiText("Seconds", group, "10", 110f, Gold, new Vector2(0f, 10f), new Vector2(240f, 130f));
-            UiText("Label", group, "PICK A BIN!", 28f, Color.white, new Vector2(0f, -95f), new Vector2(240f, 36f));
-            group.gameObject.SetActive(false);
+            Place(wanted.rectTransform, new Vector2(0f, 0.1f * noteSize.y), 0.5f * noteSize);
+            TMP_Text findLabel = UiText("Label", note.rectTransform, "FIND THE BAG", 26f, Ink, new Vector2(0f, -0.3f * noteSize.y), new Vector2(0.9f * noteSize.x, 0.2f * noteSize.y));
+            findLabel.enableAutoSizing = true;
+            findLabel.fontSizeMin = 12f;
+            findLabel.fontSizeMax = 28f;
 
             serialized.FindProperty("title").objectReferenceValue = title;
-            serialized.FindProperty("line").objectReferenceValue = line;
-            serialized.FindProperty("recLight").objectReferenceValue = rec;
-            serialized.FindProperty("clock").objectReferenceValue = clock;
-            serialized.FindProperty("countdownGroup").objectReferenceValue = group.gameObject;
+            serialized.FindProperty("line").objectReferenceValue = null;
+            serialized.FindProperty("recLight").objectReferenceValue = null;
+            serialized.FindProperty("clock").objectReferenceValue = null;
+            serialized.FindProperty("peels").objectReferenceValue = peels;
+            serialized.FindProperty("countdownGroup").objectReferenceValue = time.gameObject;
             serialized.FindProperty("countdown").objectReferenceValue = countdown;
+            serialized.FindProperty("countdownFormat").stringValue = "{1:00}:{2:00}";
             serialized.FindProperty("stamp").objectReferenceValue = stamp.rectTransform;
             serialized.FindProperty("entrance").vector2Value = new Vector2(-ScreenSize.x * 0.5f - 80f, BinY);
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             PrefabUtility.SaveAsPrefabAsset(root, WallPath);
             Object.DestroyImmediate(root);
+        }
+
+        // The picture height tall, as wide as its own shape makes it.
+        private static Image Fitted(string name, Transform parent, string art, Vector2 position, float height)
+        {
+            Sprite sprite = Load<Sprite>(Art + art + ".png");
+            Image image = UiImage(name, parent, sprite, Color.white);
+            float width = sprite != null ? height * sprite.rect.width / sprite.rect.height : height;
+            Place(image.rectTransform, position, new Vector2(width, height));
+            return image;
         }
 
         private static void Set(Object target, string field, Object value)

@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -25,9 +24,11 @@ namespace BountyHunter.Thieves.EditorTools
         }
     }
 
-    // Builds Assets/Prefabs/Boss/Boss Transition.prefab from the art in Assets/ART/Transition when it
-    // is missing, each time the editor loads, puts it over the wall just behind the fade curtain and
-    // hands it to MapSwitcher, so the boss chase starts with the cut-in. Save the scene afterwards.
+    // Builds Assets/Prefabs/Boss/Boss Transition.prefab from the art in Assets/ART/Transition/Boss Open
+    // when it is missing, each time the editor loads, puts it over the wall just behind the fade
+    // curtain and hands it to MapSwitcher, so the boss chase starts with the cut-in. A prefab still in
+    // the first design (the rift, banners and doves) is remade in the rooftop design. Save the scene
+    // afterwards.
     [InitializeOnLoad]
     public static class BossTransitionAutoBuild
     {
@@ -42,12 +43,9 @@ namespace BountyHunter.Thieves.EditorTools
             if (Object.FindFirstObjectByType<MapSwitcher>(FindObjectsInactive.Include) == null) return;
             if (!BossTransitionBuilder.ArtIsThere()) return;
 
+            BossTransitionBuilder.UseFullSizeWideArt();
             if (AssetDatabase.LoadAssetAtPath<GameObject>(BossTransitionBuilder.PrefabPath) == null) BossTransitionBuilder.Build();
-            else
-            {
-                BossTransitionBuilder.LengthenHold();
-                BossTransitionBuilder.UseDoves();
-            }
+            else BossTransitionBuilder.UseRooftopDesignIfOld();
 
             if (AssetDatabase.LoadAssetAtPath<GameObject>(BossTransitionBuilder.PrefabPath) == null) return;
             if (Object.FindFirstObjectByType<BossTransition>(FindObjectsInactive.Include) == null) BossTransitionBuilder.Wire();
@@ -60,40 +58,32 @@ namespace BountyHunter.Thieves.EditorTools
     public static class BossTransitionBuilder
     {
         public const string PrefabPath = "Assets/Prefabs/Boss/Boss Transition.prefab";
-        private const string Art = BossTransitionArtImport.Folder;
-        private const string Rift = Art + "Boss Open/Transition_Rift.png";
-        private const string Inside = Art + "Boss Open/Transition_Inside.png";
-        private const string Banner = Art + "Boss Open/Transition_Banner.png";
-        private const string Dove = Art + "Boss Open/Transition_Dove.png";
-        private const string Ink = Art + "Boss Open/Transition_Ink.png";
-        private const string Emblem = Art + "Boss Open/Boss_Icon_Transition.png";
-        private const string Glow = "Assets/ART/Minigame/Lineup/Spotlight.png";
+        private const string Art = BossTransitionArtImport.Folder + "Boss Open/";
+        private const string Background = Art + "Boss_BG.png";
+        private const string Streak = Art + "Boss_LineEffect.png";
+        private const string Boss = Art + "Boss_Char.png";
+        private const string Pigeon = Art + "Boss_Pigeon.png";
+        private const string Feather = Art + "Boss_Feather.png";
+        private const string Dot = Art + "Boss_Dot.png";
 
-        private const float BannerHeight = 150f;
-        private const int BannerTiles = 4;
-
-        // Where the ink splats land over the stage (wall units), their size and turn.
-        private static readonly (Vector2 At, float Size, float Turn)[] Splats =
+        // The boss in the middle of the wall, how wide its picture is (wall units).
+        private static readonly Vector2 BossSpot = new Vector2(15f, 20f);
+        private const float BossWidth = 800f;
+        // The pigeons round the boss: where, how tall, and whether turned to face right (the picture
+        // faces left).
+        private static readonly (Vector2 At, float Size, bool FacesRight)[] Pigeons =
         {
-            (new Vector2(-560f, 95f), 190f, 20f),
-            (new Vector2(-400f, -120f), 150f, -35f),
-            (new Vector2(390f, 125f), 170f, 70f),
-            (new Vector2(570f, -90f), 200f, -10f),
-            (new Vector2(-140f, 150f), 120f, 140f),
+            (new Vector2(-260f, -9f), 125f, true),
+            (new Vector2(375f, 113f), 120f, false),
+            (new Vector2(291f, -126f), 135f, false),
         };
-
-        // The two banners crossing: turn (degrees), height above the middle, and their words (none
-        // leaves the banner's own row of top hats and card suits showing).
-        private static readonly (float Turn, float Y, string Words)[] Banners =
-        {
-            (-13f, 45f, "FINAL BOSS          FINAL BOSS          FINAL BOSS          FINAL BOSS"),
-            (10f, -55f, ""),
-        };
-        private static readonly Color WordsStrip = new Color(0.42f, 0.02f, 0.06f, 1f);
+        private const float FeatherHeight = 60f;
+        private const float DotSize = 80f;
+        private static readonly Color DotRed = new Color(0.95f, 0.04f, 0.08f, 1f);
 
         public static bool ArtIsThere()
         {
-            foreach (string path in new[] { Rift, Inside, Banner, Dove, Ink, Emblem })
+            foreach (string path in new[] { Background, Streak, Boss, Pigeon, Feather, Dot })
             {
                 if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null) return false;
             }
@@ -106,7 +96,7 @@ namespace BountyHunter.Thieves.EditorTools
         {
             if (!ArtIsThere())
             {
-                Debug.LogError($"[BossTransitionBuilder] Needs Transition_Rift, _Inside, _Banner, _Dove, _Ink and Boss_Icon_Transition (as sprites) in {Art}Boss Open/");
+                Debug.LogError($"[BossTransitionBuilder] Needs Boss_BG, Boss_LineEffect, Boss_Char, Boss_Pigeon, Boss_Feather and Boss_Dot (as sprites) in {Art}");
                 return;
             }
 
@@ -115,49 +105,33 @@ namespace BountyHunter.Thieves.EditorTools
             Debug.Log("[BossTransitionBuilder] Boss Transition built and wired; save the scene to keep it.");
         }
 
-        // A prefab made with the first hold (1.56 s, the reference's) holds a second longer; any other
-        // hold set by hand is kept.
-        public static void LengthenHold()
+        // The rooftop and the streak are drawn 8192 px wide; they are imported at full size so they
+        // stay sharp across the wall.
+        public static void UseFullSizeWideArt()
         {
-            GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
-            var serialized = new SerializedObject(contents.GetComponent<BossTransition>());
-            SerializedProperty hold = serialized.FindProperty("holdSeconds");
-            if (Mathf.Approximately(hold.floatValue, 1.56f))
+            foreach (string path in new[] { Background, Streak })
             {
-                hold.floatValue = 2.56f;
-                serialized.ApplyModifiedPropertiesWithoutUndo();
-                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
-                Debug.Log("[BossTransitionBuilder] The boss cut-in now holds 2.56 s.");
-            }
+                if (!(AssetImporter.GetAtPath(path) is TextureImporter importer) || importer.maxTextureSize >= 8192) continue;
 
-            PrefabUtility.UnloadPrefabContents(contents);
+                importer.maxTextureSize = 8192;
+                importer.SaveAndReimport();
+            }
         }
 
-        // A prefab made with white gloves round the emblem gets white doves there instead, keeping
-        // where each sits and everything else in it.
-        public static void UseDoves()
+        // A prefab still in the first design (no rooftop) is emptied and filled in the rooftop design,
+        // keeping its root and its BossTransition, so the scene's link to it holds.
+        public static void UseRooftopDesignIfOld()
         {
-            var dove = AssetDatabase.LoadAssetAtPath<Sprite>(Dove);
-            if (dove == null) return;
+            var prefab = AssetDatabase.LoadAssetAtPath<BossTransition>(PrefabPath);
+            if (prefab == null || prefab.IsSetUp) return;
 
             GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
-            bool changed = false;
-            foreach (Image image in contents.GetComponentsInChildren<Image>(true))
-            {
-                if (!image.name.StartsWith("Glove ")) continue;
-
-                image.sprite = dove;
-                image.name = "Dove " + image.name.Substring("Glove ".Length);
-                changed = true;
-            }
-
-            if (changed)
-            {
-                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
-                Debug.Log("[BossTransitionBuilder] White doves now fly out round the boss's emblem instead of gloves.");
-            }
-
+            var rect = (RectTransform)contents.transform;
+            for (int i = rect.childCount - 1; i >= 0; i--) Object.DestroyImmediate(rect.GetChild(i).gameObject);
+            Fill(rect, contents.GetComponent<BossTransition>());
+            PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
             PrefabUtility.UnloadPrefabContents(contents);
+            Debug.Log("[BossTransitionBuilder] Boss Transition is now the rooftop cut-in: feathers, the streak wiping in, the boss and the pigeons.");
         }
 
         // Puts the prefab over the wall (once) and hands it to MapSwitcher.
@@ -189,113 +163,92 @@ namespace BountyHunter.Thieves.EditorTools
             EditorSceneManager.MarkSceneDirty(maps.gameObject.scene);
         }
 
-        // Back to front: ink splats, the rift, the world inside it, the banners, the glow, the doves,
-        // the emblem, the flash.
         private static void BuildPrefab()
         {
             var root = new GameObject("Boss Transition", typeof(RectTransform));
             var rect = (RectTransform)root.transform;
             Place(rect, Vector2.zero, LineupPrefabBuilder.WallSize);
-            var transition = root.AddComponent<BossTransition>();
-            RectTransform shaker = UiRect("Shaker", rect);
-            Stretch(shaker);
-
-            var inks = new Image[Splats.Length];
-            for (int i = 0; i < Splats.Length; i++)
-            {
-                inks[i] = UiImage($"Ink {i + 1}", shaker, Load<Sprite>(Ink), Color.white);
-                inks[i].preserveAspect = true;
-                Place(inks[i].rectTransform, Splats[i].At, Vector2.one * Splats[i].Size);
-                inks[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, Splats[i].Turn);
-            }
-
-            Image rift = UiImage("Rift", shaker, Load<Sprite>(Rift), Color.white);
-            rift.preserveAspect = true;
-            Place(rift.rectTransform, Vector2.zero, new Vector2(1150f, 420f));
-            rift.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 12f);
-
-            Image inside = UiImage("Inside", shaker, Load<Sprite>(Inside), Color.white);
-            Stretch(inside.rectTransform);
-            // Fills the wall without stretching, cropping what does not fit.
-            var fitter = inside.gameObject.AddComponent<AspectRatioFitter>();
-            fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
-            fitter.aspectRatio = inside.sprite.rect.width / inside.sprite.rect.height;
-
-            var banners = new RectTransform[Banners.Length];
-            for (int i = 0; i < Banners.Length; i++) banners[i] = MakeBanner(shaker, i);
-
-            Image glow = UiImage("Emblem Glow", shaker, Load<Sprite>(Glow), new Color(1f, 0.85f, 0.9f, 1f));
-            Place(glow.rectTransform, new Vector2(0f, 5f), new Vector2(620f, 620f));
-
-            var doves = new RectTransform[6];
-            for (int i = 0; i < doves.Length; i++)
-            {
-                // Round the emblem, an oval as wide as the wall allows, each dove flying outward.
-                float angle = 25f + i * 60f;
-                float radians = angle * Mathf.Deg2Rad;
-                Image dove = UiImage($"Dove {i + 1}", shaker, Load<Sprite>(Dove), Color.white);
-                dove.preserveAspect = true;
-                Place(dove.rectTransform, new Vector2(Mathf.Cos(radians) * 330f, Mathf.Sin(radians) * 135f), new Vector2(140f, 140f));
-                dove.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle - 90f);
-                doves[i] = dove.rectTransform;
-            }
-
-            Image emblem = UiImage("Emblem", shaker, Load<Sprite>(Emblem), Color.white);
-            emblem.preserveAspect = true;
-            Place(emblem.rectTransform, new Vector2(0f, 5f), new Vector2(400f, 400f));
-
-            Image flash = UiImage("Flash", shaker, null, Color.white);
-            Stretch(flash.rectTransform);
-
-            var serialized = new SerializedObject(transition);
-            serialized.FindProperty("shaker").objectReferenceValue = shaker;
-            serialized.FindProperty("rift").objectReferenceValue = rift;
-            serialized.FindProperty("inside").objectReferenceValue = inside;
-            serialized.FindProperty("flash").objectReferenceValue = flash;
-            serialized.FindProperty("emblem").objectReferenceValue = emblem.rectTransform;
-            serialized.FindProperty("emblemGlow").objectReferenceValue = glow;
-            SetList(serialized.FindProperty("inks"), inks);
-            SetList(serialized.FindProperty("banners"), banners);
-            SetList(serialized.FindProperty("doves"), doves);
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Fill(rect, root.AddComponent<BossTransition>());
 
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(PrefabPath));
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             Object.DestroyImmediate(root);
         }
 
-        // A long banner across the wall: the banner art side by side, its words along it.
-        private static RectTransform MakeBanner(Transform parent, int index)
+        // Back to front: the rooftop filling the wall, the streak across it, the dots on the streak,
+        // the boss, the pigeons, and the feathers falling over all of it.
+        private static void Fill(RectTransform rect, BossTransition transition)
         {
-            (float turn, float y, string words) = Banners[index];
-            Sprite art = Load<Sprite>(Banner);
-            float tileWidth = BannerHeight * art.rect.width / art.rect.height;
-            RectTransform banner = UiRect($"Banner {index + 1}", parent);
-            Place(banner, new Vector2(0f, y), new Vector2(tileWidth * BannerTiles, BannerHeight));
-            banner.localRotation = Quaternion.Euler(0f, 0f, turn);
-            for (int tile = 0; tile < BannerTiles; tile++)
+            Vector2 wall = LineupPrefabBuilder.WallSize;
+            Image background = UiImage("Rooftop", rect, Load<Sprite>(Background), Color.white);
+            Place(background.rectTransform, Vector2.zero, wall);
+
+            Sprite streakArt = Load<Sprite>(Streak);
+            var streakSize = new Vector2(wall.x, streakArt != null ? wall.x * streakArt.rect.height / streakArt.rect.width : 300f);
+            Image streak = UiImage("Line Effect", rect, streakArt, Color.white);
+            Place(streak.rectTransform, Vector2.zero, streakSize);
+            WipeFromRight(streak);
+
+            RectTransform dotArea = UiRect("Dots", rect);
+            Place(dotArea, Vector2.zero, streakSize);
+            var dots = dotArea.gameObject.AddComponent<BossDotPops>();
+            Image dot = UiImage("Dot", dotArea, Load<Sprite>(Dot), DotRed);
+            Place(dot.rectTransform, Vector2.zero, Vector2.one * DotSize);
+            dot.gameObject.SetActive(false);
+            SetReference(dots, "dot", dot);
+
+            Sprite bossArt = Load<Sprite>(Boss);
+            Image boss = UiImage("Boss", rect, bossArt, Color.white);
+            boss.preserveAspect = true;
+            float bossHeight = bossArt != null ? BossWidth * bossArt.rect.height / bossArt.rect.width : BossWidth * 0.43f;
+            Place(boss.rectTransform, BossSpot, new Vector2(BossWidth, bossHeight));
+
+            var pigeons = new RectTransform[Pigeons.Length];
+            for (int i = 0; i < Pigeons.Length; i++)
             {
-                Image piece = UiImage($"Tile {tile + 1}", banner, art, Color.white);
-                Place(piece.rectTransform, new Vector2((tile - (BannerTiles - 1) * 0.5f) * tileWidth, 0f), new Vector2(tileWidth, BannerHeight));
+                (Vector2 at, float size, bool facesRight) = Pigeons[i];
+                Image pigeon = UiImage($"Pigeon {i + 1}", rect, Load<Sprite>(Pigeon), Color.white);
+                pigeon.preserveAspect = true;
+                Place(pigeon.rectTransform, at, Vector2.one * size);
+                if (facesRight) pigeon.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+                pigeons[i] = pigeon.rectTransform;
             }
 
-            if (string.IsNullOrEmpty(words)) return banner;
+            RectTransform featherArea = UiRect("Feathers", rect);
+            Stretch(featherArea);
+            var feathers = featherArea.gameObject.AddComponent<BossFeatherFall>();
+            Sprite featherArt = Load<Sprite>(Feather);
+            Image feather = UiImage("Feather", featherArea, featherArt, Color.white);
+            feather.preserveAspect = true;
+            float featherWidth = featherArt != null ? FeatherHeight * featherArt.rect.width / featherArt.rect.height : FeatherHeight;
+            Place(feather.rectTransform, Vector2.zero, new Vector2(featherWidth, FeatherHeight));
+            feather.gameObject.SetActive(false);
+            SetReference(feathers, "feather", feather);
 
-            // The words go on a dark strip over the banner's row of icons, so they read clearly.
-            Image strip = UiImage("Words Strip", banner, null, WordsStrip);
-            Place(strip.rectTransform, Vector2.zero, new Vector2(tileWidth * BannerTiles, BannerHeight * 0.42f));
-            RectTransform holder = UiRect("Words", banner);
-            Place(holder, Vector2.zero, new Vector2(tileWidth * BannerTiles, BannerHeight * 0.6f));
-            var text = holder.gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = LoadGuid<TMP_FontAsset>(LineupPrefabBuilder.FontGuid);
-            text.fontSharedMaterial = LoadGuid<Material>(LineupPrefabBuilder.OutlinedFontGuid);
-            text.text = words;
-            text.fontSize = 56f;
-            text.color = Color.white;
-            text.alignment = TextAlignmentOptions.Center;
-            text.textWrappingMode = TextWrappingModes.NoWrap;
-            text.raycastTarget = false;
-            return banner;
+            var serialized = new SerializedObject(transition);
+            serialized.FindProperty("background").objectReferenceValue = background;
+            serialized.FindProperty("streak").objectReferenceValue = streak;
+            serialized.FindProperty("boss").objectReferenceValue = boss.rectTransform;
+            serialized.FindProperty("feathers").objectReferenceValue = feathers;
+            serialized.FindProperty("dots").objectReferenceValue = dots;
+            SetList(serialized.FindProperty("pigeons"), pigeons);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // Filled from the right, empty to start with: the cut-in wipes it across by its fill.
+        private static void WipeFromRight(Image picture)
+        {
+            picture.type = Image.Type.Filled;
+            picture.fillMethod = Image.FillMethod.Horizontal;
+            picture.fillOrigin = (int)Image.OriginHorizontal.Right;
+            picture.fillAmount = 0f;
+        }
+
+        private static void SetReference(Object target, string field, Object value)
+        {
+            var serialized = new SerializedObject(target);
+            serialized.FindProperty(field).objectReferenceValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void SetList<T>(SerializedProperty list, T[] items) where T : Object
@@ -350,11 +303,6 @@ namespace BountyHunter.Thieves.EditorTools
             var asset = AssetDatabase.LoadAssetAtPath<T>(path);
             if (asset == null) Debug.LogWarning($"[BossTransitionBuilder] Missing {typeof(T).Name} at {path}");
             return asset;
-        }
-
-        private static T LoadGuid<T>(string guid) where T : Object
-        {
-            return Load<T>(AssetDatabase.GUIDToAssetPath(guid));
         }
     }
 }

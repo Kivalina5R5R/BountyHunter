@@ -28,7 +28,7 @@ namespace BountyHunter.Thieves.EditorTools
     }
 
     // Wires the boss chase into the open scene each time the editor loads, when it is not yet: a Boss
-    // Chase object with its sheets, the hat, the rose, the water pictures and the game's pieces (players, score tags, passers-by,
+    // Chase object with its sheets, the hat, the feather, the water pictures and the game's pieces (players, score tags, passers-by,
     // clock, fonts, catch scuffle and floor area, taken from BountyRounds and ThiefSpawner), set as
     // MapSwitcher's finale. Sheets made later are filled in on the next load, and each sheet's layout
     // (columns, frames, rate, pivot) is kept in step with the .json make_boss_sheet.py writes next to
@@ -38,12 +38,11 @@ namespace BountyHunter.Thieves.EditorTools
     {
         private const string Sheets = BossArtImport.Folder + "Sheets/";
         private const string HatPath = BossArtImport.Folder + "BossHat.png";
-        // The rose that drifts down where the boss first appears (drawn by Codex).
-        private const string RosePath = BossArtImport.Folder + "BossRose.png";
         // The boss's rooftop map pictures.
         private const string BossMap = "Assets/ART/BG/MapBoss/";
         private const string BossWallPath = "Assets/Prefabs/Boss/Boss Wall.prefab";
-        private const string PetalPath = BossArtImport.Folder + "BossRosePetal.png";
+        // The feather blowing about in the entrance, the same as the cut-in's.
+        private const string FeatherPath = BossTransitionArtImport.Folder + "Boss Open/Boss_Feather.png";
         // The water and lightning pictures Codex drew for the boss's shot.
         private const string Water = BossArtImport.Folder + "Water/";
 
@@ -310,8 +309,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= FillSheet(target, "capeWrap", "BossCapeWrap");
             changed |= FillSheet(target, "capeReveal", "BossCapeReveal");
             changed |= FillSprite(target.FindProperty("boss.hat"), HatPath);
-            changed |= FillSprite(target.FindProperty("rose"), RosePath);
-            changed |= FillSprite(target.FindProperty("rosePetal"), PetalPath);
+            changed |= FillSprite(target.FindProperty("feather"), FeatherPath);
             changed |= FillSprite(target.FindProperty("boss.water.ring"), Water + "WaterRing.png");
             changed |= FillSprite(target.FindProperty("boss.water.streak"), Water + "WaterStreak.png");
             changed |= FillSprite(target.FindProperty("boss.water.impact"), Water + "WaterImpact.png");

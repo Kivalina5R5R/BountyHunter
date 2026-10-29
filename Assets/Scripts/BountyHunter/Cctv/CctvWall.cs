@@ -12,8 +12,9 @@ namespace BountyHunter.Thieves
     // and the camera's clock, the bins in a row along the
     // bottom of the screen and, on the right, the seconds left to pick a bin. The camera plays a
     // CctvClip: the thieves run in and dive into the bins, then hop from bin to bin, the bag thief
-    // with the money bag over its head; a bin bumps as a thief leaves or lands in it. At the reveal
-    // every thief peeks out of the bin it ended in and the bag thief's bin is stamped CAUGHT.
+    // with the money bag over its head; a bin bumps as a thief leaves or lands in it, and now and
+    // then a banana peel flies out of it onto the screen (CctvBananaPeels). At the reveal every thief
+    // peeks out of the bin it ended in and the bag thief's bin is stamped CAUGHT.
     // Sits on the prefab's root, which stays switched off until shown; it goes over the game wall,
     // just behind the fade curtain. Only the screen, the bins and the thieves are needed.
     public sealed class CctvWall : MonoBehaviour
@@ -40,12 +41,17 @@ namespace BountyHunter.Thieves
         [SerializeField] private float peekAbove = 95f;
         // How much a bin squashes when a thief leaves or lands in it.
         [SerializeField, Range(0f, 0.5f)] private float bump = 0.14f;
+        // Both optional: the camera's own blinking REC light and its running clock.
         [SerializeField] private Graphic recLight;
         [SerializeField] private TMP_Text clock;
+        // Peels that fly out of the bins over the screen as the thieves land in them; optional.
+        [SerializeField] private CctvBananaPeels peels;
 
         [Header("Picking")]
         [SerializeField] private GameObject countdownGroup;
         [SerializeField] private TMP_Text countdown;
+        // {0} the seconds left, {1} its minutes and {2} the seconds past the minute ("{1:00}:{2:00}" reads 00:24).
+        [SerializeField] private string countdownFormat = "{0}";
 
         [Header("Reveal")]
         [SerializeField] private RectTransform stamp;
@@ -59,6 +65,9 @@ namespace BountyHunter.Thieves
         // False until the prefab has its bins and thieves (Tools > Bounty Hunter > Build CCTV Prefabs).
         public bool IsSetUp => bins != null && bins.Length > 0 && thieves != null && thieves.Length > 0
                                && Array.TrueForAll(bins, bin => bin != null) && Array.TrueForAll(thieves, thief => thief != null);
+
+        // True once the prefab is in the monitor design, the one with the banana peels.
+        public bool HasBananaPeels => peels != null;
 
         public int BinCount => bins != null ? bins.Length : 0;
         public int ThiefCount => thieves != null ? thieves.Length : 0;
@@ -96,6 +105,7 @@ namespace BountyHunter.Thieves
             gameObject.SetActive(true);
             StopAllCoroutines();
             SetCountdown(-1);
+            if (peels != null) peels.Clear();
             if (stamp != null) stamp.gameObject.SetActive(false);
             foreach (Image thief in thieves) thief.gameObject.SetActive(false);
             for (int i = 0; i < bins.Length; i++)
@@ -123,17 +133,25 @@ namespace BountyHunter.Thieves
         {
             bool shown = seconds >= 0;
             if (countdownGroup != null) countdownGroup.SetActive(shown);
-            if (shown && countdown != null) countdown.text = seconds.ToString();
+            if (shown && countdown != null) countdown.text = string.Format(countdownFormat, seconds, seconds / 60, seconds % 60);
         }
 
         // Plays the clip on the camera, thief i shown as bodies[i]; lasts clip.Length.
         public IEnumerator Play(CctvClip clip, IReadOnlyList<Sprite> bodies)
         {
             Dress(clip, bodies);
+            List<(float Time, int Bin)> landings = Landings(clip);
+            int nextLanding = 0;
             float start = Time.time;
             while (Time.time - start < clip.Length)
             {
-                ShowFrame(clip, Time.time - start);
+                float time = Time.time - start;
+                ShowFrame(clip, time);
+                for (; nextLanding < landings.Count && landings[nextLanding].Time <= time; nextLanding++)
+                {
+                    if (peels != null) peels.MaybeThrow(binRests[landings[nextLanding].Bin]);
+                }
+
                 yield return null;
             }
 
@@ -145,6 +163,7 @@ namespace BountyHunter.Thieves
         public IEnumerator Reveal(CctvClip clip, float stagger)
         {
             SetCountdown(-1);
+            if (peels != null) peels.Clear();
             for (int thief = 0; thief < clip.Thieves && thief < thieves.Length; thief++)
             {
                 int bin = clip.FinalBins[thief];
@@ -164,8 +183,19 @@ namespace BountyHunter.Thieves
         public void Hide()
         {
             StopAllCoroutines();
+            if (peels != null) peels.Clear();
             clockStartedAt = -1f;
             gameObject.SetActive(false);
+        }
+
+        // Every time a thief drops into a bin, dive or hop, in the order they happen.
+        private static List<(float Time, int Bin)> Landings(CctvClip clip)
+        {
+            var landings = new List<(float Time, int Bin)>();
+            for (int thief = 0; thief < clip.Thieves; thief++) landings.Add((clip.EnterStart(thief) + clip.EnterSeconds, clip.StartBins[thief]));
+            foreach (CctvHop hop in clip.Hops) landings.Add((hop.Start + hop.Seconds, hop.To));
+            landings.Sort((a, b) => a.Time.CompareTo(b.Time));
+            return landings;
         }
 
         private void Dress(CctvClip clip, IReadOnlyList<Sprite> bodies)

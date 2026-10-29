@@ -2042,7 +2042,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a5cbe7cedcdad94b8cdf8ee83b84661, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Fortal.UWB.UWBManager
-  transportMode: 2
+  transportMode: 0
   connectOnStart: 1
   autoReconnect: 1
   reconnectDelaySeconds: 2
@@ -5109,8 +5109,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 653a85270ea9d4c4c8728267f4a58d66, type: 3}
   - {fileID: 21300000, guid: 8d19b8e513407264c943da1b0e08e7a2, type: 3}
   - {fileID: 21300000, guid: ce9cad09528f39c48a649bdbc23a16ae, type: 3}
-  rose: {fileID: 21300000, guid: e2a2f51dff823bc45b922165fca672a9, type: 3}
-  rosePetal: {fileID: 21300000, guid: 4656f8539c1261b49b61387c5477e370, type: 3}
+  feather: {fileID: 21300000, guid: 18e9f7b15a8da7c4991095b4f882bd2e, type: 3}
   floorImage: {fileID: 734738229}
   bossFloor: {fileID: 2800000, guid: 54a9eedb5fc616645948e654a01794ab, type: 3}
   wallPanel: {fileID: 13306568}
@@ -5137,7 +5136,7 @@ MonoBehaviour:
   - {fileID: 1449044724}
   helicopter: {fileID: 21300000, guid: 86612e7c3c887c442beaa984574016ea, type: 3}
   helicopterRotor: {fileID: 21300000, guid: 0898181142c4cc943a376bc3b2e203cc, type: 3}
-  petalFloorMargin: 0.35
+  featherFloorMargin: 0.35
   timer: {fileID: 1445836966812051384}
   catchBrawl:
     clouds:
@@ -5260,7 +5259,6 @@ MonoBehaviour:
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
   entranceSeconds: 4.5
-  roseFromShare: 0.5
   chaseSeconds: 85.5
   outroSeconds: 5
   touchesToCatch: 3
@@ -10993,5 +10991,5 @@ SceneRoots:
   - {fileID: 1554582274}
   - {fileID: 566848745}
   - {fileID: 1957981330}
-  - {fileID: 594936651}
   - {fileID: 1105797309}
+  - {fileID: 594936651}

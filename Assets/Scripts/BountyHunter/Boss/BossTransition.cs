@@ -1,101 +1,98 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
     // The cut-in on the wall between the last stage and the boss chase, laid out in
-    // Assets/Prefabs/Boss/Boss Transition.prefab (move, resize or recolour anything there). Timed on
-    // a 2.8 s anime skill cut-in: black ink splats pop up over the stage, a red slash cuts across the
-    // wall and tears open into an eye-shaped rift with a white flash, the rift bursts open to fill the
-    // wall with the phantom thief's world (two banners slam in crossing each other, white doves
-    // burst out and fly away from the boss's emblem, which glows and settles), it holds while the boss's rooftop
-    // is set up behind it, then everything is pulled back into the rift, which closes to a slit and
-    // fades, showing the rooftop. Runs on unscaled time, so it plays while the game is frozen.
-    // MapSwitcher drives it: Open until the wall is covered, Close when the chase is ready.
+    // Assets/Prefabs/Boss/Boss Transition.prefab (move, resize, recolour or retime anything there):
+    // pigeon feathers start falling over the stage, then the boss's moonlit rooftop fades in and the
+    // blue streak cracks across it from the right like a bolt of lightning; red dots pop up at random
+    // on the streak where it has reached. With the wall covered, the boss pops
+    // up in the middle and the pigeons fly in round him one after another, hovering there flapping,
+    // while the boss's own rooftop is set up behind. Then it all goes back out: the boss shrinks away,
+    // the pigeons fly off, the dots pop, the streak wipes back off to the right and the rooftop fades,
+    // showing the chase. The feathers keep falling through all of it and on over the chase a while,
+    // the last of them falling out on their own. Runs on unscaled time, so it plays while the game is
+    // frozen. MapSwitcher drives it: Open until the wall is covered, Close when the chase is ready.
     public sealed class BossTransition : MonoBehaviour
     {
         [Header("Pieces")]
-        // Holds everything; it shakes while the rift tears open.
-        [SerializeField] private RectTransform shaker;
-        [SerializeField] private Image rift;
-        // The world inside the rift, filling the wall once it has burst open.
-        [SerializeField] private Image inside;
-        [SerializeField] private Image flash;
-        [SerializeField] private Image[] inks;
-        // Each slides along its own length: in from alternate sides, drifting while it holds.
-        [SerializeField] private RectTransform[] banners;
-        // Round the emblem, each drawn flying up and turned to fly away from the emblem's middle.
-        [FormerlySerializedAs("gloves")]
-        [SerializeField] private RectTransform[] doves;
-        [SerializeField] private RectTransform emblem;
-        [SerializeField] private Image emblemGlow;
+        [SerializeField] private Image background;
+        // Filled, horizontal, from the right: the wipe is its fill.
+        [SerializeField] private Image streak;
+        [SerializeField] private RectTransform boss;
+        // Each faces the way its picture is turned (the picture faces left; a pigeon with its x scale
+        // below zero faces right) and flies in from behind.
+        [SerializeField] private RectTransform[] pigeons;
+        [SerializeField] private BossFeatherFall feathers;
+        [SerializeField] private BossDotPops dots;
 
-        [Header("Timing (seconds, from the reference cut-in at 25 fps)")]
-        // Ink splats pop up one after another from inkAt, inkGap apart.
-        [SerializeField, Min(0f)] private float inkAt = 0.08f;
-        [SerializeField, Min(0f)] private float inkGap = 0.06f;
-        // The slash cuts across from slashAt for slashSeconds (frames 5-9).
-        [SerializeField, Min(0f)] private float slashAt = 0.2f;
-        [SerializeField, Min(0.01f)] private float slashSeconds = 0.2f;
-        // The slash tears open into the rift (frames 10-13).
-        [SerializeField, Min(0.01f)] private float openSeconds = 0.16f;
-        // The rift bursts open over the whole wall (frames 14-15), with a white flash either side.
-        [SerializeField, Min(0.01f)] private float burstSeconds = 0.08f;
-        [SerializeField, Min(0.01f)] private float flashSeconds = 0.12f;
-        // The least time the wall stays covered (frames 16-54 plus a second, so the boss reads),
-        // longer if the chase is not ready yet.
-        [SerializeField, Min(0f)] private float holdSeconds = 2.56f;
-        // Everything is pulled back into the rift (frames 55-57), which then closes and fades (58-67).
-        [SerializeField, Min(0.01f)] private float collapseSeconds = 0.2f;
-        [SerializeField, Min(0.01f)] private float closeSeconds = 0.32f;
+        [Header("Opening (seconds)")]
+        // Feathers fall over the stage this long before the rooftop starts fading in.
+        [SerializeField, Min(0f)] private float feathersFirstSeconds = 1f;
+        [SerializeField, Min(0.05f)] private float fadeInSeconds = 0.4f;
+        // The streak strikes across this long after the rooftop starts fading in, taking wipeSeconds,
+        // fast at first and slowing at the end like a bolt.
+        [SerializeField, Min(0f)] private float wipeAfter = 0.25f;
+        [SerializeField, Min(0.02f)] private float wipeSeconds = 0.15f;
+        [SerializeField, Min(0.05f)] private float bossPopSeconds = 0.35f;
+        // The pigeons fly in pigeonGap apart, starting pigeonsAfter the boss starts.
+        [SerializeField, Min(0f)] private float pigeonsAfter = 0.1f;
+        [SerializeField, Min(0f)] private float pigeonGap = 0.15f;
+        [SerializeField, Min(0.05f)] private float flyInSeconds = 0.6f;
+        // The least time the wall stays covered, longer if the chase is not ready yet.
+        [SerializeField, Min(0f)] private float holdSeconds = 2.5f;
 
-        [Header("Motion")]
-        // How much bigger than its own size the rift grows to cover the wall.
-        [SerializeField, Min(1f)] private float riftCoverScale = 7f;
-        // How thin the slash is, as a share of the rift's height.
-        [SerializeField, Range(0.01f, 0.5f)] private float slashThickness = 0.05f;
-        [SerializeField, Min(0f)] private float shake = 10f;
-        // How far off the wall a banner starts and leaves (wall units; more than half the banner and
-        // half the wall together), how fast it slams in, and how
-        // fast it drifts while holding.
-        [SerializeField, Min(0f)] private float bannerSlide = 3600f;
-        [SerializeField, Min(0.01f)] private float bannerInSeconds = 0.12f;
-        [SerializeField] private float bannerDrift = 45f;
-        [SerializeField, Min(0.01f)] private float emblemPopSeconds = 0.28f;
-        [FormerlySerializedAs("glovePopSeconds")]
-        [SerializeField, Min(0.01f)] private float dovePopSeconds = 0.16f;
-        [FormerlySerializedAs("gloveGap")]
-        [SerializeField, Min(0f)] private float doveGap = 0.03f;
-        // How far each dove tilts either way as it flaps (degrees), and how fast it flies away from
-        // the emblem while the wall holds (wall units a second).
-        [FormerlySerializedAs("gloveWiggle")]
-        [SerializeField, Range(0f, 30f)] private float doveTilt = 7f;
-        [SerializeField, Min(0f)] private float doveFlight = 40f;
-        // The glow behind the emblem: bright as it lands, settling to glowRest and pulsing gently.
-        [SerializeField, Range(0f, 1f)] private float glowRest = 0.45f;
-        [SerializeField, Min(0.01f)] private float glowSettleSeconds = 0.5f;
+        [Header("Closing (seconds)")]
+        [SerializeField, Min(0.05f)] private float shrinkSeconds = 0.25f;
+        [SerializeField, Min(0.05f)] private float flyOffSeconds = 0.5f;
+        // The streak wipes back streakBackAfter the closing starts, the rooftop fading after it.
+        [SerializeField, Min(0f)] private float streakBackAfter = 0.1f;
+        [SerializeField, Min(0.05f)] private float streakBackSeconds = 0.2f;
+        [SerializeField, Min(0.05f)] private float fadeSeconds = 0.3f;
+        // Feathers keep coming this long over the chase before they stop.
+        [SerializeField, Min(0f)] private float feathersAfterSeconds = 1.5f;
 
-        private enum Stage { Hidden, Opening, Holding, Closing }
+        [Header("Flying")]
+        // Where a pigeon flies in from, from its spot: this far behind it and this far up.
+        [SerializeField] private Vector2 flyInFrom = new Vector2(900f, 300f);
+        // Where it flies off to, from its spot: this far ahead and this far up.
+        [SerializeField] private Vector2 flyOffTo = new Vector2(350f, 650f);
+        // Wing beats a second while flying in or off, and while hovering.
+        [SerializeField, Min(0f)] private float flapsPerSecond = 7f;
+        [SerializeField, Min(0f)] private float hoverFlapsPerSecond = 4f;
+        // How much a wing beat squashes the picture up and down (0 to 1).
+        [SerializeField, Range(0f, 0.6f)] private float flapSquash = 0.25f;
+        // How far a hovering pigeon rises and sinks (wall units) and how often a second.
+        [SerializeField, Min(0f)] private float hoverHeight = 10f;
+        [SerializeField, Min(0f)] private float hoversPerSecond = 1.1f;
+        // How far it tips its head down when swooping in and up when flying off (degrees).
+        [SerializeField, Range(0f, 40f)] private float flyTilt = 15f;
+        [SerializeField, Min(0f)] private float bossBob = 5f;
+
+        private enum Stage { Hidden, Opening, Holding, Closing, FeathersOnly }
 
         private Stage stage = Stage.Hidden;
+        private float wipeAt;
         private float coveredAt;
-        private Vector2 riftRest;
-        private Vector3 riftSize;
-        private Vector2[] bannerRests;
-        private Vector3[] doveSizes;
-        private Quaternion[] doveTurns;
-        private Vector2[] doveRests;
-        private Vector3[] inkSizes;
-        private Vector3 emblemSize;
+        private float feathersStopAt;
+        private float backgroundAlpha;
+        private Vector2 bossRest;
+        private Vector3 bossSize;
+        private Vector2[] pigeonRests;
+        private Vector3[] pigeonSizes;
         private bool measured;
 
-        // True once the prefab has its rift (Tools > Bounty Hunter > Build Boss Transition).
-        public bool IsSetUp => rift != null && shaker != null;
+        // True once the prefab has its pieces (Tools > Bounty Hunter > Build Boss Transition).
+        public bool IsSetUp => background != null && streak != null;
+
+        private float WipeStart => feathersFirstSeconds + wipeAfter;
 
         // The time from the start until the wall is covered.
-        private float CoverAt => slashAt + slashSeconds + openSeconds + burstSeconds;
+        private float CoverAt => feathersFirstSeconds + Mathf.Max(fadeInSeconds, wipeAfter + wipeSeconds);
+
+        private float CloseLength => Mathf.Max(Mathf.Max(shrinkSeconds, flyOffSeconds), streakBackAfter + streakBackSeconds + fadeSeconds);
 
         // Plays the cut-in up to the moment the wall is fully covered, and keeps it covered.
         public IEnumerator Open()
@@ -103,46 +100,93 @@ namespace BountyHunter.Thieves
             gameObject.SetActive(true);
             Measure();
             stage = Stage.Opening;
+            ShowBoss(0f, 0f);
+            for (int i = 0; i < pigeons.Length; i++) pigeons[i].gameObject.SetActive(false);
+            if (feathers != null) feathers.StartFalling();
+
+            bool dotsStarted = false;
             float start = Time.unscaledTime;
+            wipeAt = start + WipeStart;
             while (Time.unscaledTime - start < CoverAt)
             {
-                PoseOpening(Time.unscaledTime - start);
+                float since = Time.unscaledTime - start;
+                if (!dotsStarted && since >= WipeStart && dots != null)
+                {
+                    dots.StartPopping();
+                    dotsStarted = true;
+                }
+
+                SetAlpha(background, backgroundAlpha * Smooth((since - feathersFirstSeconds) / fadeInSeconds));
+                PoseStreak(EaseOutCubic((Time.unscaledTime - wipeAt) / wipeSeconds));
                 yield return null;
             }
 
-            PoseOpening(CoverAt);
+            SetAlpha(background, backgroundAlpha);
+            PoseStreak(1f);
+            if (dots != null && !dotsStarted) dots.StartPopping();
             coveredAt = Time.unscaledTime;
             stage = Stage.Holding;
         }
 
-        // Waits out the rest of the hold, then pulls everything back into the rift and closes it.
+        // Waits out the rest of the hold, then sends everything back out the way it came. Returns
+        // with the chase showing; the feathers keep falling over it on their own.
         public IEnumerator Close()
         {
             while (stage == Stage.Holding && Time.unscaledTime < coveredAt + holdSeconds) yield return null;
 
             stage = Stage.Closing;
-            float hold = Time.unscaledTime - coveredAt;
+            float held = Time.unscaledTime - coveredAt;
+            if (dots != null) dots.PopAll();
             float start = Time.unscaledTime;
-            float length = collapseSeconds + closeSeconds;
-            while (Time.unscaledTime - start < length)
+            while (Time.unscaledTime - start < CloseLength)
             {
-                PoseClosing(Time.unscaledTime - start, hold);
+                PoseClosing(Time.unscaledTime - start, held);
                 yield return null;
             }
 
-            Hide();
+            LeaveFeathers();
         }
 
         public void Hide()
         {
             stage = Stage.Hidden;
-            if (measured) PoseClosing(collapseSeconds + closeSeconds, 0f);
+            if (feathers != null) feathers.Clear();
+            if (dots != null) dots.Clear();
             gameObject.SetActive(false);
         }
 
         private void Update()
         {
-            if (stage == Stage.Holding) PoseHolding(Time.unscaledTime - coveredAt);
+            float now = Time.unscaledTime;
+            if (stage == Stage.Holding)
+            {
+                PoseHolding(now - coveredAt);
+                return;
+            }
+
+            if (stage != Stage.FeathersOnly) return;
+
+            if (feathers == null)
+            {
+                Hide();
+                return;
+            }
+
+            if (now >= feathersStopAt) feathers.StopFalling();
+            if (now >= feathersStopAt && feathers.IsEmpty) Hide();
+        }
+
+        // Everything but the feathers is off the wall; they keep coming a while, then the last of
+        // them fall out and the cut-in switches itself off.
+        private void LeaveFeathers()
+        {
+            ShowBoss(0f, 0f);
+            for (int i = 0; i < pigeons.Length; i++) pigeons[i].gameObject.SetActive(false);
+            if (dots != null) dots.Clear();
+            streak.fillAmount = 0f;
+            SetAlpha(background, 0f);
+            feathersStopAt = Time.unscaledTime + feathersAfterSeconds;
+            stage = Stage.FeathersOnly;
         }
 
         // Where everything sits in the prefab, which the motion is measured from.
@@ -151,154 +195,102 @@ namespace BountyHunter.Thieves
             if (measured) return;
 
             measured = true;
-            riftRest = rift.rectTransform.anchoredPosition;
-            riftSize = rift.rectTransform.localScale;
-            bannerRests = new Vector2[banners.Length];
-            for (int i = 0; i < banners.Length; i++) bannerRests[i] = banners[i].anchoredPosition;
-            doveSizes = new Vector3[doves.Length];
-            doveTurns = new Quaternion[doves.Length];
-            doveRests = new Vector2[doves.Length];
-            for (int i = 0; i < doves.Length; i++)
+            // The rooftop fades rather than wipes, so it is always drawn whole.
+            background.type = Image.Type.Simple;
+            backgroundAlpha = background.color.a;
+            if (boss != null)
             {
-                doveSizes[i] = doves[i].localScale;
-                doveTurns[i] = doves[i].localRotation;
-                doveRests[i] = doves[i].anchoredPosition;
+                bossRest = boss.anchoredPosition;
+                bossSize = boss.localScale;
             }
 
-            inkSizes = new Vector3[inks.Length];
-            for (int i = 0; i < inks.Length; i++) inkSizes[i] = inks[i].rectTransform.localScale;
-            emblemSize = emblem != null ? emblem.localScale : Vector3.one;
+            pigeons ??= new RectTransform[0];
+            pigeonRests = new Vector2[pigeons.Length];
+            pigeonSizes = new Vector3[pigeons.Length];
+            for (int i = 0; i < pigeons.Length; i++)
+            {
+                pigeonRests[i] = pigeons[i].anchoredPosition;
+                pigeonSizes[i] = pigeons[i].localScale;
+            }
         }
 
-        // From the stage still showing to the wall covered: ink, slash, tear, flash, burst.
-        private void PoseOpening(float time)
+        // The streak share of the way across (0 to 1), and the dots only where it has reached.
+        private void PoseStreak(float share)
         {
-            for (int i = 0; i < inks.Length; i++)
-            {
-                float u = (time - inkAt - i * inkGap) / 0.15f;
-                inks[i].gameObject.SetActive(u > 0f);
-                inks[i].rectTransform.localScale = inkSizes[i] * EaseOutBack(u);
-            }
-
-            float slashEnd = slashAt + slashSeconds;
-            float openEnd = slashEnd + openSeconds;
-            rift.gameObject.SetActive(time >= slashAt);
-            float across = Smooth((time - slashAt) / slashSeconds);
-            float tear = Mathf.Lerp(slashThickness, 1f, EaseOutBack((time - slashEnd) / openSeconds));
-            float burst = Smooth((time - openEnd) / burstSeconds);
-            float grow = Mathf.Lerp(1f, riftCoverScale, burst * burst);
-            rift.rectTransform.localScale = Vector3.Scale(riftSize, new Vector3(across * grow, tear * grow, 1f));
-            rift.rectTransform.anchoredPosition = riftRest;
-            SetAlpha(rift, 1f);
-
-            SetVisible(inside, burst);
-            SetVisible(flash, 1f - Mathf.Abs(time - openEnd) / flashSeconds);
-            Shake(time >= slashAt ? shake : 0f);
-            ShowCover(false);
+            streak.fillAmount = share;
+            if (dots != null) dots.SetReach(share);
         }
 
-        // The phantom thief's world over the whole wall: banners slam in and drift, the emblem pops
-        // and its glow settles, the doves burst out and fly away, tilting as they flap.
+        // The boss pops up and bobs, the pigeons fly in one after another and hover.
         private void PoseHolding(float since)
         {
-            Shake(since < 0.15f ? shake * (1f - since / 0.15f) : 0f);
-            // The flash carries on fading from where the burst left it.
-            SetVisible(flash, 1f - (since + burstSeconds) / flashSeconds);
-            ShowCover(true);
-            for (int i = 0; i < banners.Length; i++)
+            ShowBoss(EaseOutBack(since / bossPopSeconds), since);
+            for (int i = 0; i < pigeons.Length; i++)
             {
-                float side = i % 2 == 0 ? -1f : 1f;
-                float slide = (1f - EaseOut(since / bannerInSeconds)) * bannerSlide * side;
-                banners[i].anchoredPosition = bannerRests[i] + Along(banners[i], slide + bannerDrift * since * -side);
-            }
-
-            if (emblem != null) emblem.localScale = emblemSize * EaseOutBack(since / emblemPopSeconds);
-            if (emblemGlow != null)
-            {
-                float settle = Smooth(since / glowSettleSeconds);
-                float pulse = 0.08f * Mathf.Sin(since * 6f) * settle;
-                SetVisible(emblemGlow, Mathf.Lerp(1f, glowRest, settle) + pulse);
-            }
-
-            for (int i = 0; i < doves.Length; i++)
-            {
-                float flying = Mathf.Max(0f, since - i * doveGap);
-                float pop = EaseOutBack(flying / dovePopSeconds);
-                float tilt = doveTilt * Mathf.Sin(since * 7f + i * 1.7f);
-                doves[i].localScale = doveSizes[i] * pop;
-                doves[i].localRotation = doveTurns[i] * Quaternion.Euler(0f, 0f, tilt);
-                doves[i].anchoredPosition = doveRests[i] + Away(doveRests[i]) * doveFlight * flying;
+                float flying = (since - pigeonsAfter - i * pigeonGap) / flyInSeconds;
+                PosePigeon(i, flying, 0f, since);
             }
         }
 
-        // Banners fly off, the emblem and doves shrink away and the world fades back into the rift,
-        // which shrinks to its own size, closes to a slit and fades.
+        // Everything back out: the boss shrinks away, the pigeons fly off, the streak wipes back off
+        // to the right, the rooftop fades.
         private void PoseClosing(float time, float held)
         {
-            float collapse = Smooth(time / collapseSeconds);
-            float close = Mathf.Clamp01((time - collapseSeconds) / closeSeconds);
-            Shake(0f);
-            SetVisible(flash, 0f);
-            for (int i = 0; i < banners.Length; i++)
-            {
-                float side = i % 2 == 0 ? 1f : -1f;
-                Vector2 drifted = bannerRests[i] + Along(banners[i], bannerDrift * held * side);
-                banners[i].anchoredPosition = drifted + Along(banners[i], collapse * collapse * bannerSlide * side);
-            }
+            ShowBoss(1f - Smooth(time / shrinkSeconds), held + time);
+            for (int i = 0; i < pigeons.Length; i++) PosePigeon(i, 1f, time / flyOffSeconds, held + time);
 
-            if (emblem != null) emblem.localScale = emblemSize * (1f - collapse);
-            if (emblemGlow != null) SetVisible(emblemGlow, glowRest * (1f - collapse));
-            for (int i = 0; i < doves.Length; i++) doves[i].localScale = doveSizes[i] * (1f - collapse);
-            SetVisible(inside, 1f - collapse);
-            foreach (Image ink in inks) ink.gameObject.SetActive(false);
-
-            float grow = Mathf.Lerp(riftCoverScale, 1f, collapse);
-            float shut = Mathf.Lerp(1f, slashThickness, Smooth(close / 0.4f));
-            float thin = Mathf.Lerp(1f, 0.85f, close);
-            rift.gameObject.SetActive(close < 1f);
-            rift.rectTransform.localScale = Vector3.Scale(riftSize, new Vector3(grow * thin, grow * shut, 1f));
-            SetAlpha(rift, 1f - Smooth((close - 0.4f) / 0.6f));
-            if (close >= 1f) ShowCover(false);
+            PoseStreak(1f - Smooth((time - streakBackAfter) / streakBackSeconds));
+            float fade = Smooth((time - streakBackAfter - streakBackSeconds) / fadeSeconds);
+            SetAlpha(background, backgroundAlpha * (1f - fade));
         }
 
-        // Switches the banners, the emblem and the doves on or off together.
-        private void ShowCover(bool shown)
+        // The boss at size share of its own (0 hides it), bobbing time seconds in.
+        private void ShowBoss(float size, float time)
         {
-            foreach (RectTransform banner in banners) banner.gameObject.SetActive(shown);
-            foreach (RectTransform dove in doves) dove.gameObject.SetActive(shown);
-            if (emblem != null) emblem.gameObject.SetActive(shown);
-            if (emblemGlow != null) emblemGlow.gameObject.SetActive(shown);
+            if (boss == null) return;
+
+            boss.gameObject.SetActive(size > 0f);
+            boss.localScale = bossSize * size;
+            boss.anchoredPosition = bossRest + new Vector2(0f, bossBob * Mathf.Sin(time * 2.5f));
         }
 
-        private void Shake(float amount)
+        // Pigeon i: flyingIn 0 to 1 on its way in (0 or less, not here yet), flyingOff 0 to 1 on its
+        // way off (1 or more, gone), hovering and flapping time seconds in.
+        private void PosePigeon(int i, float flyingIn, float flyingOff, float time)
         {
-            if (shaker == null) return;
-            shaker.anchoredPosition = amount > 0f ? Random.insideUnitCircle * amount : Vector2.zero;
+            RectTransform pigeon = pigeons[i];
+            bool there = flyingIn > 0f && flyingOff < 1f;
+            pigeon.gameObject.SetActive(there);
+            if (!there) return;
+
+            // The picture faces left, so a pigeon turned over on x faces right.
+            float facing = pigeonSizes[i].x < 0f ? 1f : -1f;
+            float beat = time * Mathf.PI * 2f + i * 1.7f;
+            Vector2 hover = new Vector2(0f, hoverHeight * Mathf.Sin(beat * hoversPerSecond));
+
+            float inU = Mathf.Clamp01(flyingIn);
+            float offU = Mathf.Clamp01(flyingOff);
+            // Swoops in from behind and above: across fast, settling down slower, so it curves in.
+            Vector2 from = new Vector2(-facing * flyInFrom.x, flyInFrom.y);
+            Vector2 swoop = new Vector2(from.x * (1f - EaseOutCubic(inU)), from.y * (1f - Smooth(inU)));
+            // Takes off ahead and up, picking up speed.
+            Vector2 takeOff = new Vector2(facing * flyOffTo.x * offU * offU, flyOffTo.y * offU * offU);
+            pigeon.anchoredPosition = pigeonRests[i] + swoop + takeOff + hover;
+
+            // Head down coming in, up going off, level while hovering.
+            float tilt = flyTilt * (offU - (1f - inU));
+            pigeon.localRotation = Quaternion.Euler(0f, 0f, facing * tilt);
+
+            bool moving = inU < 1f || offU > 0f;
+            float flaps = moving ? flapsPerSecond : hoverFlapsPerSecond;
+            float wing = 0.5f + 0.5f * Mathf.Sin(time * flaps * Mathf.PI * 2f + i * 1.3f);
+            float grow = Smooth(inU * 3f);
+            Vector3 size = pigeonSizes[i] * grow;
+            size.y *= 1f - flapSquash * wing;
+            pigeon.localScale = size;
         }
 
-        // The way out from the middle of the wall through point.
-        private static Vector2 Away(Vector2 point)
-        {
-            return point.sqrMagnitude > 0.01f ? point.normalized : Vector2.up;
-        }
-
-        // distance along the piece's own length, in its parent's units.
-        private static Vector2 Along(RectTransform piece, float distance)
-        {
-            return (Vector2)(piece.localRotation * Vector3.right) * distance;
-        }
-
-        // Shows the picture at alpha (clamped), switching it off when fully clear.
-        private static void SetVisible(Image picture, float alpha)
-        {
-            if (picture == null) return;
-
-            alpha = Mathf.Clamp01(alpha);
-            picture.gameObject.SetActive(alpha > 0f);
-            SetAlpha(picture, alpha);
-        }
-
-        private static void SetAlpha(Image picture, float alpha)
+        private static void SetAlpha(Graphic picture, float alpha)
         {
             Color colour = picture.color;
             colour.a = alpha;
@@ -311,14 +303,16 @@ namespace BountyHunter.Thieves
             return u * u * (3f - 2f * u);
         }
 
-        private static float EaseOut(float u)
+        private static float EaseOutCubic(float u)
         {
-            u = Mathf.Clamp01(u);
-            return 1f - (1f - u) * (1f - u) * (1f - u);
+            float rest = 1f - Mathf.Clamp01(u);
+            return 1f - rest * rest * rest;
         }
 
         private static float EaseOutBack(float u)
         {
+            if (u <= 0f) return 0f;
+
             const float overshoot = 1.70158f;
             float back = Mathf.Clamp01(u) - 1f;
             return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;

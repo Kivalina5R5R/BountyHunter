@@ -49,6 +49,11 @@ namespace BountyHunter.Thieves
             Remember();
             cover.gameObject.SetActive(false);
             car.gameObject.SetActive(true);
+            // The clip below cuts the panel to its own box, so a panel stretched over a display
+            // narrower than the wall would lose the ends of its background; it is the wall's size
+            // while it is wiped and gets its own shape back after.
+            PanelShape shape = leaving != null ? new PanelShape(leaving) : null;
+            if (leaving != null) FitToWall(leaving);
             RectMask2D clip = leaving != null ? leaving.GetComponent<RectMask2D>() : null;
             bool addedClip = leaving != null && clip == null;
             if (addedClip) clip = leaving.gameObject.AddComponent<RectMask2D>();
@@ -66,6 +71,7 @@ namespace BountyHunter.Thieves
 
             if (clip != null) clip.padding = Vector4.zero;
             if (addedClip) Destroy(clip);
+            shape?.Restore(leaving);
             cover.gameObject.SetActive(true);
             gameObject.SetActive(false);
         }
@@ -108,6 +114,44 @@ namespace BountyHunter.Thieves
         }
 
         private float Wall => ((RectTransform)transform).rect.width;
+
+        // Centres the panel on the wall at the wall's own size, so the clip's padding (in the wall's
+        // units, from its left edge) lines up with the car.
+        private void FitToWall(RectTransform panel)
+        {
+            Rect wall = ((RectTransform)transform).rect;
+            panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
+            panel.sizeDelta = wall.size;
+            panel.anchoredPosition = Vector2.zero;
+        }
+
+        // A panel's place and size as it was before the wipe.
+        private sealed class PanelShape
+        {
+            private readonly Vector2 anchorMin;
+            private readonly Vector2 anchorMax;
+            private readonly Vector2 pivot;
+            private readonly Vector2 sizeDelta;
+            private readonly Vector2 anchoredPosition;
+
+            public PanelShape(RectTransform panel)
+            {
+                anchorMin = panel.anchorMin;
+                anchorMax = panel.anchorMax;
+                pivot = panel.pivot;
+                sizeDelta = panel.sizeDelta;
+                anchoredPosition = panel.anchoredPosition;
+            }
+
+            public void Restore(RectTransform panel)
+            {
+                panel.anchorMin = anchorMin;
+                panel.anchorMax = anchorMax;
+                panel.pivot = pivot;
+                panel.sizeDelta = sizeDelta;
+                panel.anchoredPosition = anchoredPosition;
+            }
+        }
 
         // The pieces' own alphas, which the fades and the siren work from.
         private void Remember()

@@ -3,13 +3,13 @@ using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
-    // One rose petal drifting in the boss's petal shower (BossPetalShower), the way a real petal falls:
-    // it floats slowly along the wind, swaying gently across it, and tumbles over in three dimensions
+    // One pigeon feather drifting in the boss's feather shower (BossFeatherShower), the way a real
+    // feather falls: it floats slowly along the wind, swaying gently across it, and tumbles over in three dimensions
     // about an axis that slowly wanders, so from above it shows full face, then turns to a thin
     // sliver and round again (the camera looks straight down, so the turn foreshortens it by itself),
     // while slowly turning in the plane too. It fades in as it comes, fades out from fadeOutAt and
     // removes itself then, or once it has drifted off the left or bottom of the floor.
-    public sealed class BossPetal : MonoBehaviour
+    public sealed class BossBlownFeather : MonoBehaviour
     {
         private const float Height = 0.07f;
         private const float FadeInSeconds = 0.4f;
@@ -40,25 +40,25 @@ namespace BountyHunter.Thieves
         // Sends one off from start along velocity (metres a second, on the floor plane), size metres
         // along its longer side, drawn at sortingOrder, shade (0..1) dimming it and motion scaling how
         // much it sways and turns; it fades out from fadeOutAt (Time.time) and goes once it has.
-        public static void Blow(Sprite petal, Vector3 start, Vector3 velocity, float size, int sortingOrder, float shade, float motion,
+        public static void Blow(Sprite feather, Vector3 start, Vector3 velocity, float size, int sortingOrder, float shade, float motion,
             float fadeOutAt, Rect floor, Transform parent, float wallScale = 0f)
         {
-            var blown = new GameObject("Rose Petal", typeof(RectTransform)).AddComponent<BossPetal>();
+            var blown = new GameObject("Feather", typeof(RectTransform)).AddComponent<BossBlownFeather>();
             blown.transform.SetParent(parent, false);
             blown.wallScale = wallScale;
             if (wallScale > 0f)
             {
                 blown.wallPicture = blown.gameObject.AddComponent<Image>();
-                blown.wallPicture.sprite = petal;
+                blown.wallPicture.sprite = feather;
                 blown.wallPicture.raycastTarget = false;
-                Vector2 nativeSize = petal.rect.size;
+                Vector2 nativeSize = feather.rect.size;
                 blown.wallPicture.rectTransform.sizeDelta = nativeSize * (size * wallScale / Mathf.Max(nativeSize.x, nativeSize.y));
                 blown.wallPicture.color = Color.clear;
             }
             else
             {
                 blown.picture = blown.gameObject.AddComponent<SpriteRenderer>();
-                blown.picture.sprite = petal;
+                blown.picture.sprite = feather;
                 blown.picture.sortingOrder = sortingOrder;
                 blown.picture.flipX = Random.value < 0.5f;
                 blown.picture.color = Color.clear;
@@ -80,7 +80,7 @@ namespace BountyHunter.Thieves
             blown.floor = floor;
             blown.drifted = new Vector3(start.x, Height, start.z);
 
-            Vector3 bounds = petal.bounds.size;
+            Vector3 bounds = feather.bounds.size;
             float native = Mathf.Max(bounds.x, bounds.y);
             if (wallScale <= 0f) blown.transform.localScale = Vector3.one * (native > 0f ? size / native : 0f);
             blown.Place(0f);
