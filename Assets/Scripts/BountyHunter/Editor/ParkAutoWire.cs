@@ -8,8 +8,9 @@ namespace BountyHunter.Thieves.EditorTools
     // Sets up the park's police tape and mud (stage 2) each time the editor loads: imports the art
     // Codex drew (Assets/ART/Park) as sprites, adds ParkPoliceTape and MudPuddles next to the open
     // scene's BountyRounds when they are missing, fills every reference left empty (the crate's ring
-    // from Tools/ParkArt, drawn with the radial fill material), and points the stun guns at
-    // the mud so locking on from it is slower. Anything set by hand is kept. Save the scene afterwards.
+    // from Tools/ParkArt, drawn with the radial fill material), and points the stun guns and their drops at
+    // the mud so locking on from it is slower and none is dropped in it. Anything set by hand is
+    // kept. Save the scene afterwards.
     [InitializeOnLoad]
     public static class ParkAutoWire
     {
@@ -64,6 +65,13 @@ namespace BountyHunter.Thieves.EditorTools
                 var gunFields = new SerializedObject(guns);
                 changed |= Fill(gunFields, "mud", mud);
                 gunFields.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            if (rounds.TryGetComponent(out StunGunPickups pickups))
+            {
+                var pickupFields = new SerializedObject(pickups);
+                changed |= Fill(pickupFields, "mud", mud);
+                pickupFields.ApplyModifiedPropertiesWithoutUndo();
             }
 
             if (!changed) return;

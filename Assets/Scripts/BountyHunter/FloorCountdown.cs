@@ -99,26 +99,7 @@ namespace BountyHunter.Thieves
         {
             if (number == null) return;
 
-            const float bounceEnd = 0.5f;
-            const float fadeFrom = 0.8f;
-            var scale = Vector3.one;
-            float alpha = 1f;
-            if (t < fallPart)
-            {
-                // Falling: shrinks faster and faster, fading in from the top of the fall.
-                float u = t / fallPart;
-                scale *= Mathf.Lerp(dropFromScale, 1f, u * u);
-                alpha = Mathf.Clamp01(u * 3f);
-            }
-            else if (t < bounceEnd)
-            {
-                // Landed: squashes flat, springs up a little, settles.
-                float u = (t - fallPart) / (bounceEnd - fallPart);
-                float spring = Mathf.Cos(u * Mathf.PI * 2.5f) * (1f - u) * (1f - u) * landSquash;
-                scale = new Vector3(1f + spring, 1f - spring, 1f);
-            }
-            else if (t > fadeFrom) alpha = 1f - (t - fadeFrom) / (1f - fadeFrom);
-
+            CountdownDrop.Pose(t, fallPart, dropFromScale, landSquash, out Vector3 scale, out float alpha);
             number.transform.localScale = Vector3.Scale(numberScale, scale);
             number.alpha = alpha;
         }

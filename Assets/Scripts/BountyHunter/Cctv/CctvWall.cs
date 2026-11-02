@@ -13,7 +13,9 @@ namespace BountyHunter.Thieves
     // bottom of the screen and, on the right, the seconds left to pick a bin. The camera plays a
     // CctvClip: the thieves run in and dive into the bins, then hop from bin to bin, the bag thief
     // with the money bag over its head; a bin bumps as a thief leaves or lands in it, and now and
-    // then a banana peel flies out of it onto the screen (CctvBananaPeels). At the reveal every thief
+    // then a banana peel flies out of it onto the screen (CctvBananaPeels). Near the end of the
+    // picking two bins at a time swap places (SwapBins, one hopping over, the other ducking under),
+    // as the floor's do, each keeping what is inside it. At the reveal every thief
     // peeks out of the bin it ended in, then the others and the bins pop away and the bag thief glides
     // to the middle, bounces up big and is stamped CAUGHT, as in the lineup.
     // Sits on the prefab's root, which stays switched off until shown; it goes over the game wall,
@@ -25,6 +27,12 @@ namespace BountyHunter.Thieves
 
         [SerializeField] private TMP_Text title;
         [SerializeField] private TMP_Text line;
+        // The 3, 2, 1 in the middle of the screen before the thieves run in, falling in as the
+        // floor's countdown at the start of the game does; optional.
+        [SerializeField] private TMP_Text countIn;
+        [SerializeField, Min(1f)] private float countInDropFrom = 3f;
+        [SerializeField, Range(0.05f, 0.6f)] private float countInFallPart = 0.25f;
+        [SerializeField, Range(0f, 0.4f)] private float countInSquash = 0.15f;
 
         [Header("The camera")]
         // Left to right, the same order as the bins on the floor. Each stays where and as big as it
@@ -42,6 +50,10 @@ namespace BountyHunter.Thieves
         [SerializeField] private float peekAbove = 95f;
         // How much a bin squashes when a thief leaves or lands in it.
         [SerializeField, Range(0f, 0.5f)] private float bump = 0.14f;
+        // How high one of two swapping bins hops over the other, and how far the other ducks under
+        // (screen units).
+        [SerializeField, Min(0f)] private float swapHop = 70f;
+        [SerializeField, Min(0f)] private float swapDuck = 20f;
         // Both optional: the camera's own blinking REC light and its running clock.
         [SerializeField] private Graphic recLight;
         [SerializeField] private TMP_Text clock;
@@ -73,6 +85,10 @@ namespace BountyHunter.Thieves
         [SerializeField] private Vector2 stampOffset = new Vector2(0f, -40f);
 
         private Vector2[] binRests;
+        // The count-in's own size, read the first time it counts.
+        private Vector3? countInSize;
+        // Where each bin stands at the start of every game, however they were swapped last time.
+        private Vector2[] binHomes;
         private Vector3[] binSizes;
         private Vector3[] thiefSizes;
         // The screen's pieces in their prefab order; the reveal brings the culprit and the stamp to
@@ -90,6 +106,9 @@ namespace BountyHunter.Thieves
         public event Action ThiefPeeked;
         public event Action CaughtStamped;
         public event Action<int> HurrySecond;
+        // Two bins start swapping places; a number of the count-in falls in (3, 2, 1).
+        public event Action BinsSwapping;
+        public event Action<int> CountInShown;
 
         // False until the prefab has its bins and thieves (Tools > Bounty Hunter > Build CCTV Prefabs).
         public bool IsSetUp => bins != null && bins.Length > 0 && thieves != null && thieves.Length > 0
@@ -111,6 +130,8 @@ namespace BountyHunter.Thieves
                 binRests[i] = bins[i].rectTransform.anchoredPosition;
                 binSizes[i] = bins[i].rectTransform.localScale;
             }
+
+            binHomes = (Vector2[])binRests.Clone();
 
             thiefSizes = new Vector3[thieves.Length];
             for (int i = 0; i < thieves.Length; i++)
@@ -144,10 +165,12 @@ namespace BountyHunter.Thieves
             for (int i = 0; i < screenOrder.Length; i++) screenOrder[i].SetSiblingIndex(i);
             for (int i = 0; i < bins.Length; i++)
             {
+                binRests[i] = binHomes[i];
                 bins[i].rectTransform.anchoredPosition = binRests[i];
                 bins[i].rectTransform.localScale = binSizes[i];
             }
 
+            ShowCountIn(false);
             clockStart = DateTime.Today.AddHours(23).AddMinutes(UnityEngine.Random.Range(5, 55)).AddSeconds(UnityEngine.Random.Range(0, 60));
             clockStartedAt = Time.time;
             ShowLines(heading, subline);
@@ -180,12 +203,20 @@ namespace BountyHunter.Thieves
             List<float> takeoffs = Takeoffs(clip);
             int nextLanding = 0;
             int nextTakeoff = 0;
+            int nextHop = 0;
             float start = Time.time;
             while (Time.time - start < clip.Length)
             {
                 float time = Time.time - start;
                 ShowFrame(clip, time);
                 for (; nextTakeoff < takeoffs.Count && takeoffs[nextTakeoff] <= time; nextTakeoff++) ThiefJumped?.Invoke();
+                // As the bag thief jumps, a peel tries to hide the bin it is heading for.
+                for (; nextHop < clip.Hops.Count && clip.Hops[nextHop].Start <= time; nextHop++)
+                {
+                    CctvHop hop = clip.Hops[nextHop];
+                    if (peels != null && hop.Thief == clip.BagThief) peels.Block(binRests[hop.To], BinMouth(hop.To));
+                }
+
                 for (; nextLanding < landings.Count && landings[nextLanding].Time <= time; nextLanding++)
                 {
                     int bin = landings[nextLanding].Bin;
@@ -197,6 +228,70 @@ namespace BountyHunter.Thieves
             }
 
             ShowFrame(clip, clip.Length);
+        }
+
+        // Counts in from, from - 1, ... 1 in the middle of the screen, each number falling in and fading
+        // over stepSeconds, so the players know when the thieves will run in.
+        public IEnumerator CountIn(int from, float stepSeconds)
+        {
+            if (countIn == null || stepSeconds <= 0f) yield break;
+
+            Vector3 size = countInSize ??= countIn.rectTransform.localScale;
+            countIn.transform.SetAsLastSibling();
+            for (int n = from; n >= 1; n--)
+            {
+                countIn.text = n.ToString();
+                ShowCountIn(true);
+                CountInShown?.Invoke(n);
+                for (float time = 0f; time < stepSeconds; time += Time.deltaTime)
+                {
+                    CountdownDrop.Pose(time / stepSeconds, countInFallPart, countInDropFrom, countInSquash, out Vector3 scale, out float alpha);
+                    countIn.rectTransform.localScale = Vector3.Scale(size, scale);
+                    countIn.alpha = alpha;
+                    yield return null;
+                }
+            }
+
+            ShowCountIn(false);
+        }
+
+        private void ShowCountIn(bool shown)
+        {
+            if (countIn != null) countIn.gameObject.SetActive(shown);
+        }
+
+        // Bins a and b swap places over seconds, a hopping over b while b ducks under; each keeps its
+        // own place from then on, so the reveal finds the thieves where their bins went.
+        public IEnumerator SwapBins(int a, int b, float seconds)
+        {
+            if (a < 0 || b < 0 || a >= bins.Length || b >= bins.Length || a == b) yield break;
+
+            BinsSwapping?.Invoke();
+            RectTransform first = bins[a].rectTransform;
+            RectTransform second = bins[b].rectTransform;
+            Vector2 from = binRests[a];
+            Vector2 to = binRests[b];
+            // The one hopping over is drawn in front of the other (and still behind the peels).
+            first.SetSiblingIndex(Mathf.Max(first.GetSiblingIndex(), second.GetSiblingIndex()));
+            for (float time = 0f; time < seconds; time += Time.deltaTime)
+            {
+                float u = time / seconds;
+                float eased = u * u * (3f - 2f * u);
+                float arc = Mathf.Sin(u * Mathf.PI);
+                first.anchoredPosition = Vector2.Lerp(from, to, eased) + Vector2.up * (swapHop * arc);
+                second.anchoredPosition = Vector2.Lerp(to, from, eased) + Vector2.down * (swapDuck * arc);
+                float squash = bump * Mathf.Sin(u * Mathf.PI * 2f);
+                first.localScale = Vector3.Scale(binSizes[a], new Vector3(1f - squash, 1f + squash, 1f));
+                second.localScale = Vector3.Scale(binSizes[b], new Vector3(1f + squash, 1f - squash, 1f));
+                yield return null;
+            }
+
+            binRests[a] = to;
+            binRests[b] = from;
+            first.anchoredPosition = binRests[a];
+            second.anchoredPosition = binRests[b];
+            first.localScale = binSizes[a];
+            second.localScale = binSizes[b];
         }
 
         // Every thief peeks out of the bin it ended in, one after another; then the others and the bins
@@ -324,6 +419,7 @@ namespace BountyHunter.Thieves
         public void Hide()
         {
             StopAllCoroutines();
+            ShowCountIn(false);
             if (peels != null) peels.Clear();
             clockStartedAt = -1f;
             gameObject.SetActive(false);
@@ -340,6 +436,13 @@ namespace BountyHunter.Thieves
         }
 
         // Every time a thief drops into a bin, dive or hop, in the order they happen.
+        // Just over the top of the bin, where a thief diving in shows last.
+        private Vector2 BinMouth(int bin)
+        {
+            RectTransform picture = bins[bin].rectTransform;
+            return binRests[bin] + Vector2.up * (picture.rect.height * Mathf.Abs(binSizes[bin].y) * 0.45f);
+        }
+
         private static List<(float Time, int Bin)> Landings(CctvClip clip)
         {
             var landings = new List<(float Time, int Bin)>();

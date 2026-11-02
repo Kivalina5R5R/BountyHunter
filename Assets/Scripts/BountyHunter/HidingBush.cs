@@ -17,6 +17,7 @@ namespace BountyHunter.Thieves
 
         private IPlayerLocator players;
         private float radius;
+        private float reach;
         private float flushSeconds;
         private float standSeconds;
         private float offSeconds;
@@ -26,6 +27,8 @@ namespace BountyHunter.Thieves
         public ThiefController Occupant { get; private set; }
         public ThiefController ReservedBy { get; private set; }
         public float Radius => radius;
+        // How far its picture reaches from its centre at any turn (at least Radius).
+        public float Reach => Mathf.Max(radius, reach);
         public Vector3 Center => transform.position;
 
         // 0 while a player is off the bush, rising to 1 when the stand time flushes the thief.
@@ -75,11 +78,13 @@ namespace BountyHunter.Thieves
             ThiefEntered?.Invoke(this, fromSide);
         }
 
-        // radius is the area of leaves a player must stand inside; flushSeconds is how long they must stay.
-        public void Initialize(IPlayerLocator playerLocator, float leafRadius, float secondsToFlush)
+        // leafRadius is the area of leaves a player must stand inside, pictureReach how far the picture
+        // reaches at any turn; secondsToFlush is how long a player must stay on it.
+        public void Initialize(IPlayerLocator playerLocator, float leafRadius, float pictureReach, float secondsToFlush)
         {
             players = playerLocator;
             radius = leafRadius;
+            reach = pictureReach;
             flushSeconds = secondsToFlush;
         }
 

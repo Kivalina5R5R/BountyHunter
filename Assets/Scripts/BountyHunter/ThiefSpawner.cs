@@ -208,7 +208,7 @@ namespace BountyHunter.Thieves
 
                 HidingBush bush = scattered.Transform.GetComponent<HidingBush>();
                 if (bush == null) bush = scattered.Transform.gameObject.AddComponent<HidingBush>();
-                bush.Initialize(players, scattered.Radius, secondsToFlushBush);
+                bush.Initialize(players, scattered.Radius, scattered.Reach, secondsToFlushBush);
                 BushReaction reaction = bush.GetComponent<BushReaction>();
                 if (reaction == null) bush.gameObject.AddComponent<BushReaction>().Initialize(leafSprites);
                 BushWalker walker = bush.GetComponent<BushWalker>();

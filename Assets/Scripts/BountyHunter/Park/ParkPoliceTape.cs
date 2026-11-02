@@ -7,7 +7,8 @@ using Random = UnityEngine.Random;
 namespace BountyHunter.Thieves
 {
     // The park's police tape (stage 2): one crate of tape lies somewhere on the floor, at a new random
-    // spot each time, clear of the hiding spots. A player who stands on it for holdSeconds tapes off a
+    // spot each time, clear of the hiding spots' pictures; a hiding spot creeping away with a thief
+    // inside steers round it (BushWalker.KeepClearOf) rather than going over it. A player who stands on it for holdSeconds tapes off a
     // few hiding spots (tapedSpots, picked at random) for lockSeconds: a thief hiding in one comes
     // out, and no thief may hide there until the tape comes off. Then the crate rests for
     // cooldownSeconds. It closes part of the map's cover for a while, so the players choose when:
@@ -19,7 +20,8 @@ namespace BountyHunter.Thieves
         // Its hiding spots (and the thieves in them).
         [SerializeField] private ThiefSpawner hidingSpots;
         [SerializeField] private int stage = 2;
-        // Where the crate may lie (x and world z), and how far it keeps from the hiding spots.
+        // Where the crate may lie (x and world z), and how far its ring keeps from the hiding spots'
+        // pictures.
         [SerializeField] private Vector2 areaMin = new Vector2(-3.8f, -1.5f);
         [SerializeField] private Vector2 areaMax = new Vector2(3.8f, 1.5f);
         [SerializeField, Min(0f)] private float clearOfSpots = 0.4f;
@@ -44,6 +46,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private Color fillColour = new Color(0.95f, 0.8f, 0.3f, 1f);
 
         private const int SpotTries = 60;
+
+        // How far the crate and its ring reach from the crate's centre.
+        private float CrateReach => Mathf.Max(radius, crateWidth * 0.5f);
 
         private readonly List<Vector3> spots = new List<Vector3>();
         private readonly List<HidingBush> choices = new List<HidingBush>();
@@ -83,10 +88,30 @@ namespace BountyHunter.Thieves
             crateSwitch = FloorSwitch.Create(transform, "Police Tape Crate", at, crate, crateWidth, switchRingBack, switchRingFill, radialFill, fillColour, radius,
                 holdSeconds, cooldownSeconds, players);
             crateSwitch.Triggered += OnTriggered;
+            KeepBushesOff(at);
+        }
+
+        // The hiding spots that creep about steer round the crate and its ring.
+        private void KeepBushesOff(Vector3 at)
+        {
+            if (hidingSpots == null) return;
+
+            foreach (HidingBush bush in hidingSpots.Bushes)
+            {
+                if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.KeepClearOf(at, CrateReach);
+            }
         }
 
         private void Clear()
         {
+            if (hidingSpots != null)
+            {
+                foreach (HidingBush bush in hidingSpots.Bushes)
+                {
+                    if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.ForgetSpots();
+                }
+            }
+
             if (crateSwitch != null)
             {
                 crateSwitch.Triggered -= OnTriggered;
@@ -124,28 +149,43 @@ namespace BountyHunter.Thieves
             Taped?.Invoke(player, taped);
         }
 
-        // A random spot clear of the hiding spots (or the middle of the area when none is found).
+        // A random spot clear of the hiding spots (or, when none is found, the tried spot with the
+        // most room).
         private Vector3 RandomClearSpot()
         {
+            Vector3 roomiest = new Vector3((areaMin.x + areaMax.x) * 0.5f, 0f, (areaMin.y + areaMax.y) * 0.5f);
+            float mostRoom = float.MinValue;
             for (int attempt = 0; attempt < SpotTries; attempt++)
             {
                 var spot = new Vector3(Random.Range(areaMin.x, areaMax.x), 0f, Random.Range(areaMin.y, areaMax.y));
                 if (IsClear(spot)) return spot;
+
+                float room = Room(spot);
+                if (room <= mostRoom) continue;
+                mostRoom = room;
+                roomiest = spot;
             }
 
-            return new Vector3((areaMin.x + areaMax.x) * 0.5f, 0f, (areaMin.y + areaMax.y) * 0.5f);
+            return roomiest;
+        }
+
+        // How far the crate's reach is from the nearest hiding spot's picture (below 0 when they overlap).
+        private float Room(Vector3 spot)
+        {
+            float room = float.MaxValue;
+            if (hidingSpots == null) return room;
+
+            foreach (HidingBush bush in hidingSpots.Bushes)
+            {
+                if (bush != null) room = Mathf.Min(room, Flat(spot, bush.Center) - bush.Reach - CrateReach);
+            }
+
+            return room;
         }
 
         private bool IsClear(Vector3 spot)
         {
-            if (hidingSpots == null) return true;
-
-            foreach (HidingBush bush in hidingSpots.Bushes)
-            {
-                if (bush != null && Flat(spot, bush.Center) < bush.Radius + radius + clearOfSpots) return false;
-            }
-
-            return true;
+            return Room(spot) >= clearOfSpots;
         }
 
         private static float Flat(Vector3 a, Vector3 b)

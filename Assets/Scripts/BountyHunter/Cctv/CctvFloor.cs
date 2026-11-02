@@ -11,7 +11,9 @@ namespace BountyHunter.Thieves
     // wobbles to say so. Picks stay secret: a player who has picked only gets a tick in the middle of
     // their marker, which follows them about. At the reveal a thief pops out of every bin that has
     // one, one after another, the empty bins fade back, and the bag thief's bin lights up while the
-    // thief swells. Lies flat on the floor, its top toward the wall.
+    // thief swells. Near the end of the picking, two bins at a time swap places (SwapBins), sliding
+    // round each other in an arc and squashing as they go, each keeping what is inside it, so the
+    // rings move with them. Lies flat on the floor, its top toward the wall.
     public sealed class CctvFloor : MonoBehaviour
     {
         private const float Height = 0.03f;
@@ -36,6 +38,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Range(0f, 1f)] private float revealSwell = 0.35f;
         // How much the empty bins fade at the reveal (their alpha).
         [SerializeField, Range(0f, 1f)] private float revealDim = 0.3f;
+        // How far (metres) two bins swapping places swing out to either side of the line between
+        // them, and how much they squash on the way.
+        [SerializeField, Min(0f)] private float swapSwing = 0.45f;
+        [SerializeField, Range(0f, 0.5f)] private float swapSquash = 0.15f;
 
         private readonly List<CctvBinView> bins = new List<CctvBinView>();
         private readonly Dictionary<int, Coroutine> bounces = new Dictionary<int, Coroutine>();
@@ -113,6 +119,37 @@ namespace BountyHunter.Thieves
             }
 
             StartCoroutine(Pop(mark, size, 0f));
+        }
+
+        // Bins a and b swap places over seconds, each swinging round the other on its own side.
+        public IEnumerator SwapBins(int a, int b, float seconds)
+        {
+            if (a < 0 || b < 0 || a >= bins.Count || b >= bins.Count || a == b) yield break;
+
+            Transform first = bins[a].transform;
+            Transform second = bins[b].transform;
+            Vector3 from = first.position;
+            Vector3 to = second.position;
+            Vector3 across = Vector3.Cross(to - from, Vector3.up).normalized;
+            Vector3 firstSize = bins[a].Figure.localScale;
+            Vector3 secondSize = bins[b].Figure.localScale;
+            for (float time = 0f; time < seconds; time += Time.deltaTime)
+            {
+                float u = time / seconds;
+                float eased = u * u * (3f - 2f * u);
+                float swing = Mathf.Sin(u * Mathf.PI) * swapSwing;
+                first.position = Vector3.Lerp(from, to, eased) + across * swing;
+                second.position = Vector3.Lerp(to, from, eased) - across * swing;
+                float squash = swapSquash * Mathf.Sin(u * Mathf.PI * 2f);
+                bins[a].Figure.localScale = Vector3.Scale(firstSize, new Vector3(1f + squash, 1f - squash, 1f));
+                bins[b].Figure.localScale = Vector3.Scale(secondSize, new Vector3(1f - squash, 1f + squash, 1f));
+                yield return null;
+            }
+
+            first.position = to;
+            second.position = from;
+            bins[a].Figure.localScale = firstSize;
+            bins[b].Figure.localScale = secondSize;
         }
 
         // Bin index wobbles and settles back: a player has just picked it.

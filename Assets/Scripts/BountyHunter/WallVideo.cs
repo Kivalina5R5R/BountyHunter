@@ -13,7 +13,10 @@ namespace BountyHunter.Thieves
     // RawImage sized to the whole video frame, left clear in the scene so the still picture shows
     // while editing. Unity's own looping stalls a moment each time it jumps back to the start, which
     // shows on big characters; Seamless Loop instead keeps a second player waiting at the start and
-    // hands over to it just before the end.
+    // hands over to it just before the end. Seamless players never loop by themselves (jumping back
+    // makes Windows flush the decoder, which fails once several videos are open and freezes the
+    // picture): one that reaches its end with no spare ready stops and starts again instead. A
+    // player that reports an error is restarted the same way, so a character never stays frozen.
     [RequireComponent(typeof(RawImage))]
     public sealed class WallVideo : MonoBehaviour
     {
@@ -78,6 +81,7 @@ namespace BountyHunter.Thieves
             player.frameReady += OnFirstFrame;
             player.prepareCompleted += OnPrepared;
             player.loopPointReached += OnEnd;
+            player.errorReceived += OnError;
             playWhenPrepared = playOnAwake;
             wanted = playOnAwake;
             QueuePreparation();
@@ -115,7 +119,7 @@ namespace BountyHunter.Thieves
             created.clip = clip;
             created.renderMode = VideoRenderMode.RenderTexture;
             created.targetTexture = target;
-            created.isLooping = loop;
+            created.isLooping = loop && !seamlessLoop;
             created.skipOnDrop = skipFramesToKeepUp;
             created.audioOutputMode = VideoAudioOutputMode.None;
             created.playbackSpeed = playbackSpeed;
@@ -146,6 +150,13 @@ namespace BountyHunter.Thieves
 
         private void OnEnd(VideoPlayer source)
         {
+            // A seamless loop that got here missed its hand-over (no spare ready): start over.
+            if (UsesSpare && source == player && !handingOver)
+            {
+                Restart(source);
+                return;
+            }
+
             if (loop) return;
 
             wanted = false;
@@ -164,7 +175,6 @@ namespace BountyHunter.Thieves
                 spare.sendFrameReadyEvents = false;
                 spare.Stop();
                 handingOver = false;
-                player.isLooping = loop;
             }
 
             prepared = player.isPrepared;
@@ -210,7 +220,6 @@ namespace BountyHunter.Thieves
             if (framesLeft > HandOverFrames + Time.deltaTime * playbackSpeed * clip.frameRate) return;
 
             handingOver = true;
-            player.isLooping = false;
             spare.sendFrameReadyEvents = true;
             spare.frameReady += OnSpareFrame;
             spare.Play();
@@ -225,12 +234,54 @@ namespace BountyHunter.Thieves
             Frame = source.targetTexture;
 
             VideoPlayer finished = player;
+            MoveEvents(finished, source);
             player = source;
-            player.isLooping = true;
             spare = finished;
             finished.Stop();
-            sparePreparation = ScenePreload.Enqueue(this, 20, PrepareSpare());
+            // Ready again well before the next hand-over, without waiting in the preload queue.
+            finished.Prepare();
             handingOver = false;
+        }
+
+        // The playing player's end and error events follow it as the two players swap.
+        private void MoveEvents(VideoPlayer from, VideoPlayer to)
+        {
+            from.loopPointReached -= OnEnd;
+            from.errorReceived -= OnError;
+            to.loopPointReached -= OnEnd;
+            to.loopPointReached += OnEnd;
+            to.errorReceived -= OnError;
+            to.errorReceived += OnError;
+        }
+
+        // The decoder failed: the player starts over from a clean stop if it should be playing; a
+        // failed spare is only made ready again.
+        private void OnError(VideoPlayer source, string message)
+        {
+            Debug.LogWarning($"[WallVideo] {name}: {message}; restarting it", this);
+            if (source == player)
+            {
+                if (wanted && isActiveAndEnabled) Restart(source);
+                return;
+            }
+
+            if (handingOver)
+            {
+                source.frameReady -= OnSpareFrame;
+                source.sendFrameReadyEvents = false;
+                handingOver = false;
+            }
+
+            source.Stop();
+            source.Prepare();
+        }
+
+        // Stop releases the decoder (no flush); Play then gets it ready again and starts from the
+        // beginning, the last frame staying on screen meanwhile.
+        private static void Restart(VideoPlayer source)
+        {
+            source.Stop();
+            source.Play();
         }
 
         private void OnDestroy()
@@ -248,6 +299,7 @@ namespace BountyHunter.Thieves
             released.frameReady -= OnSpareFrame;
             released.prepareCompleted -= OnPrepared;
             released.loopPointReached -= OnEnd;
+            released.errorReceived -= OnError;
             RenderTexture target = released.targetTexture;
             if (target == null) return;
             target.Release();

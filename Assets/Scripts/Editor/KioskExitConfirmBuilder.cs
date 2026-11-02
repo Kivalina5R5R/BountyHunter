@@ -9,7 +9,7 @@ namespace Fortal.Editor
     // Builds the "exit the game?" dialog into the kiosk prefab (Assets/Prefabs/Display/KioskDisplay)
     // the first time the editor loads without it, and points the EXIT button at it: the dimmed screen,
     // the police-tape board (KioskConfirmPanel, Tools/KioskConfirm/make_confirm_panel.py) with its
-    // question, and CANCEL (blue, the tutorial button's art) beside EXIT (red, the exit button's art),
+    // question, and EXIT (red, the exit button's art) beside CANCEL (blue, the tutorial button's art),
     // in the kiosk buttons' font. Once built it is left alone: move or restyle it in the prefab.
     [InitializeOnLoad]
     public static class KioskExitConfirmBuilder
@@ -103,8 +103,8 @@ namespace Fortal.Editor
 
             Label("Title", board, "EXIT GAME?", 104, Color.white, new Vector2(0f, 95f), new Vector2(820f, 130f));
             Label("Message", board, "THE CASE IS STILL OPEN!\nLEAVE THE GAME NOW?", 46, MessageColour, new Vector2(0f, -35f), new Vector2(820f, 130f));
-            Button cancel = BoardButton("CancelButton", board, cancelArt, "CANCEL", new Vector2(-200f, -205f));
-            Button confirm = BoardButton("ConfirmButton", board, confirmArt, "EXIT", new Vector2(200f, -205f));
+            Button confirm = BoardButton("ConfirmButton", board, confirmArt, "EXIT", new Vector2(-200f, -205f));
+            Button cancel = BoardButton("CancelButton", board, cancelArt, "CANCEL", new Vector2(200f, -205f));
 
             var dialog = dialogRect.gameObject.AddComponent<ExitConfirmDialog>();
             var serialized = new SerializedObject(dialog);

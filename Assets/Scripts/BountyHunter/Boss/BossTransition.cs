@@ -15,6 +15,9 @@ namespace BountyHunter.Thieves
     // showing the chase. The feathers keep falling through all of it and on over the chase a while,
     // the last of them falling out on their own. Runs on unscaled time, so it plays while the game is
     // frozen. MapSwitcher drives it: Open until the wall is covered, Close when the chase is ready.
+    // With a BossSpotlight in the prefab, that opens and closes it instead of the streak's strike
+    // and the fade: a darkened wall, slashes, the boss's eyes in a band, and the dark lifting off the
+    // rooftop and the boss; bands of colour sweeping it all away at the end.
     public sealed class BossTransition : MonoBehaviour
     {
         [Header("Pieces")]
@@ -27,6 +30,10 @@ namespace BountyHunter.Thieves
         [SerializeField] private RectTransform[] pigeons;
         [SerializeField] private BossFeatherFall feathers;
         [SerializeField] private BossDotPops dots;
+        // The entrance in the way of a character spotlight (slashes, the boss's eyes in a band, the
+        // dark lifting off the rooftop; bands of colour sweeping it all away at the end) in place of
+        // the streak's strike; may be empty, for the strike.
+        [SerializeField] private BossSpotlight spotlight;
 
         [Header("Opening (seconds)")]
         // Feathers fall over the stage this long before the rooftop starts fading in.
@@ -37,6 +44,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float wipeAfter = 0.25f;
         [SerializeField, Min(0.02f)] private float wipeSeconds = 0.15f;
         [SerializeField, Min(0.05f)] private float bossPopSeconds = 0.35f;
+        // With the spotlight: once the rooftop shows, the streak runs in from the right all the way
+        // across in one go over this long, quick at first and slowing, and the boss pops up the moment
+        // it is halfway.
+        [SerializeField, Min(0.05f)] private float streakRunSeconds = 0.6f;
         // The pigeons fly in pigeonGap apart, starting pigeonsAfter the boss starts.
         [SerializeField, Min(0f)] private float pigeonsAfter = 0.1f;
         [SerializeField, Min(0f)] private float pigeonGap = 0.15f;
@@ -94,6 +105,10 @@ namespace BountyHunter.Thieves
         private bool measured;
         private AudioSource voice;
         private bool pigeonsHeard;
+        // The streak runs across on its own (the spotlight's way in), and the boss and pigeons wait
+        // this long for it to reach halfway.
+        private bool streakFirst;
+        private float bossAfter;
 
         // True once the prefab has its pieces (Tools > Bounty Hunter > Build Boss Transition).
         public bool IsSetUp => background != null && streak != null;
@@ -108,6 +123,14 @@ namespace BountyHunter.Thieves
         // Plays the cut-in up to the moment the wall is fully covered, and keeps it covered.
         public IEnumerator Open()
         {
+            streakFirst = false;
+            bossAfter = 0f;
+            if (spotlight != null && spotlight.IsSetUp)
+            {
+                yield return OpenWithSpotlight();
+                yield break;
+            }
+
             gameObject.SetActive(true);
             Measure();
             stage = Stage.Opening;
@@ -154,6 +177,16 @@ namespace BountyHunter.Thieves
         {
             while (stage == Stage.Holding && Time.unscaledTime < coveredAt + holdSeconds) yield return null;
 
+            if (spotlight != null && spotlight.IsSetUp)
+            {
+                stage = Stage.Closing;
+                outSound.Play(voice);
+                // Behind the sweeping bands everything but the feathers goes; the chase shows as they pass.
+                yield return spotlight.PlayOut(ClearAway);
+                LeaveFeathers();
+                yield break;
+            }
+
             stage = Stage.Closing;
             float held = Time.unscaledTime - coveredAt;
             if (dots != null) dots.PopAll();
@@ -181,7 +214,7 @@ namespace BountyHunter.Thieves
             float now = Time.unscaledTime;
             if (stage == Stage.Holding)
             {
-                if (!pigeonsHeard && now - coveredAt >= pigeonsAfter)
+                if (!pigeonsHeard && now - coveredAt >= bossAfter + pigeonsAfter)
                 {
                     pigeonsSound.Play(voice);
                     pigeonsHeard = true;
@@ -203,15 +236,49 @@ namespace BountyHunter.Thieves
             if (now >= feathersStopAt && feathers.IsEmpty) Hide();
         }
 
-        // Everything but the feathers is off the wall; they keep coming a while, then the last of
-        // them fall out and the cut-in switches itself off.
-        private void LeaveFeathers()
+        // The spotlight's way in: the wall darkens, slashes and the boss's eyes go by, and as the band
+        // goes the rooftop is put up behind the dark; as it lifts the streak runs in from the right all
+        // the way across, the boss popping up as it passes halfway. Feathers fall all the while.
+        private IEnumerator OpenWithSpotlight()
+        {
+            gameObject.SetActive(true);
+            Measure();
+            stage = Stage.Opening;
+            ClearAway();
+            if (feathers != null) feathers.StartFalling();
+            feathersSound.Play(voice);
+            yield return spotlight.PlayIn(() =>
+            {
+                SetAlpha(background, backgroundAlpha);
+                // The streak runs across in one go (PoseHolding); the boss pops up as it reaches
+                // halfway, where its easing is at 0.5.
+                streakFirst = true;
+                bossAfter = streakRunSeconds * (1f - Mathf.Pow(0.5f, 1f / 3f));
+                PoseStreak(0f);
+                if (dots != null) dots.StartPopping();
+                strikeSound.Play(voice);
+                bossSound.Play(voice);
+                pigeonsHeard = false;
+                coveredAt = Time.unscaledTime;
+                stage = Stage.Holding;
+            });
+        }
+
+        // The rooftop, the streak and its dots, the boss and the pigeons off the wall at once.
+        private void ClearAway()
         {
             ShowBoss(0f, 0f);
             for (int i = 0; i < pigeons.Length; i++) pigeons[i].gameObject.SetActive(false);
             if (dots != null) dots.Clear();
             streak.fillAmount = 0f;
             SetAlpha(background, 0f);
+        }
+
+        // Everything but the feathers is off the wall; they keep coming a while, then the last of
+        // them fall out and the cut-in switches itself off.
+        private void LeaveFeathers()
+        {
+            ClearAway();
             feathersStopAt = Time.unscaledTime + feathersAfterSeconds;
             stage = Stage.FeathersOnly;
         }
@@ -252,10 +319,13 @@ namespace BountyHunter.Thieves
         // The boss pops up and bobs, the pigeons fly in one after another and hover.
         private void PoseHolding(float since)
         {
-            ShowBoss(EaseOutBack(since / bossPopSeconds), since);
+            if (streakFirst) PoseStreak(EaseOutCubic(since / streakRunSeconds));
+
+            float bossTime = since - bossAfter;
+            ShowBoss(EaseOutBack(bossTime / bossPopSeconds), since);
             for (int i = 0; i < pigeons.Length; i++)
             {
-                float flying = (since - pigeonsAfter - i * pigeonGap) / flyInSeconds;
+                float flying = (bossTime - pigeonsAfter - i * pigeonGap) / flyInSeconds;
                 PosePigeon(i, flying, 0f, since);
             }
         }

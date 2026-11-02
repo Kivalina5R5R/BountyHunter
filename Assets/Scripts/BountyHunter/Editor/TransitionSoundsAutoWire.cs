@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves.EditorTools
 {
-    // Gives the wall transitions' prefabs (the cage, the police car, the boss's cut-in) their sounds
+    // Gives the wall transitions' prefabs (the cage, the police car, the boss's cut-in, the mini games'
+    // cut-ins, which borrow the cage's whoosh and slam and the boss's sweep out) their sounds
     // from Assets/Audio/Transition (Tools/TransitionSounds/make_transition_sounds.py) each time the
     // editor loads. Only empty sounds are filled: a clip swapped in by hand is kept, but an emptied
     // one comes back, so set its volume to 0 to silence it.
@@ -30,6 +31,18 @@ namespace BountyHunter.Thieves.EditorTools
                 ("strikeSound", "SFX_Boss_Strike"),
                 ("bossSound", "SFX_Boss_Reveal"),
                 ("pigeonsSound", "SFX_Boss_Pigeons"),
+                ("outSound", "SFX_Boss_Out"),
+            }),
+            (MinigameCutInBuilder.LineupPrefabPath, typeof(MinigameCutIn), new[]
+            {
+                ("tapesSound", "SFX_Cage_Slide"),
+                ("slamSound", "SFX_Cage_Slam"),
+                ("outSound", "SFX_Boss_Out"),
+            }),
+            (MinigameCutInBuilder.CctvPrefabPath, typeof(MinigameCutIn), new[]
+            {
+                ("tapesSound", "SFX_Cage_Slide"),
+                ("slamSound", "SFX_Cage_Slam"),
                 ("outSound", "SFX_Boss_Out"),
             }),
         };

@@ -8,10 +8,12 @@ namespace BountyHunter.Thieves
     // it is done, End while the screen is dark again, then the next map starts.
     public abstract class StageInterlude : MonoBehaviour
     {
-        // Played over the wall as the game leaves this mini game for the next map, instead of the
-        // fade to black (the floor still fades); leave empty to fade.
+        // Played over the wall as the game goes into this mini game (its cut-in) and as it leaves it
+        // for the next map, instead of the fade to black (the floor still fades); leave empty to fade.
+        [SerializeField] private WallTransition entryTransition;
         [SerializeField] private WallTransition exitTransition;
 
+        public WallTransition EntryTransition => entryTransition != null && entryTransition.IsSetUp ? entryTransition : null;
         public WallTransition ExitTransition => exitTransition != null && exitTransition.IsSetUp ? exitTransition : null;
 
         // Its panel on the wall, for a way out that wipes it off while the next map shows behind it;

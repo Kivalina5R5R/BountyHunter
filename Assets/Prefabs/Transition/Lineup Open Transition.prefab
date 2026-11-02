@@ -1,0 +1,1130 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &137625871819761421
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8233673378925207767}
+  - component: {fileID: 3842665907772026336}
+  m_Layer: 0
+  m_Name: Lineup Open Transition
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &8233673378925207767
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137625871819761421}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 8670889259459638096}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 1649.7778, y: 435}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &3842665907772026336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137625871819761421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26b2919767f490d4c800e7b073d5eed5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.MinigameCutIn
+  shaker: {fileID: 8670889259459638096}
+  background: {fileID: 38661326073754871}
+  streakDraw: {fileID: 3482080436846153673}
+  tapes:
+  - piece: {fileID: 4260414276230617817}
+  - piece: {fileID: 518443895038416613}
+  - piece: {fileID: 7982437809528316631}
+  - piece: {fileID: 7102916477833134242}
+  character: {fileID: 8094198264896281586}
+  logo: {fileID: 5903055340768925596}
+  backgroundAfter: 0.25
+  backgroundSeconds: 0.3
+  streakAfter: 0.4
+  streakSeconds: 0.42
+  tapesAfter: 0.65
+  tapeGap: 0.1
+  tapeSeconds: 0.3
+  characterAfter: 0
+  characterSeconds: 0.4
+  logoAfter: 1.2
+  logoSeconds: 0.22
+  holdSeconds: 4.5
+  logoOutSeconds: 0.2
+  characterOutAfter: 0.08
+  characterOutSeconds: 0.3
+  tapesOutAfter: 0.14
+  tapeOutGap: 0.06
+  tapeOutSeconds: 0.3
+  streakOutAfter: 0.3
+  streakOutSeconds: 0.4
+  backgroundOutAfter: 0.55
+  backgroundOutSeconds: 0.3
+  logoSlamFrom: 2.4
+  landingShake: 14
+  landingShakeSeconds: 0.3
+  characterRise: 520
+  characterBob: 6
+  characterSway: 2.5
+  logoBreathe: 0.03
+  tapeFlutter: 3
+  particles: {fileID: 2883256893478082429}
+  backdropParticles: {fileID: 5000801733649369218}
+  streakSparksPerSecond: 110
+  twinklesPerSecond: 14
+  twinkleAlpha: 0.4
+  sparkColours:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 1, g: 0.85, b: 0.45, a: 1}
+  - {r: 1, g: 0.35, b: 0.3, a: 1}
+  tapeColours:
+  - {r: 0.93, g: 1, b: 0.1, a: 1}
+  - {r: 0.93, g: 1, b: 0.1, a: 1}
+  - {r: 0.08, g: 0.08, b: 0.1, a: 1}
+  dustColours:
+  - {r: 1, g: 1, b: 1, a: 0.75}
+  - {r: 0.92, g: 0.88, b: 0.8, a: 0.7}
+  logoColours:
+  - {r: 0.3, g: 0.92, b: 0.8, a: 1}
+  - {r: 0.62, g: 0.32, b: 0.95, a: 1}
+  - {r: 1, g: 0.9, b: 0.2, a: 1}
+  - {r: 1, g: 1, b: 1, a: 1}
+  tapesSound:
+    clip: {fileID: 8300000, guid: 4c5ba229d3a6bf04d890d3085801a1a4, type: 3}
+    volume: 0.55
+  slamSound:
+    clip: {fileID: 8300000, guid: a5939a0cb50df3a4bb6592944d17b35a, type: 3}
+    volume: 0.8
+  outSound:
+    clip: {fileID: 8300000, guid: b42ec8dd988f35646a2899ebdfb8a02c, type: 3}
+    volume: 0.5
+--- !u!1 &1681784893771602279
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7102916477833134242}
+  - component: {fileID: 8846847577541421601}
+  - component: {fileID: 4468624654244081472}
+  - component: {fileID: 5057654422599604839}
+  m_Layer: 0
+  m_Name: Tape 4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7102916477833134242
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681784893771602279}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -23.059029, y: -159.6007}
+  m_SizeDelta: {x: 1695.8959, y: 185.0764}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &8846847577541421601
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681784893771602279}
+  m_CullTransparentMesh: 1
+--- !u!114 &4468624654244081472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681784893771602279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 5985b02bc3af1d04c90da1dfc56a3d88, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &5057654422599604839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681784893771602279}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08d4d5a65ef64e2428e54589764dcc32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.TapeScroll
+  shader: {fileID: 4800000, guid: c8292592fb92bde44b2339215eb0f957, type: 3}
+  pictureSize: {x: 8192, y: 919}
+  along: {x: 0.9979, y: 0.06476}
+  period: 1251
+  speed: 600
+--- !u!1 &2173407045625466528
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6754793672635337267}
+  - component: {fileID: 6445061715858723771}
+  - component: {fileID: 179116199089518229}
+  - component: {fileID: 3482080436846153673}
+  m_Layer: 0
+  m_Name: Streak
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &6754793672635337267
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2173407045625466528}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -35.847225}
+  m_SizeDelta: {x: 1649.7778, y: 435}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &6445061715858723771
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2173407045625466528}
+  m_CullTransparentMesh: 1
+--- !u!114 &179116199089518229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2173407045625466528}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: a68f0802ae502524c9106b6789fcf928, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 0
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &3482080436846153673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2173407045625466528}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7371267625934042b02067201a38247, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PathReveal
+  shader: {fileID: 4800000, guid: eaf8c5740cedb004d917a72614f6a4be, type: 3}
+  pathMap: {fileID: 2800000, guid: 1b745d0eb4df6634498d2cecb024ca6b, type: 3}
+  softness: 0.015
+  headGlow: 0.6
+  middle:
+  - {x: 0, y: 0.07371, z: 0}
+  - {x: 0.00586, y: 0.07977, z: 0.00535}
+  - {x: 0.01172, y: 0.08864, z: 0.01088}
+  - {x: 0.01758, y: 0.09756, z: 0.01641}
+  - {x: 0.02344, y: 0.10649, z: 0.02195}
+  - {x: 0.0293, y: 0.11541, z: 0.02748}
+  - {x: 0.03516, y: 0.12433, z: 0.03302}
+  - {x: 0.04102, y: 0.13325, z: 0.03855}
+  - {x: 0.04688, y: 0.14218, z: 0.04409}
+  - {x: 0.05273, y: 0.1511, z: 0.04962}
+  - {x: 0.05859, y: 0.16002, z: 0.05516}
+  - {x: 0.06445, y: 0.16894, z: 0.0607}
+  - {x: 0.07031, y: 0.17811, z: 0.06625}
+  - {x: 0.07617, y: 0.19133, z: 0.07225}
+  - {x: 0.08203, y: 0.21225, z: 0.07931}
+  - {x: 0.08789, y: 0.23346, z: 0.08641}
+  - {x: 0.09375, y: 0.24666, z: 0.09246}
+  - {x: 0.09961, y: 0.25336, z: 0.09789}
+  - {x: 0.10547, y: 0.27379, z: 0.10488}
+  - {x: 0.11133, y: 0.29606, z: 0.11215}
+  - {x: 0.11719, y: 0.31835, z: 0.11943}
+  - {x: 0.12305, y: 0.34062, z: 0.1267}
+  - {x: 0.12891, y: 0.36291, z: 0.13397}
+  - {x: 0.13477, y: 0.38518, z: 0.14125}
+  - {x: 0.14062, y: 0.40746, z: 0.14852}
+  - {x: 0.14648, y: 0.42974, z: 0.15579}
+  - {x: 0.15234, y: 0.45202, z: 0.16307}
+  - {x: 0.1582, y: 0.4743, z: 0.17034}
+  - {x: 0.16406, y: 0.49658, z: 0.17762}
+  - {x: 0.16992, y: 0.51886, z: 0.18489}
+  - {x: 0.17578, y: 0.54114, z: 0.19216}
+  - {x: 0.18164, y: 0.56342, z: 0.19944}
+  - {x: 0.1875, y: 0.5857, z: 0.20671}
+  - {x: 0.19336, y: 0.60798, z: 0.21399}
+  - {x: 0.19922, y: 0.63026, z: 0.22126}
+  - {x: 0.20508, y: 0.65254, z: 0.22853}
+  - {x: 0.21094, y: 0.67482, z: 0.23581}
+  - {x: 0.2168, y: 0.6971, z: 0.24308}
+  - {x: 0.22266, y: 0.71938, z: 0.25035}
+  - {x: 0.22852, y: 0.74166, z: 0.25763}
+  - {x: 0.23438, y: 0.76394, z: 0.2649}
+  - {x: 0.24023, y: 0.78621, z: 0.27218}
+  - {x: 0.24609, y: 0.80844, z: 0.27944}
+  - {x: 0.25195, y: 0.82691, z: 0.28614}
+  - {x: 0.25781, y: 0.8274, z: 0.29143}
+  - {x: 0.26367, y: 0.8191, z: 0.29692}
+  - {x: 0.26953, y: 0.81044, z: 0.30243}
+  - {x: 0.27539, y: 0.80178, z: 0.30794}
+  - {x: 0.28125, y: 0.79312, z: 0.31345}
+  - {x: 0.28711, y: 0.78447, z: 0.31897}
+  - {x: 0.29297, y: 0.77581, z: 0.32448}
+  - {x: 0.29883, y: 0.76715, z: 0.32999}
+  - {x: 0.30469, y: 0.75849, z: 0.33551}
+  - {x: 0.31055, y: 0.74983, z: 0.34102}
+  - {x: 0.31641, y: 0.74117, z: 0.34653}
+  - {x: 0.32227, y: 0.73252, z: 0.35204}
+  - {x: 0.32812, y: 0.72386, z: 0.35756}
+  - {x: 0.33398, y: 0.7152, z: 0.36307}
+  - {x: 0.33984, y: 0.70654, z: 0.36858}
+  - {x: 0.3457, y: 0.69788, z: 0.3741}
+  - {x: 0.35156, y: 0.68922, z: 0.37961}
+  - {x: 0.35742, y: 0.68056, z: 0.38512}
+  - {x: 0.36328, y: 0.6719, z: 0.39064}
+  - {x: 0.36914, y: 0.66324, z: 0.39615}
+  - {x: 0.375, y: 0.65458, z: 0.40166}
+  - {x: 0.38086, y: 0.64592, z: 0.40717}
+  - {x: 0.38672, y: 0.63726, z: 0.41269}
+  - {x: 0.39258, y: 0.62837, z: 0.41822}
+  - {x: 0.39844, y: 0.61689, z: 0.42401}
+  - {x: 0.4043, y: 0.60307, z: 0.43006}
+  - {x: 0.41016, y: 0.58955, z: 0.43607}
+  - {x: 0.41602, y: 0.57656, z: 0.44202}
+  - {x: 0.42188, y: 0.56406, z: 0.44791}
+  - {x: 0.42773, y: 0.55201, z: 0.45376}
+  - {x: 0.43359, y: 0.54115, z: 0.45948}
+  - {x: 0.43945, y: 0.53274, z: 0.46497}
+  - {x: 0.44531, y: 0.525, z: 0.47041}
+  - {x: 0.45117, y: 0.51726, z: 0.47585}
+  - {x: 0.45703, y: 0.50953, z: 0.48129}
+  - {x: 0.46289, y: 0.5018, z: 0.48673}
+  - {x: 0.46875, y: 0.49406, z: 0.49216}
+  - {x: 0.47461, y: 0.48633, z: 0.4976}
+  - {x: 0.48047, y: 0.47859, z: 0.50304}
+  - {x: 0.48633, y: 0.47087, z: 0.50848}
+  - {x: 0.49219, y: 0.46435, z: 0.51384}
+  - {x: 0.49805, y: 0.46543, z: 0.51902}
+  - {x: 0.50391, y: 0.46768, z: 0.5242}
+  - {x: 0.50977, y: 0.46207, z: 0.52951}
+  - {x: 0.51562, y: 0.45403, z: 0.53497}
+  - {x: 0.52148, y: 0.44593, z: 0.54044}
+  - {x: 0.52734, y: 0.43783, z: 0.54591}
+  - {x: 0.5332, y: 0.42973, z: 0.55137}
+  - {x: 0.53906, y: 0.42163, z: 0.55684}
+  - {x: 0.54492, y: 0.41354, z: 0.56231}
+  - {x: 0.55078, y: 0.40543, z: 0.56778}
+  - {x: 0.55664, y: 0.39734, z: 0.57324}
+  - {x: 0.5625, y: 0.38924, z: 0.57871}
+  - {x: 0.56836, y: 0.38114, z: 0.58418}
+  - {x: 0.57422, y: 0.37304, z: 0.58964}
+  - {x: 0.58008, y: 0.36494, z: 0.59511}
+  - {x: 0.58594, y: 0.35684, z: 0.60058}
+  - {x: 0.5918, y: 0.34874, z: 0.60605}
+  - {x: 0.59766, y: 0.34064, z: 0.61151}
+  - {x: 0.60352, y: 0.33254, z: 0.61698}
+  - {x: 0.60938, y: 0.32444, z: 0.62245}
+  - {x: 0.61523, y: 0.31635, z: 0.62792}
+  - {x: 0.62109, y: 0.30912, z: 0.63332}
+  - {x: 0.62695, y: 0.30919, z: 0.6385}
+  - {x: 0.63281, y: 0.31508, z: 0.64382}
+  - {x: 0.63867, y: 0.32139, z: 0.64916}
+  - {x: 0.64453, y: 0.3277, z: 0.6545}
+  - {x: 0.65039, y: 0.334, z: 0.65984}
+  - {x: 0.65625, y: 0.34031, z: 0.66518}
+  - {x: 0.66211, y: 0.34662, z: 0.67052}
+  - {x: 0.66797, y: 0.35301, z: 0.67586}
+  - {x: 0.67383, y: 0.36196, z: 0.68141}
+  - {x: 0.67969, y: 0.37758, z: 0.68769}
+  - {x: 0.68555, y: 0.39493, z: 0.69421}
+  - {x: 0.69141, y: 0.41231, z: 0.70073}
+  - {x: 0.69727, y: 0.4297, z: 0.70726}
+  - {x: 0.70312, y: 0.44708, z: 0.71378}
+  - {x: 0.70898, y: 0.46447, z: 0.7203}
+  - {x: 0.71484, y: 0.48185, z: 0.72682}
+  - {x: 0.7207, y: 0.49924, z: 0.73334}
+  - {x: 0.72656, y: 0.51662, z: 0.73987}
+  - {x: 0.73242, y: 0.53401, z: 0.74639}
+  - {x: 0.73828, y: 0.55138, z: 0.75291}
+  - {x: 0.74414, y: 0.56724, z: 0.75923}
+  - {x: 0.75, y: 0.56865, z: 0.76456}
+  - {x: 0.75586, y: 0.56634, z: 0.76985}
+  - {x: 0.76172, y: 0.58098, z: 0.77603}
+  - {x: 0.76758, y: 0.59841, z: 0.78256}
+  - {x: 0.77344, y: 0.61587, z: 0.78909}
+  - {x: 0.7793, y: 0.63233, z: 0.79548}
+  - {x: 0.78516, y: 0.64292, z: 0.80119}
+  - {x: 0.79102, y: 0.65009, z: 0.80659}
+  - {x: 0.79688, y: 0.65681, z: 0.81195}
+  - {x: 0.80273, y: 0.66339, z: 0.81731}
+  - {x: 0.80859, y: 0.66997, z: 0.82267}
+  - {x: 0.81445, y: 0.67654, z: 0.82802}
+  - {x: 0.82031, y: 0.68311, z: 0.83338}
+  - {x: 0.82617, y: 0.68968, z: 0.83874}
+  - {x: 0.83203, y: 0.69626, z: 0.84409}
+  - {x: 0.83789, y: 0.70283, z: 0.84945}
+  - {x: 0.84375, y: 0.70941, z: 0.85481}
+  - {x: 0.84961, y: 0.71598, z: 0.86016}
+  - {x: 0.85547, y: 0.72255, z: 0.86552}
+  - {x: 0.86133, y: 0.72912, z: 0.87088}
+  - {x: 0.86719, y: 0.7357, z: 0.87623}
+  - {x: 0.87305, y: 0.74227, z: 0.88159}
+  - {x: 0.87891, y: 0.74884, z: 0.88695}
+  - {x: 0.88477, y: 0.75541, z: 0.8923}
+  - {x: 0.89062, y: 0.76199, z: 0.89766}
+  - {x: 0.89648, y: 0.76856, z: 0.90302}
+  - {x: 0.90234, y: 0.77513, z: 0.90837}
+  - {x: 0.9082, y: 0.78171, z: 0.91373}
+  - {x: 0.91406, y: 0.78835, z: 0.91909}
+  - {x: 0.91992, y: 0.79645, z: 0.92456}
+  - {x: 0.92578, y: 0.80717, z: 0.93027}
+  - {x: 0.93164, y: 0.81872, z: 0.93606}
+  - {x: 0.9375, y: 0.83081, z: 0.9419}
+  - {x: 0.94336, y: 0.84354, z: 0.94783}
+  - {x: 0.94922, y: 0.85659, z: 0.95378}
+  - {x: 0.95508, y: 0.86669, z: 0.95943}
+  - {x: 0.96094, y: 0.87441, z: 0.96487}
+  - {x: 0.9668, y: 0.88198, z: 0.9703}
+  - {x: 0.97266, y: 0.88955, z: 0.97572}
+  - {x: 0.97852, y: 0.89712, z: 0.98115}
+  - {x: 0.98438, y: 0.90468, z: 0.98657}
+  - {x: 0.99023, y: 0.91225, z: 0.992}
+  - {x: 0.99609, y: 0.91934, z: 0.99739}
+  - {x: 0.99902, y: 0.92113, z: 1}
+--- !u!1 &3948682499512081813
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5903055340768925596}
+  - component: {fileID: 6255909050600853464}
+  - component: {fileID: 7764128233016983137}
+  m_Layer: 0
+  m_Name: Logo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5903055340768925596
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3948682499512081813}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 119.927086, y: 38.96875}
+  m_SizeDelta: {x: 689.75696, y: 251.93752}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &6255909050600853464
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3948682499512081813}
+  m_CullTransparentMesh: 1
+--- !u!114 &7764128233016983137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3948682499512081813}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: afba1519bc8b27e409201eb789c1dc0f, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &4225492278257805205
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8094198264896281586}
+  - component: {fileID: 4974670493922023822}
+  - component: {fileID: 4801781536916205360}
+  m_Layer: 0
+  m_Name: Character
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &8094198264896281586
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4225492278257805205}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -424.02432, y: -36.552086}
+  m_SizeDelta: {x: 286.5764, y: 433.5903}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &4974670493922023822
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4225492278257805205}
+  m_CullTransparentMesh: 1
+--- !u!114 &4801781536916205360
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4225492278257805205}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: cf55e80b44a47444e8d9eec558575dfb, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!1 &4278931323775028574
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5409711223360826138}
+  - component: {fileID: 2883256893478082429}
+  m_Layer: 0
+  m_Name: Particles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5409711223360826138
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4278931323775028574}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &2883256893478082429
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4278931323775028574}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c7994e97b69d0e40a74c48c39f95722, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CutInParticles
+  star: {fileID: 21300000, guid: d6a914944e2464e45887d9003b361a38, type: 3}
+  most: 220
+  keepSpeed: 0.08
+--- !u!1 &4483294689985116146
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4260414276230617817}
+  - component: {fileID: 3092762065355623102}
+  - component: {fileID: 7136402462065011408}
+  - component: {fileID: 6881636141946120741}
+  m_Layer: 0
+  m_Name: Tape 1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &4260414276230617817
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4483294689985116146}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 201.99306}
+  m_SizeDelta: {x: 1649.7778, y: 84.986115}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &3092762065355623102
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4483294689985116146}
+  m_CullTransparentMesh: 1
+--- !u!114 &7136402462065011408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4483294689985116146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: a2ca0dfaef681cc4ab7241bc04a0a5ff, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &6881636141946120741
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4483294689985116146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08d4d5a65ef64e2428e54589764dcc32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.TapeScroll
+  shader: {fileID: 4800000, guid: c8292592fb92bde44b2339215eb0f957, type: 3}
+  pictureSize: {x: 8192, y: 422}
+  along: {x: 0.99975, y: 0.02253}
+  period: 410
+  speed: 600
+--- !u!1 &5403556742268121194
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8670889259459638096}
+  m_Layer: 0
+  m_Name: Shaker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &8670889259459638096
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5403556742268121194}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 38661326073754871}
+  - {fileID: 3003729520014880649}
+  - {fileID: 6754793672635337267}
+  - {fileID: 4260414276230617817}
+  - {fileID: 518443895038416613}
+  - {fileID: 7982437809528316631}
+  - {fileID: 7102916477833134242}
+  - {fileID: 5903055340768925596}
+  - {fileID: 8094198264896281586}
+  - {fileID: 5409711223360826138}
+  m_Father: {fileID: 8233673378925207767}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &6257587173583308311
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7982437809528316631}
+  - component: {fileID: 8321745043843415680}
+  - component: {fileID: 3869535637023970770}
+  - component: {fileID: 2464934900479246938}
+  m_Layer: 0
+  m_Name: Tape 3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &7982437809528316631
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6257587173583308311}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: -211}
+  m_SizeDelta: {x: 1649.7778, y: 106.9375}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &8321745043843415680
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6257587173583308311}
+  m_CullTransparentMesh: 1
+--- !u!114 &3869535637023970770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6257587173583308311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 13a6c9eb90b407743ba28842267993c3, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &2464934900479246938
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6257587173583308311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08d4d5a65ef64e2428e54589764dcc32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.TapeScroll
+  shader: {fileID: 4800000, guid: c8292592fb92bde44b2339215eb0f957, type: 3}
+  pictureSize: {x: 8192, y: 531}
+  along: {x: 0.99932, y: -0.03697}
+  period: 392
+  speed: 600
+--- !u!1 &7643389047642420369
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 518443895038416613}
+  - component: {fileID: 4286388597580744378}
+  - component: {fileID: 2892390028608005559}
+  - component: {fileID: 8901788136514125290}
+  m_Layer: 0
+  m_Name: Tape 2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &518443895038416613
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7643389047642420369}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -61.82639, y: 197.26042}
+  m_SizeDelta: {x: 1636.4862, y: 155.67361}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &4286388597580744378
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7643389047642420369}
+  m_CullTransparentMesh: 1
+--- !u!114 &2892390028608005559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7643389047642420369}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 7d49d3ff81d7f154fac1e59c8b0e8ab7, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &8901788136514125290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7643389047642420369}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 08d4d5a65ef64e2428e54589764dcc32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.TapeScroll
+  shader: {fileID: 4800000, guid: c8292592fb92bde44b2339215eb0f957, type: 3}
+  pictureSize: {x: 8126, y: 773}
+  along: {x: 0.99792, y: 0.06453}
+  period: 785
+  speed: 600
+--- !u!1 &8085800251917003763
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3003729520014880649}
+  - component: {fileID: 5000801733649369218}
+  m_Layer: 0
+  m_Name: Backdrop Particles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &3003729520014880649
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8085800251917003763}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &5000801733649369218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8085800251917003763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c7994e97b69d0e40a74c48c39f95722, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CutInParticles
+  star: {fileID: 21300000, guid: d6a914944e2464e45887d9003b361a38, type: 3}
+  most: 220
+  keepSpeed: 0.08
+--- !u!1 &8420411248506829883
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 38661326073754871}
+  - component: {fileID: 4730264392086157388}
+  - component: {fileID: 5001335918185187474}
+  m_Layer: 0
+  m_Name: Background
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &38661326073754871
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8420411248506829883}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8670889259459638096}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &4730264392086157388
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8420411248506829883}
+  m_CullTransparentMesh: 1
+--- !u!114 &5001335918185187474
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8420411248506829883}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: 1950e8eb576200e46a1142a3c65dc8aa, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1

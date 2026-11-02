@@ -8,7 +8,8 @@ namespace BountyHunter.Thieves
     // Assets/Prefabs/Boss/Boss Transition.prefab. Its Feather child is the picture every feather is
     // copied from, switched off, at a feather's usual size (resize it or swap its picture there).
     // While it is falling, feathers keep coming in above the wall at random across it and drift down
-    // past the bottom, swaying and turning. Runs on unscaled time, so it plays while the game is frozen.
+    // past the bottom, swaying and turning, cut off at the wall's edges (a RectMask2D on the box), so
+    // none shows on another screen. Runs on unscaled time, so it plays while the game is frozen.
     public sealed class BossFeatherFall : MonoBehaviour
     {
         [SerializeField] private Image feather;
@@ -44,6 +45,9 @@ namespace BountyHunter.Thieves
         private void Awake()
         {
             if (feather != null) feather.gameObject.SetActive(false);
+            // Only what is on the wall shows: a feather drifting in above it or out past its bottom
+            // is cut off at the edge, never showing on the floor's screen next to it.
+            if (!TryGetComponent(out RectMask2D _)) gameObject.AddComponent<RectMask2D>();
         }
 
         // Feathers start coming in over the top of the wall.

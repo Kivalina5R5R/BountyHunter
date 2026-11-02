@@ -38,6 +38,7 @@ namespace BountyHunter.Thieves.EditorTools
             CctvPrefabBuilder.StandBinsUpright();
             CctvPrefabBuilder.PutStampBehindThieves();
             CctvPrefabBuilder.PutScreenInFront();
+            CctvPrefabBuilder.AddCountIn();
             if (Object.FindFirstObjectByType<CctvPuzzle>(FindObjectsInactive.Include) == null) CctvPrefabBuilder.Wire();
         }
     }
@@ -599,9 +600,48 @@ namespace BountyHunter.Thieves.EditorTools
             serialized.FindProperty("stamp").objectReferenceValue = stamp.rectTransform;
             serialized.FindProperty("entrance").vector2Value = new Vector2(-ScreenSize.x * 0.5f - 80f, BinY);
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            Set(wall, "countIn", CountInText(view));
 
             PrefabUtility.SaveAsPrefabAsset(root, WallPath);
             Object.DestroyImmediate(root);
+        }
+
+        // A Cctv Wall made before the count-in gets one.
+        public static void AddCountIn()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallPath) == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(WallPath);
+            try
+            {
+                var wall = contents.GetComponent<CctvWall>();
+                Transform screen = contents.transform.Find("Screen");
+                if (wall == null || screen == null) return;
+
+                var serialized = new SerializedObject(wall);
+                SerializedProperty countIn = serialized.FindProperty("countIn");
+                if (countIn == null || countIn.objectReferenceValue != null) return;
+
+                countIn.objectReferenceValue = CountInText(screen);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(contents, WallPath);
+                Debug.Log("[CctvPrefabBuilder] The Cctv Wall counts in 3, 2, 1 before the clip.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+        }
+
+        // The 3, 2, 1 in the middle of the screen, over everything on it, white in the outlined font;
+        // switched off until it counts.
+        private static TMP_Text CountInText(Transform screen)
+        {
+            TMP_Text number = UiText("Count In", screen, "3", 170f, Color.white, new Vector2(0f, 10f), new Vector2(260f, 220f));
+            number.fontSharedMaterial = LoadGuid<Material>(LineupPrefabBuilder.OutlinedFontGuid);
+            number.transform.SetAsLastSibling();
+            number.gameObject.SetActive(false);
+            return number;
         }
 
         // The picture height tall, as wide as its own shape makes it.

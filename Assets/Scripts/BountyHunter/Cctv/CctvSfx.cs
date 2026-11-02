@@ -79,6 +79,8 @@ namespace BountyHunter.Thieves
                 wall.ThiefPeeked += OnThiefPeeked;
                 wall.CaughtStamped += OnCaughtStamped;
                 wall.HurrySecond += OnHurrySecond;
+                wall.BinsSwapping += OnBinsSwapping;
+                wall.CountInShown += OnCountInShown;
             }
 
             if (peels != null)
@@ -105,6 +107,8 @@ namespace BountyHunter.Thieves
                 wall.ThiefPeeked -= OnThiefPeeked;
                 wall.CaughtStamped -= OnCaughtStamped;
                 wall.HurrySecond -= OnHurrySecond;
+                wall.BinsSwapping -= OnBinsSwapping;
+                wall.CountInShown -= OnCountInShown;
             }
 
             if (peels != null)
@@ -115,6 +119,9 @@ namespace BountyHunter.Thieves
         }
 
         private void OnThiefJumped() => Play(jump, thiefVolume);
+
+        // Two bins swapping places: the thieves' jump, lower, as the bins go round each other.
+        private void OnBinsSwapping() => Play(jump, thiefVolume, 0.75f);
 
         private void OnThiefLanded(int bin)
         {
@@ -141,6 +148,9 @@ namespace BountyHunter.Thieves
             if (secondsLeft <= 0) return;
             Play(secondsLeft <= 3 ? finalTick : tick, timeVolume);
         }
+
+        // The count-in's 3, 2, 1: the clock's last ticks.
+        private void OnCountInShown(int number) => Play(finalTick, timeVolume);
 
         private void OnAnswersClosed() => Play(timeUp, timeVolume);
 

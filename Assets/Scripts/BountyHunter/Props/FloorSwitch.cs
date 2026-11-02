@@ -44,6 +44,9 @@ namespace BountyHunter.Thieves
         private MaterialPropertyBlock block;
         private Color colour;
         private float radius;
+
+        // How far round it a player sets it off (and its ring reaches).
+        public float Radius => radius;
         private float holdSeconds;
         private float cooldownSeconds;
         private float propScale;

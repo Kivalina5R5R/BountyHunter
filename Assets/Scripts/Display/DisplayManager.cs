@@ -268,6 +268,10 @@ namespace Fortal.Display
             }
 
             SetCanvasDisplay(kioskCanvases, DisplayOutput.KioskDisplayIndex);
+            // The kiosk's screen (its rain, its drops) is only for the kiosk: it never shows past the
+            // edge of the wall or the floor, however wide those screens are.
+            HideFrom(sideCamera, kioskCanvases, sideCanvases);
+            HideFrom(floorCamera, kioskCanvases, floorCanvases);
             SetCanvasDisplay(floorCanvases, OutputIndex(floorDisplayIndex, DisplayOutput.FloorDisplayIndex));
             SetCanvasDisplay(sideCanvases, OutputIndex(wallDisplayIndex, DisplayOutput.WallDisplayIndex));
         }
@@ -309,6 +313,31 @@ namespace Fortal.Display
             }
             Debug.Log($"[DisplayManager] {role} output on Unity display {displayIndex} " +
                 $"({displays[displayIndex].systemWidth}x{displays[displayIndex].systemHeight})", this);
+        }
+
+        // Takes the layers of hidden off what camera sees, keeping any layer one of its own canvases is on.
+        private static void HideFrom(Camera camera, Canvas[] hidden, Canvas[] own)
+        {
+            if (camera == null || hidden == null)
+            {
+                return;
+            }
+
+            int keep = 0;
+            if (own != null)
+            {
+                foreach (Canvas canvas in own)
+                {
+                    if (canvas != null) keep |= 1 << canvas.gameObject.layer;
+                }
+            }
+
+            foreach (Canvas canvas in hidden)
+            {
+                if (canvas == null) continue;
+                int layer = 1 << canvas.gameObject.layer;
+                if ((keep & layer) == 0) camera.cullingMask &= ~layer;
+            }
         }
 
         private static void SetCanvasDisplay(Canvas[] canvases, int displayIndex)

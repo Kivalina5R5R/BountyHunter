@@ -13,12 +13,12 @@ namespace BountyHunter.Thieves
     // cleared.
     public sealed class MudPuddles : MonoBehaviour
     {
-        // One puddle: where, how big (half widths across and along, in its own turn) and its turn.
+        // One puddle: where and how big its mud is (half widths across and along the floor), never
+        // turned, so it lines up with the floor painting.
         private struct Puddle
         {
             public Vector3 Centre;
             public Vector2 HalfSize;
-            public float Turn;
             public GameObject Picture;
         }
 
@@ -29,9 +29,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private ParkPoliceTape policeTape;
         [SerializeField] private int stage = 2;
         [SerializeField] private Vector2Int puddleCount = new Vector2Int(4, 6);
-        // A puddle's width (metres; its depth follows the picture's shape) and the most it turns either way.
+        // A puddle picture's width (metres; its depth follows the picture's shape).
         [SerializeField, Min(0.2f)] private float width = 1.5f;
-        [SerializeField, Range(0f, 90f)] private float maxTurnDegrees = 25f;
         [SerializeField, Range(0.1f, 1f)] private float thiefSpeedInMud = 0.5f;
         [SerializeField, Range(0.1f, 1f)] private float lockSpeedInMud = 0.5f;
         // Where puddles may lie (x and world z), and how far apart from what they keep clear of.
@@ -44,6 +43,9 @@ namespace BountyHunter.Thieves
         // Under the paw prints (3) and every shadow, on the floor itself.
         private const int Order = 2;
         private const int SpotTries = 60;
+        // The picture's edge fades out into the floor (Tools/ParkArt/soften_mud.py): the mud that
+        // slows is about this share of its width and depth.
+        private static readonly Vector2 MudShare = new Vector2(0.82f, 0.66f);
 
         private readonly List<Puddle> puddles = new List<Puddle>();
         // Laid a frame after the stage starts, once the crate has found its spot.
@@ -143,14 +145,13 @@ namespace BountyHunter.Thieves
         private bool TryFindSpot(out Puddle puddle)
         {
             float aspect = mud != null ? mud.bounds.size.y / Mathf.Max(0.01f, mud.bounds.size.x) : 0.5f;
-            var half = new Vector2(width * 0.5f, width * aspect * 0.5f);
+            var half = Vector2.Scale(new Vector2(width * 0.5f, width * aspect * 0.5f), MudShare);
             for (int attempt = 0; attempt < SpotTries; attempt++)
             {
                 puddle = new Puddle
                 {
                     Centre = new Vector3(Random.Range(areaMin.x + half.x, areaMax.x - half.x), 0f, Random.Range(areaMin.y + half.y, areaMax.y - half.y)),
                     HalfSize = half,
-                    Turn = Random.Range(-maxTurnDegrees, maxTurnDegrees),
                 };
                 if (IsClear(puddle)) return true;
             }
@@ -188,10 +189,10 @@ namespace BountyHunter.Thieves
             return true;
         }
 
-        // Inside the puddle's oval, in its own turn.
+        // Inside the puddle's oval.
         private static bool Inside(Puddle puddle, Vector3 position)
         {
-            Vector3 offset = Quaternion.Euler(0f, -puddle.Turn, 0f) * (position - puddle.Centre);
+            Vector3 offset = position - puddle.Centre;
             float x = offset.x / puddle.HalfSize.x;
             float z = offset.z / puddle.HalfSize.y;
             return x * x + z * z <= 1f;
@@ -201,7 +202,7 @@ namespace BountyHunter.Thieves
         {
             var holder = new GameObject("Mud Puddle", typeof(SpriteRenderer));
             holder.transform.SetParent(transform, false);
-            holder.transform.SetPositionAndRotation(new Vector3(puddle.Centre.x, Height, puddle.Centre.z), Quaternion.Euler(90f, puddle.Turn, 0f));
+            holder.transform.SetPositionAndRotation(new Vector3(puddle.Centre.x, Height, puddle.Centre.z), Quaternion.Euler(90f, 0f, 0f));
             var picture = holder.GetComponent<SpriteRenderer>();
             picture.sprite = mud;
             picture.sortingOrder = Order;
@@ -209,7 +210,8 @@ namespace BountyHunter.Thieves
             if (mud != null)
             {
                 Vector3 drawn = mud.bounds.size;
-                holder.transform.localScale = new Vector3(puddle.HalfSize.x * 2f / Mathf.Max(0.01f, drawn.x), puddle.HalfSize.y * 2f / Mathf.Max(0.01f, drawn.y), 1f);
+                Vector2 size = new Vector2(puddle.HalfSize.x * 2f / MudShare.x, puddle.HalfSize.y * 2f / MudShare.y);
+                holder.transform.localScale = new Vector3(size.x / Mathf.Max(0.01f, drawn.x), size.y / Mathf.Max(0.01f, drawn.y), 1f);
             }
 
             return holder;

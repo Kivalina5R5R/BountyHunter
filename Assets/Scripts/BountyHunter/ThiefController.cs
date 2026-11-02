@@ -217,6 +217,18 @@ namespace BountyHunter.Thieves
             return true;
         }
 
+        // Sends a calm thief across to snatch something lying at point (a stun gun on the floor), at
+        // speedUp times its wandering pace; a player coming close still sends it running. A thief that
+        // is fleeing, hiding, stunned, walking in or caught ignores it. True when it goes.
+        public bool GoGrab(Vector3 point, float speedUp)
+        {
+            if (state != ThiefState.Wander || entering || IsStunned) return false;
+
+            tripSpeed = wanderSpeed * speedUp;
+            SetTarget(point);
+            return true;
+        }
+
         // Blasted out of its hiding spot by a sprinkler: it comes out away from threat, knocked that far
         // further, and stands dazed for seconds (anyone who reaches it then catches it). Only while
         // hidden; true when it was.

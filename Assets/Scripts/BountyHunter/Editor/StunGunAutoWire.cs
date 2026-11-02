@@ -6,7 +6,8 @@ using UnityEngine;
 namespace BountyHunter.Thieves.EditorTools
 {
     // Sets up the stun guns each time the editor loads: imports their art as sprites
-    // (Assets/ART/StunGun: the pickup Codex drew; the shot bolt, star and lock-on reticle from
+    // (Assets/ART/StunGun: the crackling ring round a player carrying shots, which Codex drew; the
+    // lightning bolt waiting on the floor to be picked up, the star and the lock-on reticle from
     // Tools/StunGunArt), adds StunGuns and StunGunPickups next to the open scene's BountyRounds when
     // they are missing, and fills every reference left empty (the rounds, players, thieves,
     // passers-by, the art, and the radial fill material for the reticle). Points BountyRounds at the
@@ -15,8 +16,8 @@ namespace BountyHunter.Thieves.EditorTools
     public static class StunGunAutoWire
     {
         private const string Art = "Assets/ART/StunGun/";
-        private const string PickupIcon = Art + "StunGunPickup.png";
-        private const string ShotIcon = Art + "StunBoltIcon.png";
+        private const string BoltIcon = Art + "StunBoltIcon.png";
+        private const string HolderRing = Art + "StunGunHolderRing.png";
         private const string Star = Art + "StunStar.png";
         private const string ReticleBack = Art + "StunReticleBack.png";
         private const string ReticleFill = Art + "StunReticleFill.png";
@@ -31,7 +32,7 @@ namespace BountyHunter.Thieves.EditorTools
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
-            foreach (string path in new[] { PickupIcon, ShotIcon, Star, ReticleBack, ReticleFill }) ImportAsSprite(path);
+            foreach (string path in new[] { BoltIcon, HolderRing, Star, ReticleBack, ReticleFill }) ImportAsSprite(path);
 
             var rounds = Object.FindFirstObjectByType<BountyRounds>(FindObjectsInactive.Include);
             if (rounds == null) return;
@@ -46,7 +47,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(gunFields, "rounds", rounds);
             changed |= Fill(gunFields, "thieves", thieves);
             changed |= Fill(gunFields, "passersBy", passersBy);
-            changed |= Fill(gunFields, "shotIcon", AssetDatabase.LoadAssetAtPath<Sprite>(ShotIcon));
+            changed |= Fill(gunFields, "holderRing", AssetDatabase.LoadAssetAtPath<Sprite>(HolderRing));
             changed |= Fill(gunFields, "stunStar", AssetDatabase.LoadAssetAtPath<Sprite>(Star));
             changed |= Fill(gunFields, "reticleBack", AssetDatabase.LoadAssetAtPath<Sprite>(ReticleBack));
             changed |= Fill(gunFields, "reticleFill", AssetDatabase.LoadAssetAtPath<Sprite>(ReticleFill));
@@ -58,8 +59,8 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(pickupFields, "rounds", rounds);
             changed |= Fill(pickupFields, "guns", guns);
             changed |= Fill(pickupFields, "players", players);
-            changed |= Fill(pickupFields, "hidingSpots", thieves);
-            changed |= Fill(pickupFields, "icon", AssetDatabase.LoadAssetAtPath<Sprite>(PickupIcon));
+            changed |= Fill(pickupFields, "thieves", thieves);
+            changed |= Fill(pickupFields, "icon", AssetDatabase.LoadAssetAtPath<Sprite>(BoltIcon));
             pickupFields.ApplyModifiedPropertiesWithoutUndo();
 
             var roundFields = new SerializedObject(rounds);

@@ -9,8 +9,9 @@ namespace BountyHunter.Thieves
     // near the camera over everything, so the shower has depth. Feathers keep coming for most of the
     // time, half of them floating in over the top and right edges and half fading in anywhere on the
     // floor, and all drift slowly down to the bottom left on a slant, tumbling as they go (BossBlownFeather).
-    // They all fade out together so they are gone at the end (allGoneSeconds), as the boss appears;
-    // it removes itself then (IsOver).
+    // Each fades out again after a few seconds of its own, so they never pile up downwind along the
+    // front of the floor. They all fade out together so they are gone at the end (allGoneSeconds),
+    // as the boss appears; it removes itself then (IsOver).
     public sealed class BossFeatherShower : MonoBehaviour
     {
         private sealed class Layer
@@ -52,6 +53,10 @@ namespace BountyHunter.Thieves
         // Share of feathers that float in over an edge (the rest fade in on the floor), and how far out
         // over the top and right edges they start.
         private const float FromEdgeShare = 0.5f;
+        // How long a feather drifts before it fades out (seconds): one floating in over an edge long
+        // enough to come well in, one fading in on the floor less.
+        private static readonly Vector2 EdgeLifetime = new Vector2(3f, 6f);
+        private static readonly Vector2 FloorLifetime = new Vector2(1.5f, 3.5f);
         private const float Offside = 0.4f;
 
         private Sprite feather;
@@ -139,9 +144,14 @@ namespace BountyHunter.Thieves
             Layer layer = PickLayer();
             Vector3 way = Quaternion.AngleAxis(Random.Range(-12f, 12f), Vector3.up) * Wind;
             float speed = Random.Range(layer.Speed.x, layer.Speed.y);
-            Vector3 start = Random.value < FromEdgeShare ? EdgeStart() : new Vector3(Random.Range(floor.xMin, floor.xMax), 0f, Random.Range(floor.yMin, floor.yMax));
+            bool fromEdge = Random.value < FromEdgeShare;
+            Vector3 start = fromEdge ? EdgeStart() : new Vector3(Random.Range(floor.xMin, floor.xMax), 0f, Random.Range(floor.yMin, floor.yMax));
             float size = Random.Range(layer.Size.x, layer.Size.y);
-            BossBlownFeather.Blow(feather, start, way * speed, size, layer.SortingOrder, layer.Shade, layer.Motion, fadeOutAt, floor, transform, wallScale);
+            // Each fades out after a while of its own rather than drifting all the way off, or the ones
+            // that fade in all over would pile up downwind, along the front of the floor.
+            Vector2 lifetime = fromEdge ? EdgeLifetime : FloorLifetime;
+            float fadesAt = Mathf.Min(fadeOutAt, Time.time + Random.Range(lifetime.x, lifetime.y));
+            BossBlownFeather.Blow(feather, start, way * speed, size, layer.SortingOrder, layer.Shade, layer.Motion, fadesAt, floor, transform, wallScale);
         }
 
         // Just over the top or the right edge, in proportion to their lengths.

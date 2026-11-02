@@ -46,6 +46,8 @@ namespace BountyHunter.Thieves.EditorTools
             BossTransitionBuilder.UseFullSizeWideArt();
             if (AssetDatabase.LoadAssetAtPath<GameObject>(BossTransitionBuilder.PrefabPath) == null) BossTransitionBuilder.Build();
             else BossTransitionBuilder.UseRooftopDesignIfOld();
+            BossTransitionBuilder.AddSpotlight();
+            BossTransitionBuilder.TakeOutSpotlightFlash();
 
             if (AssetDatabase.LoadAssetAtPath<GameObject>(BossTransitionBuilder.PrefabPath) == null) return;
             if (Object.FindFirstObjectByType<BossTransition>(FindObjectsInactive.Include) == null) BossTransitionBuilder.Wire();
@@ -65,6 +67,22 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Pigeon = Art + "Boss_Pigeon.png";
         private const string Feather = Art + "Boss_Feather.png";
         private const string Dot = Art + "Boss_Dot.png";
+        // The spotlight's slashes: height on the wall, thickness and slant (degrees).
+        private static readonly (float Y, float Thickness, float Tilt)[] Slashes =
+        {
+            (70f, 7f, -9f), (-15f, 4f, -6f), (-95f, 10f, -11f),
+        };
+        // The close-up in the eye band: Boss_Char.png at 0.4 wall units a pixel, its eyes (about
+        // pixel 2200, 780) in the middle of the band.
+        private static readonly Vector2 EyeFaceSize = new Vector2(1712f, 736f);
+        private static readonly Vector2 EyeFaceSpot = new Vector2(-24f, -56f);
+        // The bands that sweep the cut-in away, in the order they go by: width and colour.
+        private static readonly (float Width, Color Colour)[] SweepBands =
+        {
+            (260f, new Color(0.9f, 0.1f, 0.2f, 1f)),
+            (420f, Color.white),
+            (2000f, new Color(0.12f, 0.3f, 0.85f, 1f)),
+        };
 
         // The boss in the middle of the wall, how wide its picture is (wall units).
         private static readonly Vector2 BossSpot = new Vector2(15f, 20f);
@@ -233,6 +251,139 @@ namespace BountyHunter.Thieves.EditorTools
             serialized.FindProperty("dots").objectReferenceValue = dots;
             SetList(serialized.FindProperty("pigeons"), pigeons);
             serialized.ApplyModifiedPropertiesWithoutUndo();
+            SetReference(transition, "spotlight", Spotlight(rect));
+        }
+
+        // A Boss Transition made before the spotlight entrance gets one.
+        public static void AddSpotlight()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+            try
+            {
+                var transition = contents.GetComponent<BossTransition>();
+                if (transition == null) return;
+
+                var serialized = new SerializedObject(transition);
+                SerializedProperty spotlight = serialized.FindProperty("spotlight");
+                if (spotlight == null || spotlight.objectReferenceValue != null) return;
+
+                spotlight.objectReferenceValue = Spotlight((RectTransform)contents.transform);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+                Debug.Log("[BossTransitionBuilder] The boss cut-in opens with the spotlight entrance now.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+        }
+
+        // The spotlight entrance over everything else on the wall, clipped to it, back to front: the
+        // dark veil, the white slashes, the band with the boss's eyes, and the bands of colour that
+        // sweep it all away.
+        private static BossSpotlight Spotlight(RectTransform wall)
+        {
+            RectTransform rect = UiRect("Spotlight", wall);
+            Stretch(rect);
+            rect.SetAsLastSibling();
+            rect.gameObject.AddComponent<RectMask2D>();
+            var spotlight = rect.gameObject.AddComponent<BossSpotlight>();
+            Vector2 wallSize = LineupPrefabBuilder.WallSize;
+
+            Image veil = UiImage("Veil", rect, null, new Color(0.02f, 0.02f, 0.06f, 0f));
+            Stretch(veil.rectTransform);
+
+            var slashes = new RectTransform[Slashes.Length];
+            for (int i = 0; i < Slashes.Length; i++)
+            {
+                (float y, float thickness, float tilt) = Slashes[i];
+                Image slash = UiImage($"Slash {i + 1}", rect, null, Color.white);
+                RectTransform slashRect = slash.rectTransform;
+                Place(slashRect, new Vector2(-wallSize.x * 0.62f, y), new Vector2(wallSize.x * 1.3f, thickness));
+                // Grows from its left end.
+                slashRect.pivot = new Vector2(0f, 0.5f);
+                slashRect.localRotation = Quaternion.Euler(0f, 0f, tilt);
+                slash.gameObject.SetActive(false);
+                slashes[i] = slashRect;
+            }
+
+            RectTransform band = UiRect("Eye Band", rect);
+            Place(band, new Vector2(0f, 5f), new Vector2(wallSize.x * 1.4f, 150f));
+            band.localRotation = Quaternion.Euler(0f, 0f, -7f);
+            band.gameObject.AddComponent<RectMask2D>();
+            Image bandFill = UiImage("Band Fill", band, null, new Color(0.05f, 0.05f, 0.12f, 1f));
+            Stretch(bandFill.rectTransform);
+            Image face = UiImage("Face", band, Load<Sprite>(Boss), Color.white);
+            // Close on the boss's eyes: the picture big enough that its eyes fill the band.
+            Place(face.rectTransform, EyeFaceSpot, EyeFaceSize);
+            Image edgeTop = UiImage("Edge Top", band, null, new Color(0.9f, 0.1f, 0.2f, 1f));
+            Edge(edgeTop.rectTransform, 1f);
+            Image edgeBottom = UiImage("Edge Bottom", band, null, new Color(0.2f, 0.5f, 1f, 1f));
+            Edge(edgeBottom.rectTransform, 0f);
+            band.gameObject.SetActive(false);
+
+            var sweeps = new RectTransform[SweepBands.Length];
+            for (int i = 0; i < SweepBands.Length; i++)
+            {
+                (float width, Color colour) = SweepBands[i];
+                Image sweep = UiImage($"Sweep {i + 1}", rect, null, colour);
+                Place(sweep.rectTransform, Vector2.zero, new Vector2(width, 3000f));
+                sweep.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -15f);
+                sweep.gameObject.SetActive(false);
+                sweeps[i] = sweep.rectTransform;
+            }
+
+            var serialized = new SerializedObject(spotlight);
+            serialized.FindProperty("veil").objectReferenceValue = veil;
+            SetList(serialized.FindProperty("slashes"), slashes);
+            serialized.FindProperty("eyeBand").objectReferenceValue = band;
+            serialized.FindProperty("eyeFace").objectReferenceValue = face.rectTransform;
+            SetList(serialized.FindProperty("sweepBands"), sweeps);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            rect.gameObject.SetActive(false);
+            return spotlight;
+        }
+
+        // The spotlight's white flash and its rays, from before they were taken out, go from the prefab.
+        public static void TakeOutSpotlightFlash()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) == null) return;
+
+            GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+            try
+            {
+                Transform spotlight = contents.transform.Find("Spotlight");
+                if (spotlight == null) return;
+
+                bool changed = false;
+                foreach (string name in new[] { "Flash", "Rays" })
+                {
+                    Transform piece = spotlight.Find(name);
+                    if (piece == null) continue;
+                    Object.DestroyImmediate(piece.gameObject);
+                    changed = true;
+                }
+
+                if (!changed) return;
+                PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+                Debug.Log("[BossTransitionBuilder] The spotlight's flash and rays are gone from the boss cut-in.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+        }
+
+        // A coloured line along the top (1) or bottom (0) of the eye band.
+        private static void Edge(RectTransform edge, float side)
+        {
+            edge.anchorMin = new Vector2(0f, side);
+            edge.anchorMax = new Vector2(1f, side);
+            edge.pivot = new Vector2(0.5f, side);
+            edge.anchoredPosition = Vector2.zero;
+            edge.sizeDelta = new Vector2(0f, 10f);
         }
 
         // Filled from the right, empty to start with: the cut-in wipes it across by its fill.

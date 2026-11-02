@@ -6,7 +6,9 @@ namespace BountyHunter.Thieves
     // Lets a bush with a thief inside creep away from an approaching player. It is slower than a
     // walking player, and slower still while someone stands on it, so a player can follow it and
     // keep standing on it long enough to flush the thief. It stays on the floor and never walks into
-    // another bush. Added by ThiefSpawner.
+    // another bush. Spots set with KeepClearOf (the park's police tape crate) it steers round: heading
+    // into one, it turns aside and slides past along its edge instead of going over it. Added by
+    // ThiefSpawner.
     [RequireComponent(typeof(HidingBush))]
     public sealed class BushWalker : MonoBehaviour
     {
@@ -18,6 +20,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float acceleration = 1.2f;
         // Extra room kept between this bush's leaves and a neighbour's.
         [SerializeField, Min(0f)] private float bushGap = 0.1f;
+        // Extra room kept between this bush's picture and a spot it keeps clear of, and how far out
+        // from that room it starts turning aside.
+        [SerializeField, Min(0f)] private float spotGap = 0.1f;
+        [SerializeField, Min(0.05f)] private float turnAsideFrom = 0.5f;
 
         private HidingBush bush;
         private IPlayerLocator players;
@@ -26,6 +32,8 @@ namespace BountyHunter.Thieves
         private Vector2 areaMax;
         private Vector3 velocity;
         private Vector3 lastAway = Vector3.right;
+        // Spots to keep clear of: their centre and how far round it to keep out.
+        private readonly List<(Vector3 centre, float radius)> keepClear = new List<(Vector3, float)>();
 
         // area is the floor rectangle the bush centre must stay in (Vector2.y is world Z).
         public void Initialize(IPlayerLocator playerLocator, IReadOnlyList<HidingBush> allBushes, Vector2 moveAreaMin, Vector2 moveAreaMax)
@@ -38,6 +46,17 @@ namespace BountyHunter.Thieves
         }
 
         public bool IsMoving => velocity.sqrMagnitude > 0.0001f;
+
+        // A spot it must not walk over (radius round centre), until ForgetSpots.
+        public void KeepClearOf(Vector3 centre, float radius)
+        {
+            keepClear.Add((centre, radius));
+        }
+
+        public void ForgetSpots()
+        {
+            keepClear.Clear();
+        }
 
         private void Update()
         {
@@ -70,7 +89,35 @@ namespace BountyHunter.Thieves
             if (away.sqrMagnitude > 0.0025f) lastAway = away.normalized;
 
             float speed = bush.PlayerIsStandingOn ? stoodOnSpeed : creepSpeed;
-            return SlideAlongEdges(lastAway) * speed;
+            return SlideAlongEdges(TurnAside(lastAway)) * speed;
+        }
+
+        // Heading into a spot it keeps clear of, it turns to the side of it nearer its way, more the
+        // closer it gets, until it slides along the spot's edge; within the edge it is pushed out too.
+        private Vector3 TurnAside(Vector3 direction)
+        {
+            Vector3 position = transform.position;
+            foreach ((Vector3 centre, float radius) in keepClear)
+            {
+                Vector3 fromSpot = position - centre;
+                fromSpot.y = 0f;
+                float distance = fromSpot.magnitude;
+                float room = bush.Reach + radius + spotGap;
+                if (distance >= room + turnAsideFrom || distance < 0.0001f) continue;
+
+                Vector3 outward = fromSpot / distance;
+                // Moving away already: nothing to do.
+                if (Vector3.Dot(direction, outward) >= 0f) continue;
+
+                Vector3 side = Vector3.Cross(Vector3.up, outward);
+                if (Vector3.Dot(side, direction) < 0f) side = -side;
+                float closeness = Mathf.Clamp01((room + turnAsideFrom - distance) / turnAsideFrom);
+                Vector3 along = Vector3.Lerp(direction, side, closeness);
+                if (distance < room) along += outward * ((room - distance) / room * 2f);
+                if (along.sqrMagnitude > 0.0001f) direction = along.normalized;
+            }
+
+            return direction;
         }
 
         // At the floor edge the blocked part of the direction is dropped, so it slides along the edge.
@@ -82,9 +129,17 @@ namespace BountyHunter.Thieves
             return direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
         }
 
-        // True when the step would push this bush's leaves into a neighbour that it is not already moving away from.
+        // True when the step would push this bush's leaves into a neighbour, or its picture into a spot it
+        // keeps clear of, that it is not already moving away from.
         private bool Blocked(Vector3 next)
         {
+            foreach ((Vector3 centre, float radius) in keepClear)
+            {
+                float room = bush.Reach + radius + spotGap;
+                float nextDistance = FlatDistance(next, centre);
+                if (nextDistance < room && nextDistance < FlatDistance(transform.position, centre)) return true;
+            }
+
             if (neighbours == null) return false;
 
             foreach (HidingBush other in neighbours)

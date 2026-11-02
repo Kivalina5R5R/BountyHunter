@@ -15,7 +15,8 @@ namespace BountyHunter.Thieves
     // up the result screen. A map can have a mini game after it (Interlude After, a StageInterlude):
     // the screen fades to black, the floor is cleared (BountyRounds.ClearFloor) and the stage's
     // pieces in hideDuringInterlude are put away, the mini game plays, and after another fade the
-    // next map starts. N during a mini game cuts it short; M jumps straight to the next mini game.
+    // next map starts. N goes straight to the next map, passing over the mini game (and cuts short
+    // one that is playing); M jumps straight to the next mini game.
     // The finale (the boss chase) plays the same way once the last map is done, but on that map's
     // floor with the stage's pieces left up (the score tags count along), and the result follows it.
     // With a boss transition set, the stage freezes the moment it ends (its clock, thieves and
@@ -112,7 +113,7 @@ namespace BountyHunter.Thieves
             if (Keyboard.current.mKey.wasPressedThisFrame) JumpToInterlude();
             if (!Keyboard.current.nKey.wasPressedThisFrame) return;
             if (playing != null) playing.Skip();
-            else Advance();
+            else Advance(false);
         }
 
         // M, for trying the game out: ends the stage now and plays the next mini game, from this map
@@ -143,11 +144,12 @@ namespace BountyHunter.Thieves
 
         private void OnTimeUp()
         {
-            Advance();
+            Advance(true);
         }
 
-        // The next map, or the result once the last map is done.
-        private void Advance()
+        // The next map, after the current map's mini game when withInterlude; the finale or the
+        // result once the last map is done.
+        private void Advance(bool withInterlude)
         {
             if (playing != null || (result != null && result.Ended)) return;
             bool lastMap = maps == null || maps.Length < 2 || current == maps.Length - 1;
@@ -160,7 +162,7 @@ namespace BountyHunter.Thieves
             if (lastMap && result != null && result.TryEndGame()) return;
             if (maps == null || maps.Length < 2) return;
 
-            StageInterlude interlude = maps[current].InterludeAfter;
+            StageInterlude interlude = withInterlude ? maps[current].InterludeAfter : null;
             if (interlude != null)
             {
                 StartCoroutine(PlayThenSwitch(interlude));
@@ -305,17 +307,40 @@ namespace BountyHunter.Thieves
 
         // Fades out of the stage (its clock stopped, its floor cleared and its pieces put away) into
         // the mini game.
+        // Into a mini game: its cut-in covers the wall (the floor fading dark under it) or the screen
+        // fades to black, the stage is cleared and the mini game set up out of sight, then the cut-in
+        // goes back out (the floor coming back in step) or the screen fades in.
         private IEnumerator Enter(StageInterlude interlude)
         {
             playing = interlude;
-            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            WallTransition way = interlude.EntryTransition;
+            if (way != null)
+            {
+                Coroutine floorDark = curtain != null ? StartCoroutine(curtain.CloseFloor(fadeOutSeconds)) : null;
+                yield return way.Close();
+                if (floorDark != null) yield return floorDark;
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Close(fadeOutSeconds);
+            }
+
             if (timer != null) timer.Stop();
             if (rounds != null) rounds.ClearFloor();
             SetStagePieces(false);
             yield return interlude.Prepare();
             interlude.Begin();
             Debug.Log($"[MapSwitcher] {interlude.name} plays", this);
-            if (curtain != null) yield return curtain.Open(fadeInSeconds);
+            if (way != null)
+            {
+                yield return way.Hold();
+                if (curtain != null) StartCoroutine(curtain.OpenFloor(fadeInSeconds));
+                yield return way.Open();
+            }
+            else if (curtain != null)
+            {
+                yield return curtain.Open(fadeInSeconds);
+            }
         }
 
         // Shows or hides the stage's pieces, or only those which picks.
