@@ -818,6 +818,8 @@ GameObject:
   - component: {fileID: 156425237}
   - component: {fileID: 156425240}
   - component: {fileID: 156425239}
+  - component: {fileID: 156425241}
+  - component: {fileID: 156425242}
   m_Layer: 0
   m_Name: Bounty
   m_TagString: Untagged
@@ -863,6 +865,10 @@ MonoBehaviour:
   bombs: {fileID: 1898598048}
   npcs: {fileID: 1530458020}
   stunGuns: {fileID: 156425238}
+  cuffs: {fileID: 156425241}
+  deliveryBonus: 5
+  severalAtOnce: 1.5
+  strandedShare: 0.5
   npcFine: 5
   bombPenalty: {x: 5, y: 10}
   damageFormat: -{0}$
@@ -873,6 +879,8 @@ MonoBehaviour:
   postersAfterTitle: 0.2
   thiefAfterPoster: 0.5
   nextRoundDelay: 1.8
+  escapeRaiseSeconds: 10
+  escapeRaise: 2
 --- !u!114 &156425236
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1037,6 +1045,95 @@ MonoBehaviour:
   tapeWidth: 0.16
   tapeOverhang: 0.08
   smallSpotSize: 1
+  selectRing: {fileID: 21300000, guid: 8e2e7c8a2047803448ea7332356dea0e, type: 3}
+  radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
+  selectRingTint: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &156425241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f071e01fa51d43349ab31d381fcccadb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PoliceCuffs
+  rounds: {fileID: 156425235}
+  thieves: {fileID: 1226030214}
+  players: {fileID: 594936650}
+  bombs: {fileID: 1898598048}
+  timer: {fileID: 1445836966812051384}
+  stage: 3
+  handsPerPlayer: 2
+  leash: 0.6
+  escortSeconds: 12
+  cutReach: 0.28
+  carSpots:
+  - {x: -4.6, y: 0}
+  - {x: 4.6, y: 0}
+  carRadius: 0.85
+  policeCar: {fileID: 21300000, guid: 7025094898314f44a9b671e2e91123ff, type: 3}
+  carLength: 1.6
+  carRing: {fileID: 0}
+  carRingColour: {r: 0.35, g: 0.65, b: 1, a: 1}
+  sirenRed: {r: 1, g: 0.2, b: 0.2, a: 1}
+  sirenBlue: {r: 0.2, g: 0.45, b: 1, a: 1}
+  handcuffs: {fileID: 21300000, guid: 9ef52d7a5f3317f45932426ec28c1cd0, type: 3}
+  handcuffsWidth: 0.32
+  burstWidth: 1.4
+  burstColour: {r: 1, g: 0.85, b: 0.25, a: 1}
+  warnSeconds: 3
+  warnColour: {r: 1, g: 0.3, b: 0.25, a: 1}
+--- !u!114 &156425242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19bee91f108073745b5eb9f81b344256, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.LuckyWheel
+  rounds: {fileID: 156425235}
+  players: {fileID: 594936650}
+  thieves: {fileID: 1226030214}
+  bombs: {fileID: 1898598048}
+  stage: 3
+  spot: {x: 0, y: 0}
+  wall: {fileID: 1588305481}
+  radius: 0.6
+  holdSeconds: 1.5
+  cooldownSeconds: 20
+  spinSeconds: 2.5
+  weights:
+  - 3
+  - 3
+  - 2
+  - 2
+  effectSeconds: 6
+  slowFactor: 0.5
+  fastFactor: 1.4
+  bountyRaise: 5
+  wheel: {fileID: 21300000, guid: 025eb10f0be325849acf283f96102556, type: 3}
+  pointer: {fileID: 21300000, guid: 63d878339df732647b46599bc5c31da4, type: 3}
+  resultIcons:
+  - {fileID: 21300000, guid: 65b3428c8fc745749a3302e7298abe0f, type: 3}
+  - {fileID: 21300000, guid: 9ca2522773329c04baa0bc8dd994829e, type: 3}
+  - {fileID: 21300000, guid: a892c46878770e64aba751e7c20aedde, type: 3}
+  - {fileID: 21300000, guid: 3b12ddb2968aaf946a8103ec0eaaed63, type: 3}
+  resultColours:
+  - {r: 0.4, g: 0.85, b: 0.35, a: 1}
+  - {r: 1, g: 0.82, b: 0.2, a: 1}
+  - {r: 0.3, g: 0.6, b: 1, a: 1}
+  - {r: 1, g: 0.3, b: 0.25, a: 1}
+  wheelWidth: 0.75
+  sparkles:
+  - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
+  - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
   selectRing: {fileID: 21300000, guid: 8e2e7c8a2047803448ea7332356dea0e, type: 3}
   radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
   selectRingTint: {r: 1, g: 1, b: 1, a: 1}
@@ -4640,6 +4737,7 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 50b14d9254f34034c9225ac0449c9bd2, type: 3}
     - {fileID: 21300000, guid: 9ca8fa3ef7df38844917de7e92f6edd0, type: 3}
     - {fileID: 21300000, guid: 610e83fe53524fb419146123c2148e4b, type: 3}
+    keepClear: []
     interludeAfter: {fileID: 730000003}
   - name: Map2 Park
     floor: {fileID: 2800000, guid: 97b13a8c8331fa34caf780d6e8a8da73, type: 3}
@@ -4656,6 +4754,7 @@ MonoBehaviour:
     - {fileID: 21300000, guid: e7b0d322e1b7b9d478bb27c0dec7393f, type: 3}
     - {fileID: 21300000, guid: 45d40b57765f326418b1eeead14847b1, type: 3}
     - {fileID: 21300000, guid: 34c8c7f2335da78418802d02877f2316, type: 3}
+    keepClear: []
     interludeAfter: {fileID: 1773218771}
   - name: Map3 Market
     floor: {fileID: 2800000, guid: 0a345f1399626d94bb139b3386dce375, type: 3}
@@ -4673,6 +4772,10 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 03a7eaea7655490e8944e560931b9c7d, type: 3}
     - {fileID: 21300000, guid: 5ffd1309b7254e71bcc1526a6a6b5daa, type: 3}
     - {fileID: 21300000, guid: 35f55427f8fa435895638ecc2a079b26, type: 3}
+    keepClear:
+    - {x: -4.6, y: 0, z: 0.96000004}
+    - {x: 4.6, y: 0, z: 0.96000004}
+    - {x: 0, y: 0, z: 0.6}
     interludeAfter: {fileID: 0}
   curtain: {fileID: 1680354128}
   hideDuringInterlude:
@@ -8000,6 +8103,7 @@ MonoBehaviour:
   timer: {fileID: 1445836966812051384}
   maps: {fileID: 955327270}
   board: {fileID: 1435788370}
+  policeCuffs: {fileID: 156425241}
   thiefSteps:
   - {fileID: 8300000, guid: 8d4fc988c6421e54395574c2e053e0c9, type: 3}
   - {fileID: 8300000, guid: 9e1e9fbc7e665204aaaaaf6d1e64c62d, type: 3}
@@ -9107,8 +9211,8 @@ MonoBehaviour:
   playerWidth: 0.665
   sizeVsPlayer: {x: 1.15, y: 2.3}
   edgeGap: 0.1
-  preferredGap: 1.3
   spotsPerBush: 24
+  keepClearGap: 0.15
   areaMin: {x: -4.5, y: -1.65}
   areaMax: {x: 4.5, y: 1.65}
   floorSize: {x: 11, y: 5.26}

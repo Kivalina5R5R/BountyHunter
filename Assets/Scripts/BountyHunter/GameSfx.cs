@@ -29,6 +29,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private StageTimer timer;
         [SerializeField] private MapSwitcher maps;
         [SerializeField] private WantedBoard board;
+        // The market's handcuffs: a thief cuffed there clicks shut at once; may be empty.
+        [SerializeField] private PoliceCuffs policeCuffs;
 
         [Header("Running thieves")]
         // Every thief's footfalls (one picked at random each step).
@@ -137,6 +139,7 @@ namespace BountyHunter.Thieves
         private void OnEnable()
         {
             if (thieves != null) thieves.ThiefCaught += OnThiefCaught;
+            if (policeCuffs != null) policeCuffs.ThiefCuffed += OnThiefCuffed;
             if (passersBy != null) passersBy.NpcBumped += OnNpcBumped;
             if (bombs != null)
             {
@@ -157,6 +160,7 @@ namespace BountyHunter.Thieves
         private void OnDisable()
         {
             if (thieves != null) thieves.ThiefCaught -= OnThiefCaught;
+            if (policeCuffs != null) policeCuffs.ThiefCuffed -= OnThiefCuffed;
             if (passersBy != null) passersBy.NpcBumped -= OnNpcBumped;
             if (bombs != null)
             {
@@ -355,9 +359,23 @@ namespace BountyHunter.Thieves
 
         private void OnThiefCaught(ThiefController thief, UWBPlayerController catcher)
         {
+            // Handed over at a police car: no scuffle, only the bounty.
+            if (thief.WasDelivered)
+            {
+                Play(coin, coinVolume);
+                return;
+            }
+
             Play(scuffle, catchVolume);
             Later(CuffsAt, cuffs, catchVolume);
             Later(CoinAt, coin, coinVolume);
+        }
+
+        // Cuffed on the market: the handcuffs click at once (the bounty comes when it is handed over
+        // at a police car).
+        private void OnThiefCuffed(ThiefController thief, UWBPlayerController player)
+        {
+            Play(cuffs, catchVolume);
         }
 
         private void OnNpcBumped(NpcWalker npc, UWBPlayerController player)

@@ -49,10 +49,12 @@ namespace Fortal.Display
         [SerializeField] private Vector2 sizeVsPlayer = new Vector2(1.15f, 2.3f);
         // Extra gap between the edges of neighbouring bushes; never closer than this.
         [SerializeField, Min(0f)] private float edgeGap = 0.1f;
-        // The gap each bush tries for between its edge and its neighbours'. Of a handful of random
-        // spots it takes one this clear, or else the clearest one, so bushes spread over the floor.
-        [SerializeField, Min(0f)] private float preferredGap = 1.3f;
+        // Of spotsPerBush random spots each bush takes the one furthest from the bushes already laid,
+        // so they spread evenly over the floor, the middle too.
         [SerializeField, Min(1)] private int spotsPerBush = 24;
+        // The gap kept between a bush's edge and a spot kept clear (UseKeepClear); only that, so the
+        // bushes still come close round it.
+        [SerializeField, Min(0f)] private float keepClearGap = 0.15f;
 
         [Header("Area (world X/Z)")]
         // Bush centres; Vector2.y is world Z. Defaults keep whole bushes inside the 11 x 5.26 floor.
@@ -78,6 +80,8 @@ namespace Fortal.Display
 
         private readonly List<GameObject> spawned = new List<GameObject>();
         private readonly List<ScatteredBush> bushes = new List<ScatteredBush>();
+        // Spots no bush may cover (UseKeepClear): their centre and how far round it.
+        private readonly List<(Vector2 position, float reach)> keepClear = new List<(Vector2, float)>();
 
         public IReadOnlyList<ScatteredBush> Bushes => bushes;
 
@@ -102,6 +106,16 @@ namespace Fortal.Display
             sizeVsPlayer = sizeRange;
         }
 
+        // Spots the next layouts leave free (something else stands there on this map, such as the
+        // market's police cars): each is x, world z and the radius kept clear. Call Scatter to apply.
+        public void UseKeepClear(IReadOnlyList<Vector3> spots)
+        {
+            keepClear.Clear();
+            if (spots == null) return;
+
+            foreach (Vector3 spot in spots) keepClear.Add((new Vector2(spot.x, spot.y), Mathf.Max(0f, spot.z)));
+        }
+
         // Replaces the current bushes with a new random layout.
         [ContextMenu("Scatter Again (Play Mode)")]
         public void Scatter()
@@ -116,7 +130,7 @@ namespace Fortal.Display
             var placed = new List<(Vector2 position, float reach)>();
             var timesUsed = new Dictionary<Sprite, int>();
             int attempts = count * 300;
-            while (placed.Count < count && attempts-- > 0)
+            while (bushes.Count < count && attempts-- > 0)
             {
                 Sprite sprite = PickSprite(timesUsed);
                 if (sprite == null) break;
@@ -130,7 +144,7 @@ namespace Fortal.Display
 
                 placed.Add((position, reach));
                 timesUsed[sprite] = timesUsed.TryGetValue(sprite, out int used) ? used + 1 : 1;
-                Transform bush = SpawnBush(sprite, position, scale, placed.Count);
+                Transform bush = SpawnBush(sprite, position, scale, bushes.Count + 1);
                 bushes.Add(new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f, reach));
             }
 
@@ -168,8 +182,9 @@ namespace Fortal.Display
         private float MinimumSize => playerWidth * Mathf.Max(1.05f, sizeVsPlayer.x);
         private float MaximumSize => Mathf.Max(MinimumSize, playerWidth * sizeVsPlayer.y);
 
-        // Tries random spots for a bush reaching this far: the first with at least Preferred Gap
-        // around it wins, otherwise the clearest. clearance is the gap left to the nearest bush edge.
+        // Tries random spots for a bush reaching this far, off every spot kept clear, and takes the
+        // clearest. clearance is the gap left to the nearest bush edge (below edgeGap when no spot was
+        // free of the kept-clear spots).
         private Vector2 PickSpot(float reach, List<(Vector2 position, float reach)> placed, out float clearance)
         {
             CentreLimits(reach, out Vector2 low, out Vector2 high);
@@ -178,12 +193,13 @@ namespace Fortal.Display
             for (int i = 0; i < spotsPerBush; i++)
             {
                 var spot = new Vector2(Random.Range(low.x, high.x), Random.Range(low.y, high.y));
+                if (Clearance(spot, reach, keepClear) < keepClearGap) continue;
+
                 float gap = Clearance(spot, reach, placed);
                 if (gap <= clearance) continue;
 
                 best = spot;
                 clearance = gap;
-                if (clearance >= preferredGap) break;
             }
 
             return best;

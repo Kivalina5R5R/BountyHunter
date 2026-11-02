@@ -117,6 +117,8 @@ namespace BountyHunter.Thieves
 
         // A thief was caught; the player is the one nearest to it, or null when none is on the floor.
         public event Action<ThiefController, UWBPlayerController> ThiefCaught;
+        // A new thief was added (it may still be waiting to come in).
+        public event Action<ThiefController> ThiefSpawned;
 
         private void Start()
         {
@@ -279,6 +281,7 @@ namespace BountyHunter.Thieves
             string where = bush != null ? $"hidden in {bush.name}" : "off the floor edge";
             where += $" at ({entrance.Point.x:0.0}, {entrance.Point.z:0.0})";
             Debug.Log($"[ThiefSpawner] Spawned {thief.name} {where}", this);
+            ThiefSpawned?.Invoke(thief);
             return thief;
         }
 
@@ -445,7 +448,8 @@ namespace BountyHunter.Thieves
 
         private void OnThiefCaught(ThiefController thief)
         {
-            CatchBrawl.Play(thief.transform.position, catchBrawl, transform);
+            // One handed over at a police car just goes; the car answers instead (PoliceCuffs).
+            if (!thief.WasDelivered) CatchBrawl.Play(thief.transform.position, catchBrawl, transform);
             thieves.Remove(thief);
             players.TryGetNearestPlayer(thief.transform.position, out UWBPlayerController catcher);
             Debug.Log($"[ThiefSpawner] {thief.name} caught by {(catcher != null ? catcher.name : "nobody")}, {thieves.Count} thieves left", this);

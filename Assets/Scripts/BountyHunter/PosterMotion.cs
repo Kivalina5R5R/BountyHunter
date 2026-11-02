@@ -95,6 +95,7 @@ namespace BountyHunter.Thieves
             if (!gameObject.activeInHierarchy) return;
 
             Stop();
+            StayWhereItHangs();
             playing = StartCoroutine(CaughtRoutine());
         }
 
@@ -104,7 +105,19 @@ namespace BountyHunter.Thieves
             if (!gameObject.activeInHierarchy) return;
 
             Stop();
+            StayWhereItHangs();
             playing = StartCoroutine(DropRoutine());
+        }
+
+        // Its home becomes where it hangs now. A slide it was told about may not have started yet
+        // (several thieves caught at once: the row closing up for the first moves the home of the
+        // next before it is stamped), and it must come down where it is, not jump to that slot.
+        private void StayWhereItHangs()
+        {
+            float unrolled = baseScale.y != 0f ? rect.localScale.y / baseScale.y : 1f;
+            float degrees = rect.localEulerAngles.z;
+            Vector2 pinPoint = rect.anchoredPosition - Rotate(Vector2.down * (PinToCentre * unrolled), degrees);
+            home = pinPoint - Rotate(Vector2.up * PinToCentre, tilt);
         }
 
         private void Stop()

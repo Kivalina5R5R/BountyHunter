@@ -14,7 +14,10 @@ namespace BountyHunter.Thieves
     // From stage 1-2 on the thieves drop bombs (BombSquad): a bombed player loses a random fine in bombPenalty
     // (or what they have) and the thief's bounty goes up by the same. Passers-by (NpcCrowd, the sloth)
     // stroll the floor from the first round on; a player who grabs one pays npcFine (or what they
-    // have). MapSwitcher starts each new stage.
+    // have). On the market (PoliceCuffs) a reached thief is handcuffed instead, and its bounty is
+    // paid once it is led to a police car. A thief that stays free grows its bounty by escapeRaise
+    // every escapeRaiseSeconds (not while it is being led in handcuffs), on every map.
+    // MapSwitcher starts each new stage.
     // Console lines start with [BountyRounds].
     [DefaultExecutionOrder(20)]
     public sealed class BountyRounds : MonoBehaviour
@@ -27,6 +30,15 @@ namespace BountyHunter.Thieves
         [SerializeField] private NpcCrowd npcs;
         // A stun gun's bolt hitting a passer-by costs npcFine like grabbing one; may be empty.
         [SerializeField] private StunGuns stunGuns;
+        // The market's handcuffs (stage 3): there a thief counts once it is led to a police car, not
+        // when it is reached; may be empty.
+        [SerializeField] private PoliceCuffs cuffs;
+        // Handing a thief over at a police car pays deliveryBonus on top of its bounty; handing two or
+        // more over at once multiplies the lot by severalAtOnce. Still being led when the clock runs
+        // out pays strandedShare of the bounty and no bonus.
+        [SerializeField, Min(0)] private int deliveryBonus = 5;
+        [SerializeField, Min(1f)] private float severalAtOnce = 1.5f;
+        [SerializeField, Range(0f, 1f)] private float strandedShare = 0.5f;
         // What grabbing a passer-by costs, shown at the player's feet like a bomb's fine.
         [SerializeField, Min(0)] private int npcFine = 5;
         // Inclusive range of the random fine for being caught in a blast.
@@ -47,8 +59,13 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float thiefAfterPoster = 0.5f;
         // Pause after the last catch of a round, so the brawl and the poster tear-down play out first.
         [SerializeField, Min(0f)] private float nextRoundDelay = 1.8f;
+        // A thief still free after every escapeRaiseSeconds has its bounty raised by escapeRaise.
+        [SerializeField, Min(1f)] private float escapeRaiseSeconds = 10f;
+        [SerializeField, Min(0)] private int escapeRaise = 2;
 
         private readonly Dictionary<ThiefController, WantedPoster> wanted = new Dictionary<ThiefController, WantedPoster>();
+        // How long each wanted thief has been free since its bounty last went up.
+        private readonly Dictionary<ThiefController, float> freeFor = new Dictionary<ThiefController, float>();
         private int stage = 1;
         private int round;
         // Set by IntroSequence: nothing starts until it calls Begin.
@@ -67,7 +84,43 @@ namespace BountyHunter.Thieves
             if (spawner != null) spawner.ThiefCaught += OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed += OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped += OnNpcBumped;
+            if (cuffs != null)
+            {
+                cuffs.Delivered += OnDelivered;
+                cuffs.Stranded += OnStranded;
+            }
+
             if (round == 0 && !waitingForIntro) StartStage(stage);
+        }
+
+        // Every thief still free long enough is worth more.
+        private void Update()
+        {
+            if (stopped || escapeRaise <= 0) return;
+
+            foreach (KeyValuePair<ThiefController, WantedPoster> pair in wanted)
+            {
+                ThiefController thief = pair.Key;
+                if (thief == null || thief.IsCuffed || thief.State == ThiefState.Caught) continue;
+
+                freeFor.TryGetValue(thief, out float seconds);
+                seconds += Time.deltaTime;
+                if (seconds >= escapeRaiseSeconds)
+                {
+                    seconds -= escapeRaiseSeconds;
+                    pair.Value.RaiseBounty(escapeRaise);
+                }
+
+                freeFor[thief] = seconds;
+            }
+        }
+
+        // Raises every wanted thief's bounty by amount (the market's lucky wheel).
+        public void RaiseEveryBounty(int amount)
+        {
+            if (stopped) return;
+
+            foreach (WantedPoster poster in wanted.Values) poster.RaiseBounty(amount);
         }
 
         // Keeps the first round from starting until Begin; called by the intro before Start.
@@ -91,6 +144,10 @@ namespace BountyHunter.Thieves
             if (bombs != null) bombs.PlayerBombed -= OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped -= OnNpcBumped;
             if (stunGuns != null) stunGuns.NpcZapped -= OnNpcBumped;
+            if (cuffs == null) return;
+
+            cuffs.Delivered -= OnDelivered;
+            cuffs.Stranded -= OnStranded;
         }
 
         // Starts the stage over from round 1, with any thieves still out removed.
@@ -126,6 +183,7 @@ namespace BountyHunter.Thieves
         {
             CancelInvoke(nameof(NextRound));
             wanted.Clear();
+            freeFor.Clear();
             if (board != null) board.TakeDownNow();
             if (spawner != null) spawner.RemoveThieves();
             if (bombs != null)
@@ -142,6 +200,7 @@ namespace BountyHunter.Thieves
         {
             round = roundNumber;
             wanted.Clear();
+            freeFor.Clear();
             if (spawner != null) spawner.RemoveThieves();
             if (bombs != null)
             {
@@ -176,12 +235,53 @@ namespace BountyHunter.Thieves
             if (!wanted.TryGetValue(thief, out WantedPoster poster)) return;
 
             wanted.Remove(thief);
+            freeFor.Remove(thief);
             Pay(catcher, poster.Bounty);
             if (board != null) board.MarkCaught(poster);
             if (wanted.Count > 0) return;
 
             // Every cleared round brings the next, for as long as the stage's clock runs.
             Invoke(nameof(NextRound), nextRoundDelay);
+        }
+
+        // Thieves handed over at a police car: their bounties plus the bonus each, more for several at
+        // once, and their posters stamped. The catches that follow find them gone from the board.
+        private void OnDelivered(UWBPlayerController leader, IReadOnlyList<ThiefController> thieves)
+        {
+            if (stopped) return;
+
+            int total = 0;
+            int count = 0;
+            foreach (ThiefController thief in thieves)
+            {
+                if (thief == null || !wanted.TryGetValue(thief, out WantedPoster poster)) continue;
+
+                wanted.Remove(thief);
+                freeFor.Remove(thief);
+                total += poster.Bounty + deliveryBonus;
+                count++;
+                if (board != null) board.MarkCaught(poster);
+            }
+
+            if (count == 0) return;
+
+            if (count > 1) total = Mathf.RoundToInt(total * severalAtOnce);
+            Pay(leader, total);
+            if (wanted.Count == 0) Invoke(nameof(NextRound), nextRoundDelay);
+        }
+
+        // The clock ran out with thieves still being led: part of their bounties, no bonus.
+        private void OnStranded(UWBPlayerController leader, IReadOnlyList<ThiefController> thieves)
+        {
+            if (stopped) return;
+
+            int total = 0;
+            foreach (ThiefController thief in thieves)
+            {
+                if (thief != null && wanted.TryGetValue(thief, out WantedPoster poster)) total += Mathf.RoundToInt(poster.Bounty * strandedShare);
+            }
+
+            if (total > 0) Pay(leader, total);
         }
 
         private void NextRound()

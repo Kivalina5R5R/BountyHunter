@@ -9,13 +9,16 @@ namespace BountyHunter.Thieves
         Wander,
         Flee,
         Hidden,
-        Caught
+        Caught,
+        // Handcuffed and led along by a player (the market's police cars, PoliceCuffs).
+        Cuffed
     }
 
     // One thief on the floor. While calm it sneaks from spot to spot, preferring places beside a
     // bush and away from players, walking on curved paths and pausing between trips.
     // When a player comes close it runs to a safe bush and hides. A player who stands on that bush long enough flushes it out; a player who overlaps it
-    // while it is in the open catches it and it disappears. Each thief type is a prefab with its
+    // while it is in the open catches it and it disappears; with cuffs given (UseCuffs) it is
+    // handcuffed instead and led away until it is delivered or breaks free. Each thief type is a prefab with its
     // own sprite and tuning, so new thieves only need a new prefab in ThiefSpawner.
     public sealed class ThiefController : MonoBehaviour
     {
@@ -120,11 +123,16 @@ namespace BountyHunter.Thieves
         private ThiefFrameAnimation frames;
         private float enterAt;
         private Vector3 entryPoint;
+        // Handcuffs the thief instead of catching it outright; null for an outright catch.
+        private IThiefCuffs cuffs;
 
         public ThiefState State => state;
         public string TypeName => typeName;
         public SpriteRenderer Body => body;
         public bool IsHidden => state == ThiefState.Hidden;
+        public bool IsCuffed => state == ThiefState.Cuffed;
+        // Caught by being handed over at a police car (Deliver), not reached in the open.
+        public bool WasDelivered { get; private set; }
         // Held still by a stun gun's hit (Stun).
         public bool IsStunned => Time.time < stunnedUntil;
         // Its speeds are multiplied by this (mud slows it to half); 1 on open ground.
@@ -205,7 +213,7 @@ namespace BountyHunter.Thieves
         // when it took the hit.
         public bool Stun(float seconds)
         {
-            if (state == ThiefState.Caught || state == ThiefState.Hidden || entering) return false;
+            if (state == ThiefState.Caught || state == ThiefState.Hidden || state == ThiefState.Cuffed || entering) return false;
 
             stunnedUntil = Time.time + seconds;
             catchableAt = Mathf.Min(catchableAt, Time.time);
@@ -245,9 +253,66 @@ namespace BountyHunter.Thieves
             return true;
         }
 
+        // From now on a player reaching it hands it to cuffs (null catches it outright again).
+        public void UseCuffs(IThiefCuffs value)
+        {
+            cuffs = value;
+        }
+
+        // Handcuffed: it stops where it is and only moves as it is led (TrailBehind).
+        public void Cuff()
+        {
+            if (state == ThiefState.Caught || state == ThiefState.Hidden) return;
+
+            ReleaseTargetBush();
+            state = ThiefState.Cuffed;
+            hasTarget = false;
+            velocity = Vector3.zero;
+            stunnedUntil = 0f;
+            SetVisible(true);
+            Debug.Log($"[Thief] {name} is handcuffed", this);
+        }
+
+        // While cuffed: follows leader, staying leash metres behind it, facing the way it is pulled.
+        public void TrailBehind(Vector3 leader, float leash)
+        {
+            if (state != ThiefState.Cuffed) return;
+
+            Vector3 position = transform.position;
+            Vector3 toLeader = leader - position;
+            toLeader.y = 0f;
+            float distance = toLeader.magnitude;
+            if (distance <= leash || distance < 0.0001f) return;
+
+            Vector3 next = ClampToArea(position + toLeader / distance * (distance - leash));
+            Face(next.x - position.x);
+            lastMoveDirection = (next - position).normalized;
+            transform.position = next;
+        }
+
+        // Out of the cuffs: it runs from threat, with the same head start as coming out of a bush.
+        public void BreakFree(Vector3 threat)
+        {
+            if (state != ThiefState.Cuffed) return;
+
+            state = ThiefState.Wander;
+            catchableAt = Time.time + exitGraceSeconds;
+            Debug.Log($"[Thief] {name} broke free of the handcuffs", this);
+            Flee(threat, true);
+        }
+
+        // Handed over at the police car: caught for good.
+        public void Deliver()
+        {
+            if (state != ThiefState.Cuffed) return;
+
+            WasDelivered = true;
+            Catch();
+        }
+
         public void FlushOut(Vector3 threat)
         {
-            if (state == ThiefState.Caught) return;
+            if (state == ThiefState.Caught || state == ThiefState.Cuffed) return;
 
             HidingBush bush = hiddenIn;
             hiddenIn = null;
@@ -259,7 +324,7 @@ namespace BountyHunter.Thieves
 
         private void Update()
         {
-            if (players == null || state == ThiefState.Caught) return;
+            if (players == null || state == ThiefState.Caught || state == ThiefState.Cuffed) return;
             if (entering)
             {
                 UpdateWalkIn();
@@ -281,8 +346,14 @@ namespace BountyHunter.Thieves
 
             if (threatDistance <= catchDistance && Time.time >= catchableAt)
             {
-                Catch();
-                return;
+                // With every player at hand already leading as many as they can, it slips past.
+                if (cuffs == null)
+                {
+                    Catch();
+                    return;
+                }
+
+                if (cuffs.TryCuff(this, catchDistance)) return;
             }
 
             if (IsStunned) return;
@@ -792,7 +863,7 @@ namespace BountyHunter.Thieves
 
         private bool InTheOpen(ThiefController other)
         {
-            return other != null && other != this && !other.IsHidden && other.State != ThiefState.Caught;
+            return other != null && other != this && !other.IsHidden && other.State != ThiefState.Caught && !other.IsCuffed;
         }
 
         // Moves this thief out of any other thief in the open closer than personalSpace, at once
@@ -806,7 +877,7 @@ namespace BountyHunter.Thieves
             Vector3 push = Vector3.zero;
             foreach (ThiefController other in crowd.Thieves)
             {
-                if (other == null || other == this || other.IsHidden || other.State == ThiefState.Caught) continue;
+                if (other == null || other == this || other.IsHidden || other.State == ThiefState.Caught || other.IsCuffed) continue;
 
                 Vector3 away = position - other.transform.position;
                 away.y = 0f;

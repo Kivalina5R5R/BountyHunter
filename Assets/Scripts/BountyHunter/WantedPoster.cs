@@ -14,8 +14,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private string moneyFormat = "{0}$";
         // {0} is the raise.
         [SerializeField] private string raiseFormat = "+{0}$";
-        // Red like the CAUGHT stamp: the thief got richer and more wanted.
-        [SerializeField] private Color raiseColor = new Color(0.76f, 0.09f, 0.07f, 1f);
+        // Money green: the bounty grows (the thief stayed free long enough, robbed a bombed player, or
+        // the lucky wheel raised it).
+        [SerializeField] private Color growColor = new Color(0.1f, 0.58f, 0.2f, 1f);
 
         private int bounty;
 
@@ -31,7 +32,7 @@ namespace BountyHunter.Thieves
             if (money != null) RollingLabel.On(money).Show(string.Format(moneyFormat, bounty));
         }
 
-        // Adds to the bounty with the number rolling up, a pop and a floating "+N$".
+        // Adds to the bounty with the number rolling up, a pop and a floating "+N$" in green.
         public void RaiseBounty(int amount)
         {
             if (amount <= 0) return;
@@ -41,8 +42,8 @@ namespace BountyHunter.Thieves
 
             RollingLabel roller = RollingLabel.On(money);
             roller.Roll(string.Format(moneyFormat, bounty), 0.35f);
-            roller.Pop(0.35f, raiseColor, 0.6f);
-            ScorePopup.Play(money, string.Format(raiseFormat, amount), raiseColor);
+            roller.Pop(0.35f, growColor, 0.6f);
+            ScorePopup.Play(money, string.Format(raiseFormat, amount), growColor);
         }
     }
 }

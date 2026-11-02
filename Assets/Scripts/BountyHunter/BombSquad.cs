@@ -73,7 +73,7 @@ namespace BountyHunter.Thieves
 
             foreach (ThiefController thief in thieves.Thieves)
             {
-                if (thief == null || thief.IsHidden || thief.IsStunned || thief.State == ThiefState.Caught)
+                if (thief == null || thief.IsHidden || thief.IsStunned || thief.IsCuffed || thief.State == ThiefState.Caught)
                 {
                     if (thief != null) chasedFor[thief] = 0f;
                     continue;

@@ -249,7 +249,7 @@ namespace BountyHunter.Thieves
 
         private static bool CanBeHit(ThiefController thief)
         {
-            return thief != null && thief.isActiveAndEnabled && thief.State != ThiefState.Caught && !thief.IsHidden && !thief.IsStunned;
+            return thief != null && thief.isActiveAndEnabled && thief.State != ThiefState.Caught && !thief.IsHidden && !thief.IsStunned && !thief.IsCuffed;
         }
 
         // The passer-by nearest the shooter that stands within npcInTheWay of the line of fire.

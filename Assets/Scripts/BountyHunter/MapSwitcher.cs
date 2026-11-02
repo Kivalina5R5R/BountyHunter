@@ -36,6 +36,9 @@ namespace BountyHunter.Thieves
             [SerializeField] private Vector2 sizeVsPlayer = new Vector2(1.15f, 2.3f);
             // Thrown out when a thief dives in or runs out; leave empty for none.
             [SerializeField] private Sprite[] burstSprites;
+            // Spots on this map no hiding spot may cover (the market's police cars): x, world z and
+            // the radius kept clear.
+            [SerializeField] private Vector3[] keepClear;
             // Played once this map's stage is over, before the next map; leave empty for none.
             [SerializeField] private StageInterlude interludeAfter;
 
@@ -45,6 +48,7 @@ namespace BountyHunter.Thieves
             public float MaxTiltDegrees => maxTiltDegrees;
             public Vector2 SizeVsPlayer => sizeVsPlayer;
             public Sprite[] BurstSprites => burstSprites;
+            public Vector3[] KeepClear => keepClear;
             public StageInterlude InterludeAfter => interludeAfter;
         }
 
@@ -372,7 +376,12 @@ namespace BountyHunter.Thieves
                 if (fitter != null) fitter.aspectRatio = (float)map.Floor.width / map.Floor.height;
             }
 
-            if (hidingSpots != null) hidingSpots.UseSprites(map.HidingSpots, map.MaxTiltDegrees, map.SizeVsPlayer);
+            if (hidingSpots != null)
+            {
+                hidingSpots.UseSprites(map.HidingSpots, map.MaxTiltDegrees, map.SizeVsPlayer);
+                hidingSpots.UseKeepClear(map.KeepClear);
+            }
+
             if (thieves != null) thieves.UseBurstSprites(map.BurstSprites);
         }
     }

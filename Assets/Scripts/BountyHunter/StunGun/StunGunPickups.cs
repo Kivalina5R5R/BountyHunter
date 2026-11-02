@@ -207,7 +207,7 @@ namespace BountyHunter.Thieves
             foreach (ThiefController thief in thieves.Thieves)
             {
                 if (thief == null || !thief.isActiveAndEnabled || thief.IsStunned) continue;
-                if (thief.State == ThiefState.Hidden || thief.State == ThiefState.Caught) continue;
+                if (thief.State == ThiefState.Hidden || thief.State == ThiefState.Caught || thief.IsCuffed) continue;
                 if (calmOnly && thief.State != ThiefState.Wander) continue;
                 if (thiefReadyAt.TryGetValue(thief, out float readyAt) && Time.time < readyAt) continue;
 
