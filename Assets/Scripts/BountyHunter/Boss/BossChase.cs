@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Fortal.Players;
@@ -111,6 +112,15 @@ namespace BountyHunter.Thieves
         private int touches;
         private ScenePreload.Ticket preparation;
 
+        // Moments for its sounds (BossSfx): the boss put on the floor (its own moves are heard through
+        // it), the helicopter starting to fly past, the feathers blowing in, the boss caught, and the
+        // boss running off when nobody caught it.
+        public event Action<BossController> BossOnFloor;
+        public event Action<BossHelicopter> HelicopterFlying;
+        public event Action EntranceStarted;
+        public event Action BossCaught;
+        public event Action BossRunningOff;
+
         private void Awake()
         {
             if (wallPanel != null) wallPanel.SetActive(false);
@@ -160,6 +170,7 @@ namespace BountyHunter.Thieves
             if (sounds != null) chased.gameObject.AddComponent<Footsteps>().Initialize(sounds, chased.Picture);
             chased.Touched += OnTouched;
             chased.Shot += OnShot;
+            BossOnFloor?.Invoke(chased);
             if (timer != null) timer.StartCountdown(Heading(), entranceSeconds + chaseSeconds);
             if (npcs != null) npcs.Begin();
             ShowRooftop();
@@ -177,6 +188,7 @@ namespace BountyHunter.Thieves
             if (feather != null && floorImage != null && floorImage.canvas != null)
                 BossFeatherShower.Begin(feather, FeatherFloor(), entranceSeconds, transform, floorImage.canvas.worldCamera);
             if (feather != null && wall != null) wallFeathers = BossFeatherShower.BeginOnWall(feather, wall, entranceSeconds);
+            EntranceStarted?.Invoke();
             yield return Until(start + entranceSeconds);
             chased.ArriveAt(middle);
             Debug.Log("[BossChase] The feathers settle; the boss appears in a cloud of smoke", this);
@@ -191,6 +203,7 @@ namespace BountyHunter.Thieves
             }
 
             chased.RunOff();
+            BossRunningOff?.Invoke();
             float giveUp = Time.time + mostRunOffSeconds;
             while (!chased.HasLeft && Time.time < giveUp && !skipping) yield return null;
             Debug.Log("[BossChase] The boss got away", this);
@@ -204,6 +217,7 @@ namespace BountyHunter.Thieves
             if (timer != null) timer.Stop();
             chased.Finish();
             CatchBrawl.Play(chased.transform.position, catchBrawl, transform);
+            BossCaught?.Invoke();
             Debug.Log("[BossChase] The boss is caught", this);
             float caughtAt = Time.time;
             yield return Until(caughtAt + CatchBrawl.StampSeconds);
@@ -302,6 +316,7 @@ namespace BountyHunter.Thieves
 
             if (wallPanel != null) wallPanel.SetActive(true);
             if (helicopter != null && wallSky != null) hovering = BossHelicopter.Fly(wallSky, helicopter, helicopterRotor);
+            if (hovering != null) HelicopterFlying?.Invoke(hovering);
         }
 
         private void LeaveRooftop()

@@ -7,7 +7,7 @@ namespace BountyHunter.Thieves
     // One character's card on the intro floor: the police ID on its folder with a SELECT button under
     // it. A player stepping on makes the card bounce so they know it noticed them; while they stand
     // on it a loading ring fills around it and the button fades out of its
-    // way (back again if they step off); once full a red SELECTED stamp slams onto the card. Idle, the card breathes and the button pulses to
+    // way (back again if they step off) while the card rocks gently; once full a red SELECTED stamp slams onto the card. Idle, the card breathes and the button pulses to
     // invite a player over. Hidden at first, it can be revealed: it spins down onto the floor with an
     // overshoot, squashes as it lands and the button pops up. Lies flat on the floor like the other floor art; CharacterSelect drives it.
     public sealed class CharacterCard : MonoBehaviour
@@ -31,6 +31,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float stepBounceSeconds = 0.55f;
         // It also twists from side to side as it bounces, in degrees, so it catches the eye from above.
         [SerializeField, Range(0f, 30f)] private float stepTwist = 9f;
+        // While the ring fills the card rocks gently from side to side, eager to be picked: up to this
+        // many degrees either way (easing in and out), this many sways a second.
+        [SerializeField, Range(0f, 10f)] private float holdSway = 2.5f;
+        [SerializeField, Min(0.5f)] private float holdSwaysPerSecond = 2f;
 
         [Header("Reveal")]
         // The spin down onto the floor: how long it takes and how far round it turns on the way.
@@ -40,6 +44,9 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float landSeconds = 0.55f;
         [SerializeField, Min(0f)] private float buttonDelaySeconds = 0.1f;
         [SerializeField, Min(0.1f)] private float buttonPopSeconds = 0.5f;
+
+        // How long the rock takes to ease in or die away.
+        private const float RockEaseSeconds = 0.4f;
 
         private static readonly int FillId = Shader.PropertyToID("_Fill");
 
@@ -51,6 +58,9 @@ namespace BountyHunter.Thieves
         private float progress;
         private float bounceAge = float.MaxValue;
         private float time;
+        // How much the card rocks now (0..1, easing in and out) and where it is in its sway.
+        private float rockAmount;
+        private float rockPhase;
         private bool busy;
         private bool revealing;
 
@@ -138,12 +148,13 @@ namespace BountyHunter.Thieves
 
             float wave = Mathf.Sin(time * Mathf.PI * 2f / pulseSeconds);
             bounceAge += Time.deltaTime;
+            UpdateRock();
             if (card != null)
             {
                 // Lifts a little toward the player while they stand on it, after a springy bounce.
                 float lift = 1f + 0.05f * progress * progress;
                 card.transform.localScale = cardScale * (lift + StepBounce() + (Taken ? 0f : cardBreathe * wave));
-                card.transform.localRotation = Quaternion.Euler(0f, 0f, StepTwist());
+                card.transform.localRotation = Quaternion.Euler(0f, 0f, StepTwist() + HoldRock());
             }
 
             if (button != null && !Taken) button.transform.localScale = buttonScale * (1f + buttonPulse * Mathf.Max(0f, wave));
@@ -155,6 +166,27 @@ namespace BountyHunter.Thieves
             float t = bounceAge / stepBounceSeconds;
             if (t >= 1f) return 0f;
             return stepBounce * Mathf.Sin(t * Mathf.PI * 2.5f) * (1f - t) * (1f - t);
+        }
+
+        // The rock eases in while a player stands on it and dies away smoothly when they step off or
+        // the card is taken, so it never snaps straight; each new rock starts from the middle.
+        private void UpdateRock()
+        {
+            bool held = !Taken && progress > 0f;
+            rockAmount = Mathf.MoveTowards(rockAmount, held ? 1f : 0f, Time.deltaTime / RockEaseSeconds);
+            if (rockAmount <= 0f)
+            {
+                rockPhase = 0f;
+                return;
+            }
+
+            rockPhase += Time.deltaTime * holdSwaysPerSecond * Mathf.PI * 2f;
+        }
+
+        // A smooth sway from side to side, as much as the rock has eased in.
+        private float HoldRock()
+        {
+            return holdSway * Mathf.SmoothStep(0f, 1f, rockAmount) * Mathf.Sin(rockPhase);
         }
 
         // Side to side, a little out of step with the bounce, dying away with it.

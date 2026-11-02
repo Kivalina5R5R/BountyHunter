@@ -57,6 +57,7 @@ namespace BountyHunter.Thieves
         private readonly List<UWBPlayerController> near = new List<UWBPlayerController>();
         private SpawnerPlayerLocator players;
         private Action<UWBPlayerController> onHit;
+        private Action onStrike;
         private BossWaterArt art;
         private float radius;
         private float warningSeconds;
@@ -65,12 +66,13 @@ namespace BountyHunter.Thieves
         private bool struck;
 
         public static void Fire(IReadOnlyList<Vector3> spots, float radius, float warningSeconds, Color color, BossWaterArt art, int sortingOrder,
-            SpawnerPlayerLocator players, Action<UWBPlayerController> onHit, Transform parent)
+            SpawnerPlayerLocator players, Action<UWBPlayerController> onHit, Action onStrike, Transform parent)
         {
             var volley = new GameObject("Boss Water").AddComponent<BossWaterVolley>();
             volley.transform.SetParent(parent, false);
             volley.players = players;
             volley.onHit = onHit;
+            volley.onStrike = onStrike;
             volley.art = art ?? new BossWaterArt();
             volley.radius = radius;
             volley.warningSeconds = Mathf.Max(StreakFallSeconds, warningSeconds);
@@ -171,6 +173,7 @@ namespace BountyHunter.Thieves
         private void Strike()
         {
             struck = true;
+            onStrike?.Invoke();
             foreach (Circle circle in circles)
             {
                 if (circle.Streak != null) circle.Streak.enabled = false;

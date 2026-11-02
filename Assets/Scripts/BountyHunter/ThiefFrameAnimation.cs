@@ -68,6 +68,8 @@ namespace BountyHunter.Thieves
         private float strideScale = 1f;
         // Seconds into the angry act, or below 0 when it is not playing.
         private float angryTime = -1f;
+        // The breathing loop plays until this, whatever the body does (HoldIdle).
+        private float idleUntil;
 
         private Transform Root => transform.parent != null ? transform.parent : transform;
 
@@ -106,6 +108,16 @@ namespace BountyHunter.Thieves
             spriteRenderer.sprite = IdleSprite();
         }
 
+        // Plays the breathing loop for seconds whatever the body does, cross-fading into it from a run
+        // (a stunned thief standing dazed, even when nudged by the others).
+        public void HoldIdle(float seconds)
+        {
+            idleUntil = Time.time + seconds;
+            stoppedFor = stopDelay;
+            StrideNow = 0f;
+            if (!standingPose) BeginCrossfade(true);
+        }
+
         // Starts the angry act from its first picture and returns how long it lasts (0 with none).
         public float PlayAngry()
         {
@@ -123,6 +135,14 @@ namespace BountyHunter.Thieves
             if (angryTime >= 0f)
             {
                 UpdateAngry();
+                UpdateFade();
+                return;
+            }
+
+            if (Time.time < idleUntil)
+            {
+                lastRootPosition = Root.position;
+                UpdateStanding();
                 UpdateFade();
                 return;
             }

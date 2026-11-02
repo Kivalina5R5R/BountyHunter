@@ -41,12 +41,19 @@ namespace BountyHunter.Thieves
         // How high over its spot the padlock starts its drop.
         [SerializeField, Min(0f)] private float dropHeight = 320f;
 
+        [Header("Sounds")]
+        // The doors rolling in on their track, the clang as they meet, rolling back out.
+        [SerializeField] private TransitionSound slideSound = new TransitionSound(0.55f);
+        [SerializeField] private TransitionSound slamSound = new TransitionSound(0.95f);
+        [SerializeField] private TransitionSound openSound = new TransitionSound(0.5f);
+
         private Vector2 leftRest;
         private Vector2 rightRest;
         private Vector2 padlockRest;
         private Vector3 padlockSize;
         private float shutAt;
         private bool measured;
+        private AudioSource voice;
 
         // True once the prefab has its doors (Tools > Bounty Hunter > Build Cage Transition).
         public override bool IsSetUp => leftDoor != null && rightDoor != null;
@@ -56,13 +63,24 @@ namespace BountyHunter.Thieves
         {
             gameObject.SetActive(true);
             Measure();
+            slideSound.Play(voice);
+            bool slammed = false;
             float start = Time.unscaledTime;
             float length = slideSeconds + Mathf.Max(dropSeconds, Mathf.Max(bounceSeconds, shakeSeconds));
             while (Time.unscaledTime - start < length)
             {
-                PoseClosing(Time.unscaledTime - start);
+                float time = Time.unscaledTime - start;
+                if (!slammed && time >= slideSeconds)
+                {
+                    slamSound.Play(voice);
+                    slammed = true;
+                }
+
+                PoseClosing(time);
                 yield return null;
             }
+
+            if (!slammed) slamSound.Play(voice);
 
             PoseClosing(length);
             shutAt = Time.unscaledTime;
@@ -81,6 +99,7 @@ namespace BountyHunter.Thieves
         {
             yield return Hold();
 
+            openSound.Play(voice);
             float start = Time.unscaledTime;
             float length = OpenSeconds;
             while (Time.unscaledTime - start < length)
@@ -100,6 +119,7 @@ namespace BountyHunter.Thieves
             if (measured) return;
 
             measured = true;
+            voice = TransitionSound.SourceOn(gameObject);
             leftRest = leftDoor.anchoredPosition;
             rightRest = rightDoor.anchoredPosition;
             if (padlock == null) return;

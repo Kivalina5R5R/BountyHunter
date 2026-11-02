@@ -20,19 +20,22 @@ namespace BountyHunter.Thieves
         private readonly BossMove reveal;
         private readonly NpcCrowd passersBy;
         private readonly BossRun run;
+        private readonly BossMoments moments;
         private Step step;
         private float stepTime;
         private Vector3 strollTarget;
         private bool fleeing;
         private float lastThreatAt;
 
-        public BossDisguising(BossBody body, BossMove cape, BossMove reveal, NpcCrowd passersBy, BossRun run)
+        // moments hears the cape wrapped, the passer-by taking its place and the cape thrown off.
+        public BossDisguising(BossBody body, BossMove cape, BossMove reveal, NpcCrowd passersBy, BossRun run, BossMoments moments)
         {
             this.body = body;
             this.cape = cape;
             this.reveal = reveal;
             this.passersBy = passersBy;
             this.run = run;
+            this.moments = moments;
         }
 
         // There is a cape to wrap in and a passer-by kind to pass for.
@@ -48,6 +51,7 @@ namespace BountyHunter.Thieves
             lastThreatAt = float.MinValue;
             Enter(Step.Wrapping);
             body.Animator.Play(cape.Frames, cape.FramesPerSecond, body.Settings.WrapFrames, false);
+            moments.RaiseCapeWrapped();
         }
 
         public bool Tick()
@@ -96,6 +100,7 @@ namespace BountyHunter.Thieves
             Enter(Step.ChangingIn);
             body.Disguise.Wear(kind, body.Settings);
             body.Disguise.SetAlpha(0f);
+            moments.RaiseDisguised();
             Debug.Log($"[BossController] Passing for a {kind.name}");
         }
 
@@ -163,6 +168,7 @@ namespace BountyHunter.Thieves
             body.DropDisguise();
             Enter(Step.Revealing);
             PlayReveal();
+            moments.RaiseCapeThrownOff();
         }
 
         private void PlayReveal()

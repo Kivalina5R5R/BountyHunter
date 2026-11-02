@@ -66,6 +66,8 @@ namespace BountyHunter.Thieves
             look.name = $"{kind.name} Look";
             lookBody = look.GetComponent<SpriteRenderer>();
             lookFrames = look.GetComponent<ThiefFrameAnimation>();
+            // A shadow like the real passers-by, so the missing one gives nothing away.
+            CharacterShadow.Add(lookBody);
             StandOnFeet();
             artFacesRight = kind.ArtFacesRight;
             shimmerColor = settings.ShimmerColor;

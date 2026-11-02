@@ -25,6 +25,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private PlayerScoreTag[] scoreTags;
         [SerializeField] private BombSquad bombs;
         [SerializeField] private NpcCrowd npcs;
+        // A stun gun's bolt hitting a passer-by costs npcFine like grabbing one; may be empty.
+        [SerializeField] private StunGuns stunGuns;
         // What grabbing a passer-by costs, shown at the player's feet like a bomb's fine.
         [SerializeField, Min(0)] private int npcFine = 5;
         // Inclusive range of the random fine for being caught in a blast.
@@ -54,8 +56,14 @@ namespace BountyHunter.Thieves
         // Set once the game is over: no more rounds, catches or fines.
         private bool stopped;
 
+        // A new stage (map) starting its first round, with its number (1 first).
+        public event System.Action<int> StageStarted;
+        // The thieves, bombs and passers-by taken off the floor (a mini game, the finale or the end).
+        public event System.Action FloorCleared;
+
         private void Start()
         {
+            if (stunGuns != null) stunGuns.NpcZapped += OnNpcBumped;
             if (spawner != null) spawner.ThiefCaught += OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed += OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped += OnNpcBumped;
@@ -82,6 +90,7 @@ namespace BountyHunter.Thieves
             if (spawner != null) spawner.ThiefCaught -= OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed -= OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped -= OnNpcBumped;
+            if (stunGuns != null) stunGuns.NpcZapped -= OnNpcBumped;
         }
 
         // Starts the stage over from round 1, with any thieves still out removed.
@@ -98,6 +107,7 @@ namespace BountyHunter.Thieves
             // spot of the new layout, so the change of stage shows; StartRound's Begin brings them.
             if (npcs != null) npcs.Clear();
             StartRound(1);
+            StageStarted?.Invoke(stage);
         }
 
         // Ends the game: the thieves and bombs go and nothing starts again.
@@ -125,6 +135,7 @@ namespace BountyHunter.Thieves
             }
 
             if (npcs != null) npcs.Clear();
+            FloorCleared?.Invoke();
         }
 
         private void StartRound(int roundNumber)

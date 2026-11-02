@@ -67,10 +67,12 @@ namespace Fortal.Display
         [SerializeField, Range(0f, 180f)] private float maxTiltDegrees = 180f;
         [SerializeField] private bool randomFlip = true;
         [SerializeField] private int sortingOrder = 5;
-        // Drop shadow under each bush, in world X/Z (Vector2.y is world Z; negative is toward the
-        // bottom of the floor). A clear colour means no shadow.
-        [SerializeField] private Vector2 shadowOffset = new Vector2(0.07f, -0.09f);
-        [SerializeField] private Color shadowColor = new Color(0f, 0f, 0f, 0.35f);
+        // Drop shadow of each spot, in world X/Z (Vector2.y is world Z, toward the wall when positive).
+        // Pushed to the right and a little back rather than down, so its bottom stays level with the
+        // spot's and the spot stands on the floor instead of floating over it. A clear colour means
+        // no shadow.
+        [SerializeField] private Vector2 spotShadowOffset = new Vector2(0.07f, 0.03f);
+        [SerializeField] private Color spotShadowColor = new Color(0f, 0f, 0f, 0.5f);
         [SerializeField] private float height = 0.02f;
         [SerializeField, Min(0)] private int seed;
 
@@ -212,7 +214,7 @@ namespace Fortal.Display
             spriteRenderer.sprite = sprite;
             spriteRenderer.sortingOrder = sortingOrder;
             spriteRenderer.flipX = randomFlip && Random.value < 0.5f;
-            if (shadowColor.a > 0f) BushShadow.Add(spriteRenderer, shadowOffset, shadowColor);
+            if (spotShadowColor.a > 0f) DropShadow.Add(spriteRenderer, spotShadowOffset, spotShadowColor);
             spawned.Add(bush);
             return bush.transform;
         }

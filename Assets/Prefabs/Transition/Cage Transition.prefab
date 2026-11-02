@@ -178,6 +178,15 @@ MonoBehaviour:
   shake: 12
   shakeSeconds: 0.25
   dropHeight: 320
+  slideSound:
+    clip: {fileID: 8300000, guid: 4c5ba229d3a6bf04d890d3085801a1a4, type: 3}
+    volume: 0.55
+  slamSound:
+    clip: {fileID: 8300000, guid: a5939a0cb50df3a4bb6592944d17b35a, type: 3}
+    volume: 0.95
+  openSound:
+    clip: {fileID: 8300000, guid: d3fe9970ca8071340b780f7302855288, type: 3}
+    volume: 0.5
 --- !u!1 &3728117934231731409
 GameObject:
   m_ObjectHideFlags: 0

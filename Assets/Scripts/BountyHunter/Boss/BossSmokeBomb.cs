@@ -32,14 +32,19 @@ namespace BountyHunter.Thieves
         private float playerClearance;
         private bool catchableWindup;
         private readonly Func<bool> tryHide;
+        private readonly BossMoments moments;
         private bool allowHiding;
+        // The bomb has gone down and its cloud burst, this throw or warp.
+        private bool burst;
         public bool Hid { get; private set; }
 
-        public BossSmokeBomb(BossBody body, BossMove smoke, Func<bool> tryHide)
+        // moments hears the bomb lit, the cloud bursting and the boss appearing out of one.
+        public BossSmokeBomb(BossBody body, BossMove smoke, Func<bool> tryHide, BossMoments moments)
         {
             this.body = body;
             this.smoke = smoke;
             this.tryHide = tryHide;
+            this.moments = moments;
         }
 
         public bool IsEmpty => smoke.IsEmpty;
@@ -57,6 +62,7 @@ namespace BountyHunter.Thieves
             Vector2Int frames = body.Settings.SmokeFrames;
             if (catchableWindup) frames.x = body.Settings.WarpFromFrame;
             body.Animator.Play(smoke.Frames, smoke.FramesPerSecond, frames, false);
+            if (!catchableWindup) moments.RaiseSmokeLit();
         }
 
         // Skill preparation can require extra room from every player at the destination.
@@ -80,6 +86,12 @@ namespace BountyHunter.Thieves
         public bool Tick()
         {
             BossSettings settings = body.Settings;
+            if (!teleported && !betweenClouds && !burst && body.Animator.Frame >= settings.WarpFromFrame)
+            {
+                burst = true;
+                moments.RaiseSmokeBurst();
+            }
+
             if (!teleported && !betweenClouds && body.Animator.Frame >= settings.VanishAtFrame) LeaveCloudBehind();
 
             if (betweenClouds && Time.time >= arriveAt)
@@ -116,6 +128,7 @@ namespace BountyHunter.Thieves
         private void Begin(bool arrived)
         {
             Hid = false;
+            burst = false;
             allowHiding = !arrived;
             catchableWindup = false;
             playerClearance = 0f;
@@ -140,6 +153,7 @@ namespace BountyHunter.Thieves
         private void PlayArrival()
         {
             body.Animator.Play(smoke.Frames, smoke.FramesPerSecond, new Vector2Int(body.Settings.ArriveFrame, body.Settings.SmokeFrames.y), false);
+            moments.RaiseAppeared();
         }
 
         // Include the perimeter so random interior samples cannot miss the open far side.

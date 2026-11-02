@@ -34,6 +34,12 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float walkInToInside = 0.7f;
         // An entrance with a player closer than this is not used: a thief would walk into their arms.
         [SerializeField, Min(0f)] private float safeEntranceDistance = 2.8f;
+        // A thief may start hidden in a hiding spot this close to a player (it only sneaks out later,
+        // so it need not be as far as an edge it walks in over).
+        [SerializeField, Min(0f)] private float bushClearanceFromPlayers = 1.2f;
+        // How much the thieves favour coming in on the half of the floor (left or right, top or
+        // bottom) used less this round and last, so they come from every side in turn.
+        [SerializeField, Min(0f)] private float sideTurnWeight = 6f;
         // The thieves of one round come in at least this far apart (metres) whenever the floor allows.
         [SerializeField, Min(0f)] private float entranceSpread = 3.5f;
         // Spots along the floor edges weighed for each entrance (with the free hiding spots).
@@ -293,7 +299,7 @@ namespace BountyHunter.Thieves
                 arrivals.RemoveAt(i);
 
                 Entrance entrance = arrival.Entrance;
-                if (!Safe(entrance.Point))
+                if (entrance.Bush == null && players.TryGetWithin(entrance.Point, spawnClearanceFromPlayers, out _))
                 {
                     entrance = PickEntrance();
                     Debug.Log($"[ThiefSpawner] A player is waiting where {arrival.Thief.name} planned to come in; it comes in elsewhere", this);
@@ -328,8 +334,8 @@ namespace BountyHunter.Thieves
             var candidates = new List<Entrance>();
             foreach (HidingBush bush in hidingBushes)
             {
-                if (bush == null || bush.Occupant != null || bush.ReservedBy != null) continue;
-                if (players.TryGetWithin(bush.Center, spawnClearanceFromPlayers, out _)) continue;
+                if (bush == null || bush.Occupant != null || bush.ReservedBy != null || bush.IsLocked) continue;
+                if (players.TryGetWithin(bush.Center, bushClearanceFromPlayers, out _)) continue;
                 candidates.Add(new Entrance { Point = new Vector3(bush.Center.x, height, bush.Center.z), Bush = bush });
             }
 
@@ -360,17 +366,25 @@ namespace BountyHunter.Thieves
                 float nearest = NearestOf(candidate.Point, roundEntrances, 12f);
                 score += nearest;
                 if (nearest < entranceSpread) score -= 40f;
-
-                // The left and right halves take turns, and so do the top and bottom halves, so even
-                // with the players crowding one end the thieves come in above and below them too.
-                score += HalfTurn(candidate.Point.x, point => point.x) * 3f;
-                score += HalfTurn(candidate.Point.z, point => point.z) * 3f;
             }
 
+            // The left and right halves take turns, and so do the top and bottom halves (counting this
+            // round's entrances and last round's), so even with the players along one side the thieves
+            // come in on their side too.
+            score += HalfTurn(candidate.Point.x, point => point.x) * sideTurnWeight;
+            score += HalfTurn(candidate.Point.z, point => point.z) * sideTurnWeight;
+
             score += NearestOf(candidate.Point, lastRoundEntrances, 4f) * 0.5f;
-            score += (players.TryGetNearest(candidate.Point, out _, out float player) ? Mathf.Min(player, 4f) : 4f) * 0.3f;
-            // An entrance with a player standing by is only taken when there is nothing else.
-            if (!Safe(candidate.Point)) score -= 100f;
+            float player = players.TryGetNearest(candidate.Point, out _, out float distance) ? distance : float.MaxValue;
+            score += Mathf.Min(player, 4f) * 0.3f;
+            // An edge right by a player (it would walk into their arms) is only taken when there is
+            // nothing else; one merely near a player costs a little. Hiding spots too close were
+            // left out already.
+            if (candidate.Bush == null)
+            {
+                if (player < spawnClearanceFromPlayers) score -= 100f;
+                else if (!Safe(candidate.Point)) score -= 8f;
+            }
 
             // Away from the passers-by, and never right next to one unless nothing else is free.
             if (passersBy != null)
@@ -387,11 +401,11 @@ namespace BountyHunter.Thieves
         }
 
         // 1 when the candidate's half of the floor along one axis (below or above zero) had fewer
-        // entrances this round than the other half, otherwise 0.
+        // entrances this round and last than the other half, otherwise 0.
         private float HalfTurn(float candidate, System.Func<Vector3, float> axis)
         {
-            int below = roundEntrances.FindAll(point => axis(point) < 0f).Count;
-            int above = roundEntrances.Count - below;
+            int below = roundEntrances.FindAll(point => axis(point) < 0f).Count + lastRoundEntrances.FindAll(point => axis(point) < 0f).Count;
+            int above = roundEntrances.Count + lastRoundEntrances.Count - below;
             bool isBelow = candidate < 0f;
             return (isBelow && below < above) || (!isBelow && above < below) ? 1f : 0f;
         }

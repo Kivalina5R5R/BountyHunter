@@ -53,6 +53,9 @@ namespace BountyHunter.Thieves
         private float passStartedAt;
         private float nextPassAt;
 
+        // A pass across the gap starting, and how long it takes (for its rotor's sound).
+        public event System.Action<float> PassStarted;
+
         // sky covers the whole wall picture, under the buildings in front; rotorBlades may be null.
         public static BossHelicopter Fly(RectTransform sky, Sprite body, Sprite rotorBlades)
         {
@@ -161,6 +164,7 @@ namespace BountyHunter.Thieves
             passStartedAt = elapsed;
             flying = true;
             SetSeen(true);
+            PassStarted?.Invoke(crossSeconds);
         }
 
         // A cone of light, narrow at the lamp (top) and widening and fading downwards, soft at its sides.

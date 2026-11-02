@@ -56,6 +56,7 @@ MonoBehaviour:
   popInSeconds: 0.18
   staySeconds: {x: 0.4, y: 1.2}
   popOutSeconds: 0.15
+  fromRight: 1
 --- !u!1 &1211114533890335806
 GameObject:
   m_ObjectHideFlags: 0
@@ -703,7 +704,44 @@ MonoBehaviour:
   feathers: {fileID: 2426885127035978905}
   dots: {fileID: 7994074042912982533}
   feathersFirstSeconds: 1
+  fadeInSeconds: 0.4
+  wipeAfter: 0.25
+  wipeSeconds: 0.15
+  bossPopSeconds: 0.35
+  pigeonsAfter: 0.1
+  pigeonGap: 0.15
+  flyInSeconds: 0.6
   holdSeconds: 2.56
+  shrinkSeconds: 0.25
+  flyOffSeconds: 0.5
+  streakBackAfter: 0.1
+  streakBackSeconds: 0.2
+  fadeSeconds: 0.3
+  feathersAfterSeconds: 1.5
+  flyInFrom: {x: 900, y: 300}
+  flyOffTo: {x: 350, y: 650}
+  flapsPerSecond: 7
+  hoverFlapsPerSecond: 4
+  flapSquash: 0.25
+  hoverHeight: 10
+  hoversPerSecond: 1.1
+  flyTilt: 15
+  bossBob: 5
+  feathersSound:
+    clip: {fileID: 8300000, guid: 50e737210fe29fb459211fbe738e0baf, type: 3}
+    volume: 0.4
+  strikeSound:
+    clip: {fileID: 8300000, guid: 0fbe07e1ef46eff4c9e5af39996748c9, type: 3}
+    volume: 0.6
+  bossSound:
+    clip: {fileID: 8300000, guid: a38dfb824b12b534293e1cb16e4822e3, type: 3}
+    volume: 0.65
+  pigeonsSound:
+    clip: {fileID: 8300000, guid: cf6bd9a30b37c0c4cbb74bea3b4505c4, type: 3}
+    volume: 0.45
+  outSound:
+    clip: {fileID: 8300000, guid: b42ec8dd988f35646a2899ebdfb8a02c, type: 3}
+    volume: 0.45
 --- !u!1 &7935312627548075930
 GameObject:
   m_ObjectHideFlags: 0

@@ -19,16 +19,18 @@ namespace BountyHunter.Thieves
         private readonly BossBody body;
         private readonly BossMove shoot;
         private readonly Action<UWBPlayerController> hit;
+        private readonly BossMoments moments;
         private bool released;
         // The shot is out and the gun is coming down.
         private bool lowering;
 
-        // hit is told each player the water hits.
-        public BossShooting(BossBody body, BossMove shoot, Action<UWBPlayerController> hit)
+        // hit is told each player the water hits; moments hears the gun raised, the shot and the strike.
+        public BossShooting(BossBody body, BossMove shoot, Action<UWBPlayerController> hit, BossMoments moments)
         {
             this.body = body;
             this.shoot = shoot;
             this.hit = hit;
+            this.moments = moments;
         }
 
         public bool CanShoot => !shoot.IsEmpty;
@@ -69,6 +71,7 @@ namespace BountyHunter.Thieves
             Vector3 position = body.Position;
             if (body.Players.TryGetNearest(position, out Vector3 target, out _)) body.AimAt(target.x - position.x);
             body.Animator.Play(shoot.Frames, shoot.FramesPerSecond, body.Settings.FiringFrames, false);
+            moments.RaiseGunRaised();
         }
 
         public bool Tick()
@@ -93,7 +96,8 @@ namespace BountyHunter.Thieves
             BossSettings settings = body.Settings;
             PickRainSpots();
             BossWaterVolley.Fire(rainSpots, settings.RainRadius, settings.RainWarningSeconds, settings.RainColor, settings.Water, settings.SortingOrder - 3,
-                body.Players, hit, body.Parent);
+                body.Players, hit, moments.RaiseWaterStruck, body.Parent);
+            moments.RaiseWaterFired();
         }
 
         // rainCircles spots on the floor (one on each huddled player, or one for both when they stand

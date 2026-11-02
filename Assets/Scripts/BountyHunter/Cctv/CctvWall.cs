@@ -14,7 +14,8 @@ namespace BountyHunter.Thieves
     // CctvClip: the thieves run in and dive into the bins, then hop from bin to bin, the bag thief
     // with the money bag over its head; a bin bumps as a thief leaves or lands in it, and now and
     // then a banana peel flies out of it onto the screen (CctvBananaPeels). At the reveal every thief
-    // peeks out of the bin it ended in and the bag thief's bin is stamped CAUGHT.
+    // peeks out of the bin it ended in, then the others and the bins pop away and the bag thief glides
+    // to the middle, bounces up big and is stamped CAUGHT, as in the lineup.
     // Sits on the prefab's root, which stays switched off until shown; it goes over the game wall,
     // just behind the fade curtain. Only the screen, the bins and the thieves are needed.
     public sealed class CctvWall : MonoBehaviour
@@ -52,15 +53,43 @@ namespace BountyHunter.Thieves
         [SerializeField] private TMP_Text countdown;
         // {0} the seconds left, {1} its minutes and {2} the seconds past the minute ("{1:00}:{2:00}" reads 00:24).
         [SerializeField] private string countdownFormat = "{0}";
+        // The last seconds to pick that count down out loud (CctvSfx).
+        [SerializeField, Min(0)] private int hurrySeconds = 5;
 
         [Header("Reveal")]
         [SerializeField] private RectTransform stamp;
+        // Once every thief has peeked out, the other thieves and the bins swell a little and pop away,
+        // leaveStagger apart, over leaveSeconds; the bag thief then glides to culpritSpot over
+        // glideSeconds and bounces up to culpritSize (times its own size) over bounceSeconds, the same
+        // as the lineup's culprit, and CAUGHT slams onto it.
+        [SerializeField, Min(0.05f)] private float leaveSeconds = 0.55f;
+        [SerializeField, Min(0f)] private float leaveStagger = 0.07f;
+        [SerializeField, Min(0.05f)] private float glideSeconds = 0.7f;
+        [SerializeField, Min(0.05f)] private float bounceSeconds = 0.5f;
+        // Screen units from the middle; low enough that the money bag over its head stays on the screen.
+        [SerializeField] private Vector2 culpritSpot = new Vector2(0f, -30f);
+        [SerializeField, Min(1f)] private float culpritSize = 2f;
+        // Where CAUGHT lands, from the culprit's spot.
+        [SerializeField] private Vector2 stampOffset = new Vector2(0f, -40f);
 
         private Vector2[] binRests;
         private Vector3[] binSizes;
         private Vector3[] thiefSizes;
+        // The screen's pieces in their prefab order; the reveal brings the culprit and the stamp to
+        // the front, and the next showing puts the thieves back behind the bins they dive into.
+        private Transform[] screenOrder;
         private DateTime clockStart;
         private float clockStartedAt = -1f;
+        private int shownSeconds = -1;
+
+        // Moments for its sounds (CctvSfx): a thief jumping (into the picture or out of a bin) and
+        // landing in a bin (which), a thief peeking out at the reveal, CAUGHT landing, and each of the
+        // last hurrySeconds to pick going by (seconds left).
+        public event Action ThiefJumped;
+        public event Action<int> ThiefLanded;
+        public event Action ThiefPeeked;
+        public event Action CaughtStamped;
+        public event Action<int> HurrySecond;
 
         // False until the prefab has its bins and thieves (Tools > Bounty Hunter > Build CCTV Prefabs).
         public bool IsSetUp => bins != null && bins.Length > 0 && thieves != null && thieves.Length > 0
@@ -88,6 +117,10 @@ namespace BountyHunter.Thieves
             {
                 if (thieves[i] != null) thiefSizes[i] = thieves[i].rectTransform.localScale;
             }
+
+            Transform screen = thieves.Length > 0 && thieves[0] != null ? thieves[0].transform.parent : null;
+            screenOrder = new Transform[screen != null ? screen.childCount : 0];
+            for (int i = 0; i < screenOrder.Length; i++) screenOrder[i] = screen.GetChild(i);
         }
 
         private void Update()
@@ -108,6 +141,7 @@ namespace BountyHunter.Thieves
             if (peels != null) peels.Clear();
             if (stamp != null) stamp.gameObject.SetActive(false);
             foreach (Image thief in thieves) thief.gameObject.SetActive(false);
+            for (int i = 0; i < screenOrder.Length; i++) screenOrder[i].SetSiblingIndex(i);
             for (int i = 0; i < bins.Length; i++)
             {
                 bins[i].rectTransform.anchoredPosition = binRests[i];
@@ -134,6 +168,8 @@ namespace BountyHunter.Thieves
             bool shown = seconds >= 0;
             if (countdownGroup != null) countdownGroup.SetActive(shown);
             if (shown && countdown != null) countdown.text = string.Format(countdownFormat, seconds, seconds / 60, seconds % 60);
+            if (shown && seconds <= hurrySeconds && seconds != shownSeconds) HurrySecond?.Invoke(seconds);
+            shownSeconds = seconds;
         }
 
         // Plays the clip on the camera, thief i shown as bodies[i]; lasts clip.Length.
@@ -141,15 +177,20 @@ namespace BountyHunter.Thieves
         {
             Dress(clip, bodies);
             List<(float Time, int Bin)> landings = Landings(clip);
+            List<float> takeoffs = Takeoffs(clip);
             int nextLanding = 0;
+            int nextTakeoff = 0;
             float start = Time.time;
             while (Time.time - start < clip.Length)
             {
                 float time = Time.time - start;
                 ShowFrame(clip, time);
+                for (; nextTakeoff < takeoffs.Count && takeoffs[nextTakeoff] <= time; nextTakeoff++) ThiefJumped?.Invoke();
                 for (; nextLanding < landings.Count && landings[nextLanding].Time <= time; nextLanding++)
                 {
-                    if (peels != null) peels.MaybeThrow(binRests[landings[nextLanding].Bin]);
+                    int bin = landings[nextLanding].Bin;
+                    ThiefLanded?.Invoke(bin);
+                    if (peels != null) peels.MaybeThrow(binRests[bin]);
                 }
 
                 yield return null;
@@ -158,9 +199,31 @@ namespace BountyHunter.Thieves
             ShowFrame(clip, clip.Length);
         }
 
-        // Every thief peeks out of the bin it ended in, one after another, and the bag thief's bin is
-        // stamped CAUGHT.
+        // Every thief peeks out of the bin it ended in, one after another; then the others and the bins
+        // pop away, the bag thief glides to the middle and bounces up big, and CAUGHT slams onto it.
         public IEnumerator Reveal(CctvClip clip, float stagger)
+        {
+            yield return PeekOut(clip, stagger);
+            int culprit = clip.BagThief;
+            if (culprit < 0 || culprit >= clip.Thieves || culprit >= thieves.Length)
+            {
+                yield return StampBin(clip.Answer);
+                yield break;
+            }
+
+            yield return new WaitForSeconds(PopSeconds);
+            yield return ClearAround(culprit);
+            RectTransform caught = thieves[culprit].rectTransform;
+            yield return Spotlight(caught, thiefSizes[culprit]);
+            if (stamp == null) yield break;
+
+            stamp.anchoredPosition = culpritSpot + stampOffset;
+            stamp.SetAsLastSibling();
+            yield return Slam(stamp);
+            CaughtStamped?.Invoke();
+        }
+
+        private IEnumerator PeekOut(CctvClip clip, float stagger)
         {
             SetCountdown(-1);
             if (peels != null) peels.Clear();
@@ -172,12 +235,90 @@ namespace BountyHunter.Thieves
                 picture.anchoredPosition = binRests[bin] + new Vector2(0f, peekAbove);
                 picture.localRotation = Quaternion.identity;
                 StartCoroutine(Pop(picture, PopSeconds, thiefSizes[thief]));
+                ThiefPeeked?.Invoke();
                 if (stagger > 0f) yield return new WaitForSeconds(stagger);
             }
+        }
 
+        // The old ending, kept for a clip without a bag thief: CAUGHT on the answer's bin.
+        private IEnumerator StampBin(int bin)
+        {
             if (stamp == null) yield break;
-            stamp.anchoredPosition = new Vector2(binRests[clip.Answer].x, stamp.anchoredPosition.y);
+            stamp.anchoredPosition = new Vector2(binRests[bin].x, stamp.anchoredPosition.y);
             yield return Slam(stamp);
+            CaughtStamped?.Invoke();
+        }
+
+        // The other thieves on show, then the bins, swell a little and pop away one after another.
+        private IEnumerator ClearAround(int culprit)
+        {
+            var leaving = new List<RectTransform>();
+            var sizes = new List<Vector3>();
+            for (int i = 0; i < thieves.Length; i++)
+            {
+                if (i == culprit || !thieves[i].gameObject.activeSelf) continue;
+                leaving.Add(thieves[i].rectTransform);
+                sizes.Add(thieves[i].rectTransform.localScale);
+            }
+
+            foreach (Image bin in bins)
+            {
+                leaving.Add(bin.rectTransform);
+                sizes.Add(bin.rectTransform.localScale);
+            }
+
+            float total = leaveSeconds + leaveStagger * Mathf.Max(0, leaving.Count - 1);
+            for (float time = 0f; time < total; time += Time.deltaTime)
+            {
+                for (int k = 0; k < leaving.Count; k++)
+                {
+                    float u = Mathf.Clamp01((time - k * leaveStagger) / leaveSeconds);
+                    leaving[k].localScale = sizes[k] * LeaveCurve(u);
+                }
+
+                yield return null;
+            }
+
+            foreach (RectTransform piece in leaving) piece.localScale = Vector3.zero;
+        }
+
+        // In front of everything, the culprit glides to its spot and bounces up to its size there.
+        private IEnumerator Spotlight(RectTransform caught, Vector3 size)
+        {
+            caught.SetAsLastSibling();
+            caught.localRotation = Quaternion.identity;
+            Vector2 from = caught.anchoredPosition;
+            for (float time = 0f; time < glideSeconds; time += Time.deltaTime)
+            {
+                float u = time / glideSeconds;
+                caught.anchoredPosition = Vector2.Lerp(from, culpritSpot, u * u * (3f - 2f * u));
+                yield return null;
+            }
+
+            caught.anchoredPosition = culpritSpot;
+            for (float time = 0f; time < bounceSeconds; time += Time.deltaTime)
+            {
+                caught.localScale = size * Mathf.LerpUnclamped(1f, culpritSize, EaseOutBack(time / bounceSeconds));
+                yield return null;
+            }
+
+            caught.localScale = size * culpritSize;
+        }
+
+        private static float EaseOutBack(float u)
+        {
+            const float overshoot = 2.2f;
+            float back = Mathf.Clamp01(u) - 1f;
+            return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;
+        }
+
+        // 1 at the start, up to 1.12 a third of the way, then down to nothing.
+        private static float LeaveCurve(float u)
+        {
+            const float peak = 0.3f;
+            if (u < peak) return 1f + 0.12f * Mathf.Sin(u / peak * Mathf.PI * 0.5f);
+            float down = (u - peak) / (1f - peak);
+            return 1.12f * (1f - down * down);
         }
 
         public void Hide()
@@ -186,6 +327,16 @@ namespace BountyHunter.Thieves
             if (peels != null) peels.Clear();
             clockStartedAt = -1f;
             gameObject.SetActive(false);
+        }
+
+        // Every time a thief leaps, running in or hopping out of a bin, in the order they happen.
+        private static List<float> Takeoffs(CctvClip clip)
+        {
+            var takeoffs = new List<float>();
+            for (int thief = 0; thief < clip.Thieves; thief++) takeoffs.Add(clip.EnterStart(thief));
+            foreach (CctvHop hop in clip.Hops) takeoffs.Add(hop.Start);
+            takeoffs.Sort();
+            return takeoffs;
         }
 
         // Every time a thief drops into a bin, dive or hop, in the order they happen.

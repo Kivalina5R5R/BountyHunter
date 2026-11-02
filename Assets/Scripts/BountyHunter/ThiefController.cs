@@ -114,6 +114,10 @@ namespace BountyHunter.Thieves
         private float lastAlarmAt = float.MinValue;
         // Walking in from off the floor at the start of a round; it moves straight in, unclamped.
         private bool entering;
+        // A stun gun's hit holds it still until this (Stun).
+        private float stunnedUntil;
+        // Its body's frames, told to breathe while it is stunned; may be missing.
+        private ThiefFrameAnimation frames;
         private float enterAt;
         private Vector3 entryPoint;
 
@@ -121,11 +125,21 @@ namespace BountyHunter.Thieves
         public string TypeName => typeName;
         public SpriteRenderer Body => body;
         public bool IsHidden => state == ThiefState.Hidden;
+        // Held still by a stun gun's hit (Stun).
+        public bool IsStunned => Time.time < stunnedUntil;
+        // Its speeds are multiplied by this (mud slows it to half); 1 on open ground.
+        public float SpeedFactor { get; set; } = 1f;
 
         // While hidden: seconds until it sneaks out on its own (it waits longer while a player is near).
         public float SecondsUntilSneakOut => state == ThiefState.Hidden ? Mathf.Max(0f, sneakOutAt - Time.time) : float.MaxValue;
 
         public event Action<ThiefController> Caught;
+
+        private void Awake()
+        {
+            CharacterShadow.Add(body);
+            if (body != null) frames = body.GetComponent<ThiefFrameAnimation>();
+        }
 
         // Gives the thief its players, bushes and the floor area it may move in (Vector2.y is world Z).
         public void Initialize(IPlayerLocator playerLocator, IHidingSpots spots, IThiefCrowd thieves, IFloorWalkers passersBy, Vector2 moveAreaMin, Vector2 moveAreaMax)
@@ -186,6 +200,39 @@ namespace BountyHunter.Thieves
         }
 
         // Called by a bush when a player stood on it long enough; runs away from that player.
+        // A stun gun's hit: it stands still for seconds and anyone who reaches it catches it, even within
+        // its head start out of a hiding spot. Not while hidden, walking onto the floor or caught; true
+        // when it took the hit.
+        public bool Stun(float seconds)
+        {
+            if (state == ThiefState.Caught || state == ThiefState.Hidden || entering) return false;
+
+            stunnedUntil = Time.time + seconds;
+            catchableAt = Mathf.Min(catchableAt, Time.time);
+            ReleaseTargetBush();
+            hasTarget = false;
+            velocity = Vector3.zero;
+            if (frames != null) frames.HoldIdle(seconds);
+            Debug.Log($"[Thief] {name} is stunned for {seconds:0.0}s", this);
+            return true;
+        }
+
+        // Blasted out of its hiding spot by a sprinkler: it comes out away from threat, knocked that far
+        // further, and stands dazed for seconds (anyone who reaches it then catches it). Only while
+        // hidden; true when it was.
+        public bool SprayOut(Vector3 threat, float knock, float dazeSeconds)
+        {
+            if (state != ThiefState.Hidden) return false;
+
+            FlushOut(threat);
+            Vector3 away = transform.position - threat;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.0001f) away = lastMoveDirection;
+            transform.position = ClampToArea(transform.position + away.normalized * knock);
+            Stun(dazeSeconds);
+            return true;
+        }
+
         public void FlushOut(Vector3 threat)
         {
             if (state == ThiefState.Caught) return;
@@ -225,6 +272,8 @@ namespace BountyHunter.Thieves
                 Catch();
                 return;
             }
+
+            if (IsStunned) return;
 
             players.GetAll(playerPositions);
             if (threatDistance <= calmRadius) lastAlarmAt = Time.time;
@@ -379,7 +428,7 @@ namespace BountyHunter.Thieves
             }
 
             // Calm trips slow down into their stop; flights dash straight in.
-            float speed = fleeing ? fleeSpeed : tripSpeed * Mathf.Clamp(distance / 0.5f, 0.3f, 1f);
+            float speed = (fleeing ? fleeSpeed : tripSpeed * Mathf.Clamp(distance / 0.5f, 0.3f, 1f)) * SpeedFactor;
             // Turning gets sharper near the goal so it never circles around it.
             float turn = (fleeing ? fleeTurnDegrees : wanderTurnDegrees) * (1f + 3f * (1f - Mathf.Clamp01(distance / 0.6f)));
             Vector3 heading = velocity.sqrMagnitude > 0.0001f ? velocity.normalized : lastMoveDirection;

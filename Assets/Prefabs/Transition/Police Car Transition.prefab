@@ -361,3 +361,6 @@ MonoBehaviour:
   driveSeconds: 2.1
   sirenSeconds: 0.14
   coverUnderCar: 0.35
+  passSound:
+    clip: {fileID: 8300000, guid: 57da07ba123a6224f91c2f8cee2a2da6, type: 3}
+    volume: 0.7

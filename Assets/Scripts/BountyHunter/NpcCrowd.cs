@@ -77,6 +77,8 @@ namespace BountyHunter.Thieves
         // The kinds out on the floor now (or waiting to come in), and every kind there is.
         public IReadOnlyCollection<NpcWalker> KindsOut => kindOf.Values;
         public IReadOnlyList<NpcWalker> Kinds => kinds;
+        // The passers-by out on the floor now (or about to come in).
+        public IReadOnlyCollection<NpcWalker> Walkers => kindOf.Keys;
 
         // The passer-by and the player who bumped into it.
         public event Action<NpcWalker, UWBPlayerController> NpcBumped;

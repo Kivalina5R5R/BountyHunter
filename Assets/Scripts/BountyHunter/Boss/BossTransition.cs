@@ -71,6 +71,15 @@ namespace BountyHunter.Thieves
         [SerializeField, Range(0f, 40f)] private float flyTilt = 15f;
         [SerializeField, Min(0f)] private float bossBob = 5f;
 
+        [Header("Sounds")]
+        // Feathers fluttering down over the stage, the streak striking in, the boss's sting as he
+        // pops up, the pigeons' wings as they fly in, and everything sweeping back out.
+        [SerializeField] private TransitionSound feathersSound = new TransitionSound(0.4f);
+        [SerializeField] private TransitionSound strikeSound = new TransitionSound(0.6f);
+        [SerializeField] private TransitionSound bossSound = new TransitionSound(0.65f);
+        [SerializeField] private TransitionSound pigeonsSound = new TransitionSound(0.45f);
+        [SerializeField] private TransitionSound outSound = new TransitionSound(0.45f);
+
         private enum Stage { Hidden, Opening, Holding, Closing, FeathersOnly }
 
         private Stage stage = Stage.Hidden;
@@ -83,6 +92,8 @@ namespace BountyHunter.Thieves
         private Vector2[] pigeonRests;
         private Vector3[] pigeonSizes;
         private bool measured;
+        private AudioSource voice;
+        private bool pigeonsHeard;
 
         // True once the prefab has its pieces (Tools > Bounty Hunter > Build Boss Transition).
         public bool IsSetUp => background != null && streak != null;
@@ -103,6 +114,7 @@ namespace BountyHunter.Thieves
             ShowBoss(0f, 0f);
             for (int i = 0; i < pigeons.Length; i++) pigeons[i].gameObject.SetActive(false);
             if (feathers != null) feathers.StartFalling();
+            feathersSound.Play(voice);
 
             bool dotsStarted = false;
             float start = Time.unscaledTime;
@@ -110,9 +122,10 @@ namespace BountyHunter.Thieves
             while (Time.unscaledTime - start < CoverAt)
             {
                 float since = Time.unscaledTime - start;
-                if (!dotsStarted && since >= WipeStart && dots != null)
+                if (!dotsStarted && since >= WipeStart)
                 {
-                    dots.StartPopping();
+                    if (dots != null) dots.StartPopping();
+                    strikeSound.Play(voice);
                     dotsStarted = true;
                 }
 
@@ -123,7 +136,14 @@ namespace BountyHunter.Thieves
 
             SetAlpha(background, backgroundAlpha);
             PoseStreak(1f);
-            if (dots != null && !dotsStarted) dots.StartPopping();
+            if (!dotsStarted)
+            {
+                if (dots != null) dots.StartPopping();
+                strikeSound.Play(voice);
+            }
+
+            bossSound.Play(voice);
+            pigeonsHeard = false;
             coveredAt = Time.unscaledTime;
             stage = Stage.Holding;
         }
@@ -137,6 +157,7 @@ namespace BountyHunter.Thieves
             stage = Stage.Closing;
             float held = Time.unscaledTime - coveredAt;
             if (dots != null) dots.PopAll();
+            outSound.Play(voice);
             float start = Time.unscaledTime;
             while (Time.unscaledTime - start < CloseLength)
             {
@@ -160,6 +181,12 @@ namespace BountyHunter.Thieves
             float now = Time.unscaledTime;
             if (stage == Stage.Holding)
             {
+                if (!pigeonsHeard && now - coveredAt >= pigeonsAfter)
+                {
+                    pigeonsSound.Play(voice);
+                    pigeonsHeard = true;
+                }
+
                 PoseHolding(now - coveredAt);
                 return;
             }
@@ -195,6 +222,7 @@ namespace BountyHunter.Thieves
             if (measured) return;
 
             measured = true;
+            voice = TransitionSound.SourceOn(gameObject);
             // The rooftop fades rather than wipes, so it is always drawn whole.
             background.type = Image.Type.Simple;
             backgroundAlpha = background.color.a;

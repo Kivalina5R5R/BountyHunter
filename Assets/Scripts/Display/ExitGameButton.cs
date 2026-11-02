@@ -3,23 +3,22 @@ using UnityEngine.UI;
 
 namespace Fortal.Display
 {
-    // Closes the game from the kiosk screen so the touch launcher becomes visible again.
+    // The kiosk screen's EXIT button: asks first (ExitConfirmDialog), so a stray touch does not close
+    // the game; with no dialog set it closes the game at once.
     [RequireComponent(typeof(Button))]
     public sealed class ExitGameButton : MonoBehaviour
     {
+        [SerializeField] private ExitConfirmDialog confirmDialog;
+
         private void Awake()
         {
-            GetComponent<Button>().onClick.AddListener(Quit);
+            GetComponent<Button>().onClick.AddListener(OnPressed);
         }
 
-        public void Quit()
+        private void OnPressed()
         {
-            Debug.Log("[ExitGameButton] Quit requested from the kiosk screen", this);
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
+            if (confirmDialog != null) confirmDialog.Open();
+            else GameExit.Quit(this);
         }
     }
 }

@@ -1,0 +1,156 @@
+using System;
+using System.Collections.Generic;
+using Fortal.Players;
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+namespace BountyHunter.Thieves
+{
+    // The park's police tape (stage 2): one crate of tape lies somewhere on the floor, at a new random
+    // spot each time, clear of the hiding spots. A player who stands on it for holdSeconds tapes off a
+    // few hiding spots (tapedSpots, picked at random) for lockSeconds: a thief hiding in one comes
+    // out, and no thief may hide there until the tape comes off. Then the crate rests for
+    // cooldownSeconds. It closes part of the map's cover for a while, so the players choose when:
+    // before the thieves hide, or to drive out the ones already in. Gone when the floor is cleared.
+    public sealed class ParkPoliceTape : MonoBehaviour
+    {
+        [SerializeField] private BountyRounds rounds;
+        [SerializeField] private UWBPlayerSpawner players;
+        // Its hiding spots (and the thieves in them).
+        [SerializeField] private ThiefSpawner hidingSpots;
+        [SerializeField] private int stage = 2;
+        // Where the crate may lie (x and world z), and how far it keeps from the hiding spots.
+        [SerializeField] private Vector2 areaMin = new Vector2(-3.8f, -1.5f);
+        [SerializeField] private Vector2 areaMax = new Vector2(3.8f, 1.5f);
+        [SerializeField, Min(0f)] private float clearOfSpots = 0.4f;
+
+        [Header("Taping off")]
+        [SerializeField, Min(0.1f)] private float radius = 0.6f;
+        [SerializeField, Min(0.1f)] private float holdSeconds = 1.5f;
+        [SerializeField, Min(0f)] private float cooldownSeconds = 15f;
+        [SerializeField] private Vector2Int tapedSpots = new Vector2Int(2, 3);
+        [SerializeField, Min(1f)] private float lockSeconds = 10f;
+
+        [Header("Look")]
+        [SerializeField] private Sprite crate;
+        [SerializeField, Min(0.1f)] private float crateWidth = 0.55f;
+        // The tape round a taped-off hiding spot, against the spot's radius.
+        [SerializeField] private Sprite tape;
+        [SerializeField, Min(0.5f)] private float tapeVsSpot = 2.8f;
+        // The ring round the crate, in the look of the players' rings, its fill police-tape yellow.
+        [SerializeField] private Sprite switchRingBack;
+        [SerializeField] private Sprite switchRingFill;
+        [SerializeField] private Material radialFill;
+        [SerializeField] private Color fillColour = new Color(0.95f, 0.8f, 0.3f, 1f);
+
+        private const int SpotTries = 60;
+
+        private readonly List<Vector3> spots = new List<Vector3>();
+        private readonly List<HidingBush> choices = new List<HidingBush>();
+        private FloorSwitch crateSwitch;
+
+        // Where the crate lies this stage (empty in other stages).
+        public IReadOnlyList<Vector3> Spots => spots;
+
+        // A player taped off some hiding spots (which).
+        public event Action<UWBPlayerController, IReadOnlyList<HidingBush>> Taped;
+
+        private void OnEnable()
+        {
+            if (rounds == null) return;
+            rounds.StageStarted += OnStageStarted;
+            rounds.FloorCleared += Clear;
+        }
+
+        private void OnDisable()
+        {
+            if (rounds != null)
+            {
+                rounds.StageStarted -= OnStageStarted;
+                rounds.FloorCleared -= Clear;
+            }
+
+            Clear();
+        }
+
+        private void OnStageStarted(int started)
+        {
+            Clear();
+            if (started != stage) return;
+
+            Vector3 at = RandomClearSpot();
+            spots.Add(at);
+            crateSwitch = FloorSwitch.Create(transform, "Police Tape Crate", at, crate, crateWidth, switchRingBack, switchRingFill, radialFill, fillColour, radius,
+                holdSeconds, cooldownSeconds, players);
+            crateSwitch.Triggered += OnTriggered;
+        }
+
+        private void Clear()
+        {
+            if (crateSwitch != null)
+            {
+                crateSwitch.Triggered -= OnTriggered;
+                Destroy(crateSwitch.gameObject);
+            }
+
+            crateSwitch = null;
+            spots.Clear();
+        }
+
+        // Tapes off a few hiding spots at random, not ones already taped.
+        private void OnTriggered(FloorSwitch tripped, UWBPlayerController player)
+        {
+            if (hidingSpots == null) return;
+
+            choices.Clear();
+            foreach (HidingBush bush in hidingSpots.Bushes)
+            {
+                if (bush != null && !bush.IsLocked) choices.Add(bush);
+            }
+
+            int count = Mathf.Min(choices.Count, Random.Range(tapedSpots.x, Mathf.Max(tapedSpots.x, tapedSpots.y) + 1));
+            var taped = new List<HidingBush>();
+            for (int i = 0; i < count; i++)
+            {
+                int pick = Random.Range(i, choices.Count);
+                (choices[i], choices[pick]) = (choices[pick], choices[i]);
+                HidingBush bush = choices[i];
+                bush.Lock(lockSeconds);
+                BushTape.Play(bush, tape, bush.Radius * tapeVsSpot, lockSeconds);
+                taped.Add(bush);
+            }
+
+            Debug.Log($"[ParkPoliceTape] Player {(player != null ? player.PlayerId : 0)} tapes off {taped.Count} hiding spots for {lockSeconds:0}s", this);
+            Taped?.Invoke(player, taped);
+        }
+
+        // A random spot clear of the hiding spots (or the middle of the area when none is found).
+        private Vector3 RandomClearSpot()
+        {
+            for (int attempt = 0; attempt < SpotTries; attempt++)
+            {
+                var spot = new Vector3(Random.Range(areaMin.x, areaMax.x), 0f, Random.Range(areaMin.y, areaMax.y));
+                if (IsClear(spot)) return spot;
+            }
+
+            return new Vector3((areaMin.x + areaMax.x) * 0.5f, 0f, (areaMin.y + areaMax.y) * 0.5f);
+        }
+
+        private bool IsClear(Vector3 spot)
+        {
+            if (hidingSpots == null) return true;
+
+            foreach (HidingBush bush in hidingSpots.Bushes)
+            {
+                if (bush != null && Flat(spot, bush.Center) < bush.Radius + radius + clearOfSpots) return false;
+            }
+
+            return true;
+        }
+
+        private static float Flat(Vector3 a, Vector3 b)
+        {
+            return Vector2.Distance(new Vector2(a.x, a.z), new Vector2(b.x, b.z));
+        }
+    }
+}

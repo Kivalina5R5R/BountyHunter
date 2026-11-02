@@ -102,6 +102,11 @@ namespace BountyHunter.Thieves
         // Raised once it has walked off the floor after Leave.
         public event Action<NpcWalker> Left;
 
+        private void Awake()
+        {
+            CharacterShadow.Add(body);
+        }
+
         // Gives it the players to watch for, the others on the floor to keep from walking over (thieves,
         // passers-by; entries may be null), the hiding spots to keep clear of (may be null) and the
         // floor area to stroll in (x and world z).

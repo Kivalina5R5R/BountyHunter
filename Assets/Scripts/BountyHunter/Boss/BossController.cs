@@ -24,6 +24,7 @@ namespace BountyHunter.Thieves
     public sealed class BossController : MonoBehaviour
     {
         private readonly List<UWBPlayerController> nearPlayers = new List<UWBPlayerController>();
+        private readonly BossMoments moments = new BossMoments();
 
         private BossBody body;
         private BossRun run;
@@ -54,6 +55,9 @@ namespace BountyHunter.Thieves
         // A player was hit by its water.
         public event Action<UWBPlayerController> Shot;
 
+        // Its moves' moments, for its sounds.
+        public BossMoments Moments => moments;
+
         // Gone off the floor after RunOff.
         public bool HasLeft { get; private set; }
 
@@ -71,17 +75,19 @@ namespace BountyHunter.Thieves
             var bodyObject = new GameObject("Body");
             bodyObject.transform.SetParent(root.transform, false);
             bodyObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            bodyObject.AddComponent<SpriteRenderer>().sortingOrder = settings.SortingOrder;
+            var bodyPicture = bodyObject.AddComponent<SpriteRenderer>();
+            bodyPicture.sortingOrder = settings.SortingOrder;
+            CharacterShadow.Add(bodyPicture);
 
             var boss = root.AddComponent<BossController>();
             var animator = bodyObject.AddComponent<BossAnimator>();
             var body = new BossBody(root.transform, animator, BossDisguise.Create(root.transform), settings, walk, players, passersBy, areaMin, areaMax);
             boss.body = body;
             boss.run = new BossRun(body);
-            boss.shooting = new BossShooting(body, shoot, player => boss.Shot?.Invoke(player));
-            boss.disguising = new BossDisguising(body, cape, reveal, passersBy, boss.run);
+            boss.shooting = new BossShooting(body, shoot, player => boss.Shot?.Invoke(player), boss.moments);
+            boss.disguising = new BossDisguising(body, cape, reveal, passersBy, boss.run, boss.moments);
             boss.hiding = new BossHiding(body, hidingSpots);
-            boss.smokeBomb = new BossSmokeBomb(body, smoke, boss.hiding.TryWarpIn);
+            boss.smokeBomb = new BossSmokeBomb(body, smoke, boss.hiding.TryWarpIn, boss.moments);
             boss.runOff = new BossRunOff(body);
             body.Position = position;
             boss.Stand();

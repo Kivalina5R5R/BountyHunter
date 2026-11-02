@@ -814,6 +814,10 @@ GameObject:
   - component: {fileID: 156425234}
   - component: {fileID: 156425235}
   - component: {fileID: 156425236}
+  - component: {fileID: 156425238}
+  - component: {fileID: 156425237}
+  - component: {fileID: 156425240}
+  - component: {fileID: 156425239}
   m_Layer: 0
   m_Name: Bounty
   m_TagString: Untagged
@@ -858,6 +862,7 @@ MonoBehaviour:
   - {fileID: 879857161}
   bombs: {fileID: 1898598048}
   npcs: {fileID: 1530458020}
+  stunGuns: {fileID: 156425238}
   npcFine: 5
   bombPenalty: {x: 5, y: 10}
   damageFormat: -{0}$
@@ -893,6 +898,123 @@ MonoBehaviour:
   - character: Pompo
     tag: {fileID: 1804798657}
     dog: {fileID: 628510089}
+--- !u!114 &156425237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ad006d6e4ea94741bc800ea339be403, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.StunGunPickups
+  rounds: {fileID: 156425235}
+  guns: {fileID: 156425238}
+  players: {fileID: 594936650}
+  hidingSpots: {fileID: 1226030214}
+  stages: 0200000003000000
+  firstDropSeconds: 6
+  dropEverySeconds: 20
+  perDrop: {x: 1, y: 2}
+  mostOnFloor: 3
+  pickUpRadius: 0.5
+  areaMin: {x: -4.6, y: -1.9}
+  areaMax: {x: 4.6, y: 1.9}
+  clearOfPlayers: 1.5
+  clearOfSpots: 0.8
+  icon: {fileID: 21300000, guid: d2fffcb2ba2e7e844914be78fc750b92, type: 3}
+  pickupWidth: 0.6
+--- !u!114 &156425238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 779802884ab45a749870fe262778f614, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.StunGuns
+  rounds: {fileID: 156425235}
+  thieves: {fileID: 1226030214}
+  passersBy: {fileID: 1530458020}
+  mud: {fileID: 156425239}
+  shotsPerGun: 2
+  mostShots: 4
+  lockRange: 2.5
+  keepRange: 2.9
+  lockSeconds: 1
+  stunSeconds: 3
+  npcInTheWay: 0.35
+  shotIcon: {fileID: 21300000, guid: dff30d4a1c65c714a9a02a8c38148436, type: 3}
+  reticleBack: {fileID: 21300000, guid: 7423a713665d78e4bb06971fd23c63dd, type: 3}
+  reticleFill: {fileID: 21300000, guid: cc88e66dd6199d0429a7da098e98a940, type: 3}
+  radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
+  reticleWidth: 0.8
+  reticleColour: {r: 1, g: 0.8, b: 0.2, a: 1}
+  lockedColour: {r: 1, g: 0.18, b: 0.14, a: 1}
+  boltColour: {r: 0.6, g: 0.95, b: 1, a: 1}
+  stunStar: {fileID: 21300000, guid: d6a914944e2464e45887d9003b361a38, type: 3}
+--- !u!114 &156425239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70182769f5bf2e94888ce8406cd18d85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.MudPuddles
+  rounds: {fileID: 156425235}
+  thieves: {fileID: 1226030214}
+  policeTape: {fileID: 156425240}
+  stage: 2
+  puddleCount: {x: 4, y: 6}
+  width: 1.5
+  maxTurnDegrees: 25
+  thiefSpeedInMud: 0.5
+  lockSpeedInMud: 0.5
+  areaMin: {x: -4.2, y: -1.6}
+  areaMax: {x: 4.2, y: 1.6}
+  gap: 0.4
+  mud: {fileID: 21300000, guid: 015e729e6c04f1f449557ede8295ef52, type: 3}
+--- !u!114 &156425240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 156425233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8726750d25ea42b4b9e83ef3636ba365, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ParkSprinklers
+  rounds: {fileID: 156425235}
+  players: {fileID: 594936650}
+  hidingSpots: {fileID: 1226030214}
+  stage: 2
+  areaMin: {x: -3.8, y: -1.5}
+  areaMax: {x: 3.8, y: 1.5}
+  clearOfSpots: 0.4
+  radius: 0.6
+  holdSeconds: 1.5
+  cooldownSeconds: 15
+  tapedSpots: {x: 2, y: 3}
+  lockSeconds: 10
+  crate: {fileID: 21300000, guid: 44144f15a22a2ff4fab7c60e25f7514d, type: 3}
+  crateWidth: 0.55
+  tape: {fileID: 21300000, guid: c6347b95005e8ab4fb9c69a26093a806, type: 3}
+  tapeVsSpot: 2.8
+  switchRingBack: {fileID: 21300000, guid: f38f6e0bd29f24340a0eda3624a180d2, type: 3}
+  switchRingFill: {fileID: 21300000, guid: fa28033769829e4418f06cdf2fed86a2, type: 3}
+  radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
+  fillColour: {r: 0.6, g: 0.85, b: 0.87, a: 1}
 --- !u!1001 &160278826
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1108,6 +1230,8 @@ MonoBehaviour:
   stepBounce: 0.28
   stepBounceSeconds: 0.55
   stepTwist: 9
+  holdSway: 2.5
+  holdSwaysPerSecond: 2
   revealSeconds: 0.55
   revealSpin: 160
   landSeconds: 0.55
@@ -1895,6 +2019,8 @@ MonoBehaviour:
   stepBounce: 0.28
   stepBounceSeconds: 0.55
   stepTwist: 9
+  holdSway: 2.5
+  holdSwaysPerSecond: 2
   revealSeconds: 0.55
   revealSpin: 160
   landSeconds: 0.55
@@ -2042,7 +2168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a5cbe7cedcdad94b8cdf8ee83b84661, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Fortal.UWB.UWBManager
-  transportMode: 0
+  transportMode: 2
   connectOnStart: 1
   autoReconnect: 1
   reconnectDelaySeconds: 2
@@ -2235,6 +2361,8 @@ MonoBehaviour:
   stepBounce: 0.28
   stepBounceSeconds: 0.55
   stepTwist: 9
+  holdSway: 2.5
+  holdSwaysPerSecond: 2
   revealSeconds: 0.55
   revealSpin: 160
   landSeconds: 0.55
@@ -2458,7 +2586,7 @@ MonoBehaviour:
   playerParent: {fileID: 0}
   spawnOnStart: 1
   playerScale: 0.462
-  simulationPlayerCount: 2
+  simulationPlayerCount: 4
   players:
   - enabled: 1
     playerId: 1
@@ -3131,6 +3259,7 @@ GameObject:
   - component: {fileID: 730000002}
   - component: {fileID: 730000003}
   - component: {fileID: 730000004}
+  - component: {fileID: 730000005}
   m_Layer: 0
   m_Name: Lineup Puzzle
   m_TagString: Untagged
@@ -3289,6 +3418,39 @@ MonoBehaviour:
   shrinkSeconds: 0.55
   shrinkStagger: 0.07
   shrinkSwell: 0.12
+--- !u!114 &730000005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 730000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a09b27a53754bf149a85340c47928f83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.LineupSfx
+  puzzle: {fileID: 730000003}
+  wall: {fileID: 1161008891}
+  drop: {fileID: 8300000, guid: 06e8e10a02ec71446a03feafefc5ed46, type: 3}
+  entranceVolume: 0.45
+  pairSemitones: 000000000300000005000000070000000a0000000c000000
+  clue: {fileID: 8300000, guid: 0d0fda56c573fa549b09d32c504b0b5b, type: 3}
+  clueVolume: 0.6
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  stepOnVolume: 0.4
+  locked: {fileID: 8300000, guid: 39576169005b38e458fb855b6becd099, type: 3}
+  lockedVolume: 0.6
+  tick: {fileID: 8300000, guid: 28c7d15848952944582d83f8271e8a57, type: 3}
+  finalTick: {fileID: 8300000, guid: 8c53f6ffc85b56740aa837b26c855f78, type: 3}
+  timeUp: {fileID: 8300000, guid: d459af73c10e93249a7663722d3c97d5, type: 3}
+  timeVolume: 0.55
+  stamp: {fileID: 8300000, guid: cdf5b58403bce7a4d8c5620d3720aeef, type: 3}
+  cheer: {fileID: 8300000, guid: 52aa9943cc1ecf7428dd06fa992df1e3, type: 3}
+  coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
+  revealVolume: 0.7
+  sameSoundGapSeconds: 0.1
+  voiceCount: 5
 --- !u!1 &734738225
 GameObject:
   m_ObjectHideFlags: 0
@@ -4785,6 +4947,17 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &1045490940 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7017972217200564079, guid: 29d1c39435f832840ae0305a8e9b1c14, type: 3}
+  m_PrefabInstance: {fileID: 2020309298}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd9312284d1341b4482f2020d3af6ec0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CctvBananaPeels
 --- !u!1 &1049140906
 GameObject:
   m_ObjectHideFlags: 0
@@ -5075,6 +5248,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1105797309}
   - component: {fileID: 1105797308}
+  - component: {fileID: 1105797310}
   m_Layer: 0
   m_Name: Boss Chase
   m_TagString: Untagged
@@ -5285,6 +5459,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1105797310
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105797307}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f6b474fc60fc4c4b928d2a85425c2ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BossSfx
+  chase: {fileID: 1105797308}
+  gust: {fileID: 8300000, guid: d6e7139e8e433074594fc19847e5104e, type: 3}
+  gustVolume: 0.4
+  appear: {fileID: 8300000, guid: 0a9e0ade0b9e05c4896a7701ff2d97b5, type: 3}
+  appearVolume: 0.6
+  smokeLit: {fileID: 8300000, guid: 6ffa11293a24c5e46a503a52cf17affb, type: 3}
+  smokeLitVolume: 0.5
+  smoke: {fileID: 8300000, guid: eedd1adef41b85b46acb779790717d4d, type: 3}
+  smokeVolume: 0.6
+  gunPump: {fileID: 8300000, guid: ba34330223e4c8b4bb877823ee1e737c, type: 3}
+  gunFire: {fileID: 8300000, guid: 39555c96c8a8d7949bac33e6612c1e1a, type: 3}
+  gunVolume: 0.55
+  rainWarn: {fileID: 8300000, guid: bfaef14306a23414a8b70080d3bfa191, type: 3}
+  rainWarnVolume: 0.4
+  rainStrike: {fileID: 8300000, guid: 31a51dc98b4db804daa3e8717eaa5ad1, type: 3}
+  rainStrikeVolume: 0.65
+  soaked: {fileID: 8300000, guid: 4d37dfd8049610148b923531a65bad6b, type: 3}
+  soakedVolume: 0.7
+  cape: {fileID: 8300000, guid: 5786a714b280ad74399c592699ad0f62, type: 3}
+  disguised: {fileID: 8300000, guid: b6046409b027a3040b994c0bb2d2a211, type: 3}
+  reveal: {fileID: 8300000, guid: 9a42a75e0979a6f40a3f95fe052c0c63, type: 3}
+  capeVolume: 0.55
+  hit: {fileID: 8300000, guid: 700a0a5cabe5493448dfc6ff510cf959, type: 3}
+  hitVolume: 0.7
+  coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
+  coinVolume: 0.8
+  scuffle: {fileID: 8300000, guid: 101b7de225c384248bbb26011daaac0a, type: 3}
+  cuffs: {fileID: 8300000, guid: c05edda1a7ec583408afe98dafe43c36, type: 3}
+  caught: {fileID: 8300000, guid: 81a68b3ce43383a42a5d23f5e320d062, type: 3}
+  caughtVolume: 0.8
+  escape: {fileID: 8300000, guid: ec872e927c08cec4f8c50e323bc26959, type: 3}
+  escapeVolume: 0.6
+  helicopter: {fileID: 8300000, guid: 9d6b24a56e7b3e54d91b7d22e0fe1230, type: 3}
+  helicopterVolume: 0.25
+  sameSoundGapSeconds: 0.08
+  voiceCount: 6
 --- !u!1 &1117123167
 GameObject:
   m_ObjectHideFlags: 0
@@ -5852,6 +6074,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1226030213}
   - component: {fileID: 1226030214}
+  - component: {fileID: 1226030215}
   m_Layer: 0
   m_Name: Thieves
   m_TagString: Untagged
@@ -5897,6 +6120,8 @@ MonoBehaviour:
   walkInFromOutside: 1
   walkInToInside: 0.7
   safeEntranceDistance: 2.8
+  bushClearanceFromPlayers: 1.2
+  sideTurnWeight: 6
   entranceSpread: 3.5
   edgeCandidates: 16
   bushEntranceChance: 0.7
@@ -5934,6 +6159,27 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 653a85270ea9d4c4c8728267f4a58d66, type: 3}
   - {fileID: 21300000, guid: 8d19b8e513407264c943da1b0e08e7a2, type: 3}
   - {fileID: 21300000, guid: ce9cad09528f39c48a649bdbc23a16ae, type: 3}
+--- !u!114 &1226030215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1226030212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ace6992b035fb140b3851a7032deb61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.PlayerDust
+  players: {fileID: 594936650}
+  intro: {fileID: 1131790406}
+  minimumSpeed: 1.4
+  speedSmoothing: 6
+  printVsPlayer: 0.32
+  sideStepVsPlayer: 0.16
+  strideVsPlayer: 0.7
+  lifeSeconds: 1.1
+  colour: {r: 1, g: 0.95, b: 0.85, a: 0.25}
 --- !u!1001 &1237965589
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8158,6 +8404,7 @@ GameObject:
   - component: {fileID: 1773218769}
   - component: {fileID: 1773218771}
   - component: {fileID: 1773218770}
+  - component: {fileID: 1773218772}
   m_Layer: 0
   m_Name: Cctv Puzzle
   m_TagString: Untagged
@@ -8215,7 +8462,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36ed6de3a80d4064c86f2685a4a295a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CctvPuzzle
-  exitTransition: {fileID: 0}
+  exitTransition: {fileID: 717150770}
   playerSpawner: {fileID: 594936650}
   scoreTags:
   - {fileID: 1077542171}
@@ -8240,7 +8487,8 @@ MonoBehaviour:
   introSeconds: 3
   answerSeconds: 18
   revealStagger: 0.3
-  outroSeconds: 4
+  revealSeconds: 4
+  afterCaughtSeconds: 0.5
   holdSeconds: 1.5
   enterRadius: 0.6
   exitRadius: 0.75
@@ -8259,8 +8507,45 @@ MonoBehaviour:
   askHeading: WHERE IS THE MONEY BAG?
   askLine: STAND ON A BIN TO PICK IT
   revealHeading: GOTCHA!
-  outroHeading: AFTER THEM!
-  outroLine: ON TO THE NIGHT MARKET!
+--- !u!114 &1773218772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1773218768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5849799849966547950d71e63e4bfcc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CctvSfx
+  puzzle: {fileID: 1773218771}
+  wall: {fileID: 49827852}
+  peels: {fileID: 1045490940}
+  jump: {fileID: 8300000, guid: acbd5bda666436f4e8683880523c1aa5, type: 3}
+  land: {fileID: 8300000, guid: af50a3f8ea93d6947b2074d563ff97e4, type: 3}
+  thiefVolume: 0.5
+  binSemitones: fdffffff000000000400000007000000
+  peelThrow: {fileID: 8300000, guid: 602880b2fa8b84c47b3f3a97406b58bb, type: 3}
+  peelThrowVolume: 0.25
+  peelSplat: {fileID: 8300000, guid: 2636963fb0d5e8147a2b67bd0d959250, type: 3}
+  peelVolume: 0.55
+  stepOn: {fileID: 8300000, guid: cf4b89dc5f32a114caa4fd2e22951fe5, type: 3}
+  stepOnVolume: 0.4
+  locked: {fileID: 8300000, guid: 39576169005b38e458fb855b6becd099, type: 3}
+  lockedVolume: 0.6
+  tick: {fileID: 8300000, guid: 28c7d15848952944582d83f8271e8a57, type: 3}
+  finalTick: {fileID: 8300000, guid: 8c53f6ffc85b56740aa837b26c855f78, type: 3}
+  timeUp: {fileID: 8300000, guid: d459af73c10e93249a7663722d3c97d5, type: 3}
+  timeVolume: 0.75
+  peek: {fileID: 8300000, guid: 989d9976700b16146889e7b4d2d0848b, type: 3}
+  peekVolume: 0.55
+  stamp: {fileID: 8300000, guid: cdf5b58403bce7a4d8c5620d3720aeef, type: 3}
+  cheer: {fileID: 8300000, guid: 52aa9943cc1ecf7428dd06fa992df1e3, type: 3}
+  coin: {fileID: 8300000, guid: 7ee80c6896f3ce046aac44f01165e390, type: 3}
+  revealVolume: 0.7
+  sameSoundGapSeconds: 0.06
+  voiceCount: 6
 --- !u!114 &1804798657 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1609423019770936144, guid: d6be824ed9f5fe34686f15e3a77d7dae, type: 3}
@@ -8530,8 +8815,8 @@ MonoBehaviour:
   maxTiltDegrees: 180
   randomFlip: 1
   sortingOrder: 5
-  shadowOffset: {x: 0.07, y: -0.09}
-  shadowColor: {r: 0, g: 0, b: 0, a: 0.35}
+  spotShadowOffset: {x: 0.07, y: 0.03}
+  spotShadowColor: {r: 0, g: 0, b: 0, a: 0.45}
   height: 0.02
   seed: 0
 --- !u!1 &1898598046
@@ -8871,6 +9156,8 @@ MonoBehaviour:
   stepBounce: 0.28
   stepBounceSeconds: 0.55
   stepTwist: 9
+  holdSway: 2.5
+  holdSwaysPerSecond: 2
   revealSeconds: 0.55
   revealSpin: 160
   landSeconds: 0.55

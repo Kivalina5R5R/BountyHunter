@@ -32,9 +32,14 @@ namespace BountyHunter.Thieves
         // How far into the car the dark's edge sits, as a share of the car's length, so no gap shows.
         [SerializeField, Range(0f, 1f)] private float coverUnderCar = 0.35f;
 
+        [Header("Sounds")]
+        // The car going by with its siren on, as long as it takes to cross.
+        [SerializeField] private TransitionSound passSound = new TransitionSound(0.7f);
+
         private float coverAlpha = -1f;
         private float lightAlpha;
         private float closedAt;
+        private AudioSource voice;
 
         public override bool IsSetUp => cover != null && car != null;
 
@@ -57,6 +62,7 @@ namespace BountyHunter.Thieves
             RectMask2D clip = leaving != null ? leaving.GetComponent<RectMask2D>() : null;
             bool addedClip = leaving != null && clip == null;
             if (addedClip) clip = leaving.gameObject.AddComponent<RectMask2D>();
+            passSound.Play(voice);
 
             float start = Time.unscaledTime;
             while (true)
@@ -99,6 +105,7 @@ namespace BountyHunter.Thieves
             while (Time.unscaledTime < closedAt + holdSeconds) yield return null;
 
             car.gameObject.SetActive(true);
+            passSound.Play(voice);
             float start = Time.unscaledTime;
             while (true)
             {
@@ -158,6 +165,7 @@ namespace BountyHunter.Thieves
         {
             if (coverAlpha >= 0f) return;
 
+            voice = TransitionSound.SourceOn(gameObject);
             coverAlpha = cover.color.a;
             lightAlpha = redLight != null ? redLight.color.a : 1f;
         }

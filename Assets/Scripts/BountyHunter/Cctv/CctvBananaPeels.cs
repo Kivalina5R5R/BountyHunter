@@ -42,6 +42,10 @@ namespace BountyHunter.Thieves
 
         private readonly List<RectTransform> flying = new List<RectTransform>();
 
+        // Moments for its sounds (CctvSfx): a peel flying out of a bin and splatting onto the screen.
+        public event System.Action Thrown;
+        public event System.Action Splatted;
+
         private void Awake()
         {
             if (peel != null) peel.gameObject.SetActive(false);
@@ -65,6 +69,7 @@ namespace BountyHunter.Thieves
             copy.gameObject.SetActive(true);
             flying.Add(copy.rectTransform);
             StartCoroutine(Fly(copy.rectTransform, from));
+            Thrown?.Invoke();
         }
 
         // Takes every peel off the screen at once.
@@ -102,6 +107,7 @@ namespace BountyHunter.Thieves
 
             copy.anchoredPosition = land;
             copy.localRotation = Quaternion.Euler(0f, 0f, stuckAngle);
+            Splatted?.Invoke();
             for (float time = 0f; time < splatSeconds; time += Time.deltaTime)
             {
                 float squash = splat * Mathf.Sin(Mathf.PI * time / splatSeconds);

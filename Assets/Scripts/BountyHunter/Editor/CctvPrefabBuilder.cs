@@ -36,6 +36,8 @@ namespace BountyHunter.Thieves.EditorTools
             CctvPrefabBuilder.DropFloorBand();
             CctvPrefabBuilder.UseMonitorDesignIfOld();
             CctvPrefabBuilder.StandBinsUpright();
+            CctvPrefabBuilder.PutStampBehindThieves();
+            CctvPrefabBuilder.PutScreenInFront();
             if (Object.FindFirstObjectByType<CctvPuzzle>(FindObjectsInactive.Include) == null) CctvPrefabBuilder.Wire();
         }
     }
@@ -342,6 +344,59 @@ namespace BountyHunter.Thieves.EditorTools
             SaveIfTurned(wall, WallPath, rects);
         }
 
+        // Moves the CAUGHT stamp to the back of the screen when it is not there yet, so the thieves
+        // peeking out at the reveal (and the bags over their heads) are drawn over it.
+        public static void PutStampBehindThieves()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallPath) == null) return;
+
+            GameObject wall = PrefabUtility.LoadPrefabContents(WallPath);
+            var stamp = (Component)new SerializedObject(wall.GetComponent<CctvWall>()).FindProperty("stamp").objectReferenceValue;
+            if (stamp != null && stamp.transform.GetSiblingIndex() != 0)
+            {
+                stamp.transform.SetAsFirstSibling();
+                PrefabUtility.SaveAsPrefabAsset(wall, WallPath);
+                Debug.Log("[CctvPrefabBuilder] The CAUGHT stamp is now behind the thieves on the Cctv Wall.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(wall);
+        }
+
+        // Draws the camera's screen over the title strip and the time panel when it is not yet, so a
+        // thief peeking out at the reveal shows its bag over the strip rather than under it.
+        public static void PutScreenInFront()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallPath) == null) return;
+
+            GameObject wall = PrefabUtility.LoadPrefabContents(WallPath);
+            if (ScreenInFront(wall.transform))
+            {
+                PrefabUtility.SaveAsPrefabAsset(wall, WallPath);
+                Debug.Log("[CctvPrefabBuilder] The Cctv Wall's screen is now drawn over the title strip and the time panel.");
+            }
+
+            PrefabUtility.UnloadPrefabContents(wall);
+        }
+
+        // Moves Screen just after Title Strip and Time; true when it moved.
+        private static bool ScreenInFront(Transform wall)
+        {
+            Transform screen = wall.Find("Screen");
+            if (screen == null) return false;
+
+            int last = -1;
+            foreach (string name in new[] { "Title Strip", "Time" })
+            {
+                Transform piece = wall.Find(name);
+                if (piece != null) last = Mathf.Max(last, piece.GetSiblingIndex());
+            }
+
+            if (screen.GetSiblingIndex() > last) return false;
+
+            screen.SetSiblingIndex(last);
+            return true;
+        }
+
         // Turns picture i to Upright(i), saving the prefab only when one of them moved.
         private static void SaveIfTurned(GameObject contents, string path, Transform[] pictures)
         {
@@ -501,6 +556,8 @@ namespace BountyHunter.Thieves.EditorTools
             stamp.fontSharedMaterial = LoadGuid<Material>(LineupPrefabBuilder.OutlinedFontGuid);
             stamp.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 14f);
             stamp.gameObject.SetActive(false);
+            // Behind everything on the screen, so the thief peeking out over it shows its bag.
+            stamp.transform.SetAsFirstSibling();
 
             // The question on the black strip over the top of the screen.
             Image strip = Fitted("Title Strip", rect, "TitleStrip", new Vector2(-102f, 135f), 65f);
@@ -518,6 +575,7 @@ namespace BountyHunter.Thieves.EditorTools
             countdown.fontSizeMin = 16f;
             countdown.fontSizeMax = 44f;
             time.gameObject.SetActive(false);
+            ScreenInFront(rect);
 
             // What to find, on a note stuck over the newspaper.
             Image note = Fitted("Find The Bag", rect, "Note", new Vector2(-632f, 98f), 146f);

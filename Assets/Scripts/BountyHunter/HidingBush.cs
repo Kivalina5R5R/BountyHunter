@@ -83,10 +83,23 @@ namespace BountyHunter.Thieves
             flushSeconds = secondsToFlush;
         }
 
-        // Free for this thief: nobody inside, not claimed by another thief, and no player on it.
+        // Taped off (the park's police tape): no thief may hide here until then.
+        public float LockedUntil { get; private set; } = -1f;
+        public bool IsLocked => Time.time < LockedUntil;
+
+        // Free for this thief: nobody inside, not claimed by another thief, not taped off, and no
+        // player on it.
         public bool IsFreeFor(ThiefController thief)
         {
-            return Occupant == null && (ReservedBy == null || ReservedBy == thief) && !HasPlayerOn(out _);
+            return Occupant == null && (ReservedBy == null || ReservedBy == thief) && !IsLocked && !HasPlayerOn(out _);
+        }
+
+        // Tapes it off for seconds: a thief hiding inside comes out, and none may hide here until it
+        // is over (one on its way picks somewhere else).
+        public void Lock(float seconds)
+        {
+            LockedUntil = Mathf.Max(LockedUntil, Time.time + seconds);
+            EvictOccupant();
         }
 
         public bool HasPlayerOn(out Vector3 playerPosition)

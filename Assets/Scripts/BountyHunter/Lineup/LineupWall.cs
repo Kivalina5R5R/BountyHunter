@@ -160,6 +160,11 @@ namespace BountyHunter.Thieves
         private Vector2[][] itemPlaces;
         private Color countdownColour;
         private int shownSeconds = -1;
+
+        // Moments for its sounds (LineupSfx): CAUGHT landing on the culprit at the reveal, and each
+        // second of the hurry going by (seconds left).
+        public event Action CaughtStamped;
+        public event Action<int> HurrySecond;
         // Slots whose entrance is over, which the idle motion may move.
         private bool[] settled;
         private Vector3[] badgeSizes;
@@ -299,7 +304,12 @@ namespace BountyHunter.Thieves
             countdown.text = string.Format(countdownFormat, seconds, seconds / 60, seconds % 60);
             bool hurry = seconds <= hurrySeconds;
             countdown.color = hurry ? hurryColour : countdownColour;
-            if (hurry && seconds != shownSeconds) StartCoroutine(Pop(countdown.rectTransform, 0.25f));
+            if (hurry && seconds != shownSeconds)
+            {
+                StartCoroutine(Pop(countdown.rectTransform, 0.25f));
+                HurrySecond?.Invoke(seconds);
+            }
+
             shownSeconds = seconds;
         }
 
@@ -529,6 +539,7 @@ namespace BountyHunter.Thieves
             caughtStamp.anchoredPosition = culpritSpot + caughtStampOffset;
             caughtStamp.SetAsLastSibling();
             yield return Slam(caughtStamp);
+            CaughtStamped?.Invoke();
         }
 
         // True once the prefab has the CAUGHT stamp that goes on the culprit (made before it, it has none).

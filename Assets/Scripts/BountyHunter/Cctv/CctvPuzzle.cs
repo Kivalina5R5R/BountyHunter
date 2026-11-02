@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Fortal.Players;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace BountyHunter.Thieves
 {
@@ -15,8 +16,9 @@ namespace BountyHunter.Thieves
     // the same way until picks close. Then the thieves pop out of their bins on the floor and on the
     // wall, the bag thief's bin lights up and is stamped CAUGHT, and those who picked it get rightPay
     // at their feet with a cheer (a wrong pick pays wrongPay, nothing by default, as in the lineup).
-    // It always lasts totalSeconds, however long the clip is: what is left over goes to the closing
-    // words. Console lines start with [CctvPuzzle].
+    // It ends on GOTCHA! with the thieves up and moves on afterCaughtSeconds after CAUGHT lands, as the
+    // lineup does. totalSeconds only sets when picks close at the latest.
+    // Console lines start with [CctvPuzzle].
     public sealed class CctvPuzzle : StageInterlude
     {
         [SerializeField] private UWBPlayerSpawner playerSpawner;
@@ -39,16 +41,19 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float endHoldSeconds = 0.6f;
 
         [Header("Timing (seconds)")]
-        // The whole mini game, from the screen coming up to the fade out (fades not counted): by
-        // default 3 s of words, a clip of about 8.4 s, 18 s to pick, the reveal and cheer, 4 s of words.
+        // Picks close by totalSeconds - revealSeconds after the screen comes up, however long the clip
+        // is: by default 3 s of words, a clip of about 8.4 s and 18 s to pick fit well inside it.
         [SerializeField, Min(10f)] private float totalSeconds = 40f;
         // The opening words, before the clip.
         [SerializeField, Min(0f)] private float introSeconds = 3f;
         [SerializeField, Min(1f)] private float answerSeconds = 18f;
         // Between one thief popping out at the reveal and the next.
         [SerializeField, Min(0f)] private float revealStagger = 0.3f;
-        // How long before the end the closing words go up.
-        [SerializeField, Min(0f)] private float outroSeconds = 4f;
+        // Picks close at least this long before totalSeconds.
+        [FormerlySerializedAs("outroSeconds")]
+        [SerializeField, Min(0f)] private float revealSeconds = 4f;
+        // From CAUGHT landing on the bag thief until the game moves on (the same as the lineup's).
+        [SerializeField, Min(0f)] private float afterCaughtSeconds = 0.5f;
 
         [Header("Picking")]
         [SerializeField, Min(0.1f)] private float holdSeconds = 1.5f;
@@ -78,8 +83,6 @@ namespace BountyHunter.Thieves
         [SerializeField] private string askHeading = "WHERE IS THE MONEY BAG?";
         [SerializeField] private string askLine = "STAND ON A BIN TO PICK IT";
         [SerializeField] private string revealHeading = "GOTCHA!";
-        [SerializeField] private string outroHeading = "AFTER THEM!";
-        [SerializeField] private string outroLine = "ON TO THE NIGHT MARKET!";
 
         private readonly List<(PlayerScoreTag Tag, int Change)> winnings = new List<(PlayerScoreTag Tag, int Change)>();
         private readonly List<Sprite> cast = new List<Sprite>();
@@ -91,6 +94,13 @@ namespace BountyHunter.Thieves
         private bool skipping;
         // False when the floor or the wall is not set up; the mini game then lets the game go on.
         private bool ready;
+
+        // Moments for its sounds (CctvSfx): a player steps onto a bin's ring and locks in, picks
+        // close, and the right picks are paid (how many).
+        public event Action RingSteppedOn;
+        public event Action AnswerLocked;
+        public event Action AnswersClosed;
+        public event Action<int> Settled;
 
         public override void Begin()
         {
@@ -133,21 +143,21 @@ namespace BountyHunter.Thieves
             if (skipping && playing != null) wall.StopCoroutine(playing);
 
             wall.ShowLines(askHeading, askLine);
-            answersCloseAt = Mathf.Min(Time.time + answerSeconds, ends - outroSeconds);
+            answersCloseAt = Mathf.Min(Time.time + answerSeconds, ends - revealSeconds);
             answersOpen = true;
             yield return Until(answersCloseAt);
             answersOpen = false;
+            AnswersClosed?.Invoke();
             wall.SetCountdown(-1);
             ClearRings();
 
             wall.ShowLines(revealHeading, string.Empty);
-            wall.StartCoroutine(wall.Reveal(clip, revealStagger));
+            Coroutine wallReveal = wall.StartCoroutine(wall.Reveal(clip, revealStagger));
             yield return floor.Reveal(clip, cast);
+            yield return wallReveal;
             Settle();
 
-            yield return Until(ends - outroSeconds);
-            wall.ShowLines(outroHeading, outroLine);
-            yield return Until(ends);
+            yield return Until(Time.time + afterCaughtSeconds);
         }
 
         public override void End()
@@ -215,6 +225,7 @@ namespace BountyHunter.Thieves
         private void OnPlayerEntered(UWBPlayerController player, int bin)
         {
             floor.Bounce(bin);
+            RingSteppedOn?.Invoke();
         }
 
         private void OnPlayerPicked(UWBPlayerController player, int bin)
@@ -222,6 +233,7 @@ namespace BountyHunter.Thieves
             floor.ShowPick(player.transform);
             floor.Bounce(bin);
             FloorDamage.Play(player.transform.position, lockedWord, lockedColor, moneyFont, moneyMaterial, transform);
+            AnswerLocked?.Invoke();
             Debug.Log($"[CctvPuzzle] Player {player.PlayerId} picked bin {bin + 1}", this);
         }
 
@@ -235,6 +247,7 @@ namespace BountyHunter.Thieves
         private void Settle()
         {
             winnings.Clear();
+            int rightAnswers = 0;
             foreach (KeyValuePair<int, LineupAnswers.Answer> pair in answers.Locked)
             {
                 bool right = pair.Value.Suspect == clip.Answer;
@@ -244,10 +257,13 @@ namespace BountyHunter.Thieves
                 if (tag != null && change != 0) winnings.Add((tag, change));
                 if (!playerSpawner.TryGetPlayer(pair.Key, out UWBPlayerController player) || player == null) continue;
 
+                if (right) rightAnswers++;
                 if (right) LineupCheer.Play(player.transform.position, transform);
                 if (change > 0) FloorDamage.Play(player.transform.position, $"+{change}$", gainColor, moneyFont, moneyMaterial, transform);
                 if (change < 0) FloorDamage.Play(player.transform.position, $"{change}$", lossColor, moneyFont, moneyMaterial, transform);
             }
+
+            Settled?.Invoke(rightAnswers);
         }
 
         private PlayerScoreTag TagOf(int playerId)

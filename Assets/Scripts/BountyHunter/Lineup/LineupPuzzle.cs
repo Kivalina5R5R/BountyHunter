@@ -86,11 +86,16 @@ namespace BountyHunter.Thieves
         // False when the floor or the wall is not set up; the mini game then lets the game go on.
         private bool ready;
 
-        // Moments for its sounds: a clue goes up, a player locks in, the culprit is shown.
+        // Moments for its sounds (LineupSfx): a suspect comes in, a clue goes up, a player steps onto
+        // a ring and locks in, answers close, the culprit is shown, and the right answers are paid
+        // (how many).
         public event Action<int> SuspectIntroduced;
         public event Action<int> ClueShown;
+        public event Action RingSteppedOn;
         public event Action AnswerLocked;
+        public event Action AnswersClosed;
         public event Action Revealed;
+        public event Action<int> Settled;
 
         private void Awake()
         {
@@ -156,6 +161,7 @@ namespace BountyHunter.Thieves
             yield return Until(closes);
             answersOpen = false;
             watching = false;
+            AnswersClosed?.Invoke();
             // Time is up: the clock stays on 00:00 until the game moves on.
             wall.SetCountdown(0);
             wall.ShowReward(-1);
@@ -239,7 +245,10 @@ namespace BountyHunter.Thieves
         // suspects are still coming in (a bounce would bring one in early).
         private void OnPlayerEntered(UWBPlayerController player, int suspect)
         {
-            if (answersOpen) floor.Bounce(suspect);
+            if (!answersOpen) return;
+
+            floor.Bounce(suspect);
+            RingSteppedOn?.Invoke();
         }
 
         private void OnPlayerLocked(UWBPlayerController player, int suspect)
@@ -262,12 +271,14 @@ namespace BountyHunter.Thieves
         private void Settle()
         {
             winnings.Clear();
+            int rightAnswers = 0;
             foreach (KeyValuePair<int, LineupAnswers.Answer> pair in answers.Locked)
             {
                 bool right = pair.Value.Suspect == lineup.Culprit;
                 Debug.Log($"[LineupPuzzle] Player {pair.Key} {(right ? "was right" : "was wrong")}", this);
                 if (!right) continue;
 
+                rightAnswers++;
                 int bonus = Reward(pair.Value.CluesSeen);
                 PlayerScoreTag tag = TagOf(pair.Key);
                 if (tag != null && bonus > 0) winnings.Add((tag, bonus));
@@ -277,6 +288,7 @@ namespace BountyHunter.Thieves
                 if (bonus > 0) FloorDamage.Play(player.transform.position, $"+{bonus}$", gainColor, moneyFont, moneyMaterial, transform);
             }
 
+            Settled?.Invoke(rightAnswers);
         }
 
         private int Reward(int cluesSeen)
