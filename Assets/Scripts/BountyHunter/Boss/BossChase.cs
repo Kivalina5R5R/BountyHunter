@@ -18,8 +18,8 @@ namespace BountyHunter.Thieves
     // far away (BossController); every one that counts pays catchReward at once (not the very first,
     // nor one while it is disguised). touchesToCatch of them catch it: the clock stops, it is
     // caught in a scuffle and the game waits outroSeconds before the result. When the time runs out
-    // first, it runs off the floor and the result comes once it is gone. The wall shows the heading
-    // with the catches so far (headingFormat). Its water (warning circles all over the floor
+    // first, it runs off the floor and the result comes once it is gone. The wall shows the catches
+    // so far on its board (BossChaseBoard), or as the clock's heading without one (headingFormat). Its water (warning circles all over the floor
     // after it shoots) costs shotFine (or what the player has). The passers-by stroll about as in a
     // stage, so it has someone to pass for, and it can duck into the map's hiding spots. It plays on
     // the boss's own rooftop: its floor picture and its wall (the Boss Wall prefab, with a police
@@ -49,6 +49,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private RawImage floorImage;
         [SerializeField] private Texture bossFloor;
         [SerializeField] private GameObject wallPanel;
+        // The board on the Boss Wall reading BOSS CHASE! with the catches so far and a pair of
+        // handcuffs per catch; with it, the clock shows no heading of its own. May be empty.
+        [SerializeField] private BossChaseBoard board;
         [SerializeField] private RectTransform wallSky;
         [SerializeField] private GameObject[] hideDuringChase;
         // Parts switched off rather than hidden, where the object itself must stay (a dog's own
@@ -108,6 +111,8 @@ namespace BountyHunter.Thieves
         private PictureSwap floorSwap;
         private readonly List<GameObject> putAway = new List<GameObject>();
         private readonly List<Behaviour> switchedOff = new List<Behaviour>();
+        // The score tags lined up for the chase, with where each stood before.
+        private readonly List<(PlayerScoreTag Tag, Vector3 Was)> linedUp = new List<(PlayerScoreTag Tag, Vector3 Was)>();
         private BossHelicopter hovering;
         private int touches;
         private ScenePreload.Ticket preparation;
@@ -227,6 +232,7 @@ namespace BountyHunter.Thieves
 
         private string Heading()
         {
+            if (board != null) return string.Empty;
             return string.Format(headingFormat, Mathf.Min(touches, touchesToCatch), touchesToCatch);
         }
 
@@ -314,7 +320,9 @@ namespace BountyHunter.Thieves
                 }
             }
 
+            LineUpScoreTags();
             if (wallPanel != null) wallPanel.SetActive(true);
+            if (board != null) board.Show(Mathf.Min(touches, touchesToCatch), touchesToCatch);
             if (helicopter != null && wallSky != null) hovering = BossHelicopter.Fly(wallSky, helicopter, helicopterRotor);
             if (hovering != null) HelicopterFlying?.Invoke(hovering);
         }
@@ -337,6 +345,37 @@ namespace BountyHunter.Thieves
             }
 
             switchedOff.Clear();
+            foreach ((PlayerScoreTag tag, Vector3 was) in linedUp)
+            {
+                if (tag == null) continue;
+                tag.transform.position = was;
+                tag.ShowFace(false);
+            }
+
+            linedUp.Clear();
+        }
+
+        // With the dogs' pictures away, their score tags stand in one straight row, level with the
+        // highest of them (each keeps its place across), each with its character's face by the name.
+        private void LineUpScoreTags()
+        {
+            linedUp.Clear();
+            if (scoreTags == null) return;
+
+            float top = float.NegativeInfinity;
+            foreach (PlayerScoreTag tag in scoreTags)
+            {
+                if (tag != null && tag.InPlay) top = Mathf.Max(top, tag.transform.position.y);
+            }
+
+            foreach (PlayerScoreTag tag in scoreTags)
+            {
+                if (tag == null || !tag.InPlay) continue;
+                Transform place = tag.transform;
+                linedUp.Add((tag, place.position));
+                place.position = new Vector3(place.position.x, top, place.position.z);
+                tag.ShowFace(true);
+            }
         }
 
         private Rect FeatherFloor()
@@ -353,6 +392,7 @@ namespace BountyHunter.Thieves
         {
             touches++;
             if (timer != null) timer.SetHeading(Heading());
+            if (board != null) board.SetCaught(Mathf.Min(touches, touchesToCatch));
             Debug.Log($"[BossChase] Catch {touches}/{touchesToCatch}", this);
 
             PlayerScoreTag tag = TagOf(player);

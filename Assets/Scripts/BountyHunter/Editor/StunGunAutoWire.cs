@@ -6,9 +6,9 @@ using UnityEngine;
 namespace BountyHunter.Thieves.EditorTools
 {
     // Sets up the stun guns each time the editor loads: imports their art as sprites
-    // (Assets/ART/StunGun: the crackling ring round a player carrying shots, which Codex drew; the
-    // lightning bolt waiting on the floor to be picked up, the star and the lock-on reticle from
-    // Tools/StunGunArt), adds StunGuns and StunGunPickups next to the open scene's BountyRounds when
+    // (Assets/ART/StunGun: the crackling ring round a player carrying shots and the lightning
+    // pictures crackling round it, StunAura*; the lightning bolt waiting on the floor to be picked
+    // up, the star and the lock-on reticle from Tools/StunGunArt), adds StunGuns and StunGunPickups next to the open scene's BountyRounds when
     // they are missing, and fills every reference left empty (the rounds, players, thieves,
     // passers-by, the art, and the radial fill material for the reticle). Points BountyRounds at the
     // guns so a bolt into a passer-by is fined. Anything set by hand is kept. Save the scene afterwards.
@@ -17,7 +17,9 @@ namespace BountyHunter.Thieves.EditorTools
     {
         private const string Art = "Assets/ART/StunGun/";
         private const string BoltIcon = Art + "StunBoltIcon.png";
-        private const string HolderRing = Art + "StunGunHolderRing.png";
+        // The crackling ring round a player carrying shots, and the lightning crackling round it.
+        private const string AuraRing = Art + "StunAuraRing.png";
+        private const int AuraCrackles = 6;
         private const string Star = Art + "StunStar.png";
         private const string ReticleBack = Art + "StunReticleBack.png";
         private const string ReticleFill = Art + "StunReticleFill.png";
@@ -32,7 +34,7 @@ namespace BountyHunter.Thieves.EditorTools
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
-            foreach (string path in new[] { BoltIcon, HolderRing, Star, ReticleBack, ReticleFill }) ImportAsSprite(path);
+            foreach (string path in new[] { BoltIcon, AuraRing, Star, ReticleBack, ReticleFill }) ImportAsSprite(path);
 
             var rounds = Object.FindFirstObjectByType<BountyRounds>(FindObjectsInactive.Include);
             if (rounds == null) return;
@@ -47,7 +49,9 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(gunFields, "rounds", rounds);
             changed |= Fill(gunFields, "thieves", thieves);
             changed |= Fill(gunFields, "passersBy", passersBy);
-            changed |= Fill(gunFields, "holderRing", AssetDatabase.LoadAssetAtPath<Sprite>(HolderRing));
+            for (int i = 1; i <= AuraCrackles; i++) ImportAsSprite(Art + $"StunAuraCrackle{i}.png");
+            changed |= Fill(gunFields, "auraRing", AssetDatabase.LoadAssetAtPath<Sprite>(AuraRing));
+            changed |= FillCrackles(gunFields.FindProperty("auraCrackles"));
             changed |= Fill(gunFields, "stunStar", AssetDatabase.LoadAssetAtPath<Sprite>(Star));
             changed |= Fill(gunFields, "reticleBack", AssetDatabase.LoadAssetAtPath<Sprite>(ReticleBack));
             changed |= Fill(gunFields, "reticleFill", AssetDatabase.LoadAssetAtPath<Sprite>(ReticleFill));
@@ -88,6 +92,25 @@ namespace BountyHunter.Thieves.EditorTools
             if (property == null || value == null || property.objectReferenceValue != null) return false;
 
             property.objectReferenceValue = value;
+            return true;
+        }
+
+        // The lightning pictures, when the list is empty; true when it filled them.
+        private static bool FillCrackles(SerializedProperty list)
+        {
+            if (list == null || list.arraySize > 0) return false;
+
+            var crackles = new System.Collections.Generic.List<Sprite>();
+            for (int i = 1; i <= AuraCrackles; i++)
+            {
+                var crackle = AssetDatabase.LoadAssetAtPath<Sprite>(Art + $"StunAuraCrackle{i}.png");
+                if (crackle != null) crackles.Add(crackle);
+            }
+
+            if (crackles.Count == 0) return false;
+            list.arraySize = crackles.Count;
+            for (int i = 0; i < crackles.Count; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = crackles[i];
+            list.serializedObject.ApplyModifiedPropertiesWithoutUndo();
             return true;
         }
 

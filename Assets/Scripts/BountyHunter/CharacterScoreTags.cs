@@ -17,13 +17,25 @@ namespace BountyHunter.Thieves
             [SerializeField] private PlayerScoreTag tag;
             // The dog on the wall the tag belongs to.
             [SerializeField] private GameObject dog;
+            // The character's face, shown on the tag while the dog's picture is away.
+            [SerializeField] private Sprite face;
 
             public string Character => character;
             public PlayerScoreTag Tag => tag;
             public GameObject Dog => dog;
+            public Sprite Face => face;
         }
 
         [SerializeField] private Entry[] entries;
+
+        private void Awake()
+        {
+            if (entries == null) return;
+            foreach (Entry entry in entries)
+            {
+                if (entry != null && entry.Tag != null) entry.Tag.SetFace(entry.Face);
+            }
+        }
 
         // chosen: player id to the character they picked. With no picks at all the tags keep their numbers.
         public void Assign(IReadOnlyDictionary<int, string> chosen)

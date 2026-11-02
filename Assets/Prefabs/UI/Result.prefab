@@ -2400,7 +2400,6 @@ GameObject:
   m_Component:
   - component: {fileID: 394102557040150119}
   - component: {fileID: 7776674152362233144}
-  - component: {fileID: 3218463197288202905}
   m_Layer: 0
   m_Name: Result
   m_TagString: Untagged
@@ -2542,32 +2541,6 @@ MonoBehaviour:
     seconds: 4.5
     phase: 0
   idleRampSeconds: 0.6
---- !u!114 &3218463197288202905
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4815918676431054411}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c17ead193ae21246bf18420cd7d503d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.WinnerSpotlight
-  colour: {r: 1, g: 0.95, b: 0.78, a: 1}
-  beamAlpha: 0.38
-  poolAlpha: 0.55
-  beamFootVsWinner: 1.5
-  poolVsWinner: 1.7
-  stutter:
-  - 0.06
-  - 0.09
-  - 0.05
-  - 0.14
-  riseSeconds: 0.25
-  swayDegrees: 1.2
-  breathe: 0.08
-  motes: 10
 --- !u!1 &5002047110857222060
 GameObject:
   m_ObjectHideFlags: 0

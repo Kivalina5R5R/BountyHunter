@@ -7,15 +7,16 @@ namespace BountyHunter.Thieves
 {
     // The players' stun guns (stages 2 and 3; StunGunPickups hands them out). Nobody aims: a player
     // carrying shots who keeps a thief in the open within lockRange locks onto it, the nearest one,
-    // and a ring fills round it over lockSeconds, then the gun fires by itself. Chasing to keep up is
+    // and a ring fills round it over lockSeconds, then the gun fires by itself: a ball of
+    // electricity flies at the thief (StunShot), homing in, and the hit lands as it gets there. Chasing to keep up is
     // the skill, since the tags never stand still enough to aim. Once locked, the thief may get
     // keepRange away before the lock lets go (so it does not flicker at the edge); out of reach the
     // ring drains at half speed rather than starting over, and turning to another thief keeps half
     // of it. A hit stuns the thief for stunSeconds and whoever reaches it first catches it (not
     // necessarily the shooter). A passer-by standing in the line of fire (within npcInTheWay of it)
-    // takes the bolt instead: it gets angry and the shooter pays a fine (BountyRounds, NpcZapped).
-    // A player carrying shots has a crackling ring round them. Everything goes when the floor is
-    // cleared or a new stage starts.
+    // takes the shot instead: it gets angry and the shooter pays a fine (BountyRounds, NpcZapped).
+    // A player carrying shots has a crackling ring round them (StunAura). Everything goes when the
+    // floor is cleared or a new stage starts.
     public sealed class StunGuns : MonoBehaviour
     {
         // The guns' state for one player.
@@ -25,13 +26,14 @@ namespace BountyHunter.Thieves
             public int Shots;
             public ThiefController Target;
             public float Charge;
-            public SpriteRenderer HolderRing;
+            public StunAura Aura;
             public StunLockRing LockRing;
         }
 
-        // The crackling ring lies just over the floor, under the player's marker (20).
-        private const float FloorHeight = 0.05f;
-        private const int HolderOrder = 19;
+        // Where a shot's target is when it has gone (the shot then lands where it saw it last).
+        private static readonly Vector3 NotThere = new Vector3(float.NaN, 0f, 0f);
+        // The crackling ring lies under the player's marker (20).
+        private const int AuraOrder = 19;
 
         [SerializeField] private BountyRounds rounds;
         [SerializeField] private ThiefSpawner thieves;
@@ -51,14 +53,18 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float keepRange = 2.9f;
         [SerializeField, Min(0.05f)] private float lockSeconds = 1f;
         [SerializeField, Min(0f)] private float stunSeconds = 3f;
-        // A passer-by this close to the line of fire takes the bolt instead.
+        // A passer-by this close to the line of fire takes the shot instead.
         [SerializeField, Min(0f)] private float npcInTheWay = 0.35f;
 
         [Header("Look")]
-        // The crackling ring round a player carrying shots (white, tinted the bolt's colour), against
-        // the player's marker width.
-        [SerializeField] private Sprite holderRing;
-        [SerializeField, Min(0.1f)] private float holderRingVsPlayer = 1.35f;
+        // The crackling ring round a player carrying shots: the glowing ring, the lightning pictures
+        // that crackle round it (Assets/ART/StunGun/StunAura*), and the ring's size against the
+        // player's marker width.
+        [SerializeField] private Sprite auraRing;
+        [SerializeField] private Sprite[] auraCrackles = new Sprite[0];
+        [SerializeField, Min(0.1f)] private float auraVsPlayer = 1.35f;
+        // The same lightning crackling round what a shot hits, this wide (metres; StunZap).
+        [SerializeField, Min(0.1f)] private float zapWidth = 1.1f;
         // The lock-on reticle round the target, filling as the lock builds (drawn with the radial
         // fill material); yellow like the lightning bolt icons, so it is not taken for the picking rings,
         // turning red as the lock completes.
@@ -69,8 +75,7 @@ namespace BountyHunter.Thieves
         [SerializeField] private Color reticleColour = new Color(1f, 0.8f, 0.2f, 1f);
         // What it turns to as the lock completes.
         [SerializeField] private Color lockedColour = new Color(1f, 0.18f, 0.14f, 1f);
-        // The bolt's glow and sparks and the ring round a player carrying shots: yellow like the
-        // lightning bolt icons.
+        // The shot's glow and sparks: yellow like the lightning bolt icons.
         [SerializeField] private Color boltGlowColour = new Color(1f, 0.8f, 0.18f, 1f);
         // One of the dizzy stars orbiting a stunned thief's head.
         [SerializeField] private Sprite stunStar;
@@ -80,7 +85,7 @@ namespace BountyHunter.Thieves
         private readonly List<UWBPlayerController> gone = new List<UWBPlayerController>();
 
         // A player picked up a gun (shots now), a lock started building on a thief, a gun fired at a
-        // thief, and a bolt hit a passer-by in the way instead (with the shooter).
+        // thief, and a shot hit a passer-by in the way instead (with the shooter).
         public event Action<UWBPlayerController, int> Armed;
         public event Action<UWBPlayerController> LockStarted;
         public event Action<UWBPlayerController, ThiefController> Fired;
@@ -201,19 +206,26 @@ namespace BountyHunter.Thieves
             gun.Target = null;
             ShowLock(gun);
 
+            // The shot flies at its target and the hit lands when it gets there.
             NpcWalker inTheWay = PasserByInTheWay(from, to);
             if (inTheWay != null)
             {
-                StunBolt.Play(from, inTheWay.transform.position, boltGlowColour, transform);
-                inTheWay.GetAngry(0f);
-                Debug.Log($"[StunGuns] Player {shooter.PlayerId}'s bolt hits {inTheWay.DisplayName} in the way", this);
-                NpcZapped?.Invoke(inTheWay, shooter);
+                StunShot.Fire(from, () => inTheWay != null ? inTheWay.transform.position : NotThere, boltGlowColour, auraCrackles, zapWidth, transform, () =>
+                {
+                    if (inTheWay == null) return;
+                    inTheWay.GetAngry(0f);
+                    Debug.Log($"[StunGuns] Player {shooter.PlayerId}'s shot hits {inTheWay.DisplayName} in the way", this);
+                    NpcZapped?.Invoke(inTheWay, shooter);
+                });
                 return;
             }
 
-            StunBolt.Play(from, to, boltGlowColour, transform);
-            if (thief.Stun(stunSeconds) && stunStar != null) StunStars.Play(thief, stunStar, stunSeconds);
-            Debug.Log($"[StunGuns] Player {shooter.PlayerId} stuns {thief.name} ({gun.Shots} shots left)", this);
+            StunShot.Fire(from, () => thief != null ? BodyCentre(thief) : NotThere, boltGlowColour, auraCrackles, zapWidth, transform, () =>
+            {
+                if (thief == null) return;
+                if (thief.Stun(stunSeconds) && stunStar != null) StunStars.Play(thief, stunStar, stunSeconds);
+                Debug.Log($"[StunGuns] Player {shooter.PlayerId}'s shot stuns {thief.name}", this);
+            });
             Fired?.Invoke(shooter, thief);
         }
 
@@ -270,22 +282,13 @@ namespace BountyHunter.Thieves
             return nearest;
         }
 
-        // The crackling ring round a player carrying shots: it turns slowly and flickers a little.
+        // The crackling ring round a player carrying shots, following them.
         private void ShowHolder(Gun gun)
         {
-            if (holderRing == null) return;
+            if (auraRing == null) return;
 
-            if (gun.HolderRing == null)
-            {
-                gun.HolderRing = FloorPicture("Stun Gun Ring", holderRing, HolderOrder);
-                gun.HolderRing.transform.localScale = Vector3.one * (PlayerMarker.Width(gun.Player) * holderRingVsPlayer / Mathf.Max(0.01f, holderRing.bounds.size.x));
-            }
-
-            Vector3 at = gun.Player.transform.position;
-            gun.HolderRing.transform.SetPositionAndRotation(new Vector3(at.x, FloorHeight, at.z), Quaternion.Euler(90f, Time.time * 40f, 0f));
-            Color colour = boltGlowColour;
-            colour.a *= 0.9f * (0.8f + 0.2f * Mathf.PerlinNoise(Time.time * 6f, gun.Player.PlayerId));
-            gun.HolderRing.color = colour;
+            if (gun.Aura == null) gun.Aura = StunAura.Create(transform, auraRing, auraCrackles, PlayerMarker.Width(gun.Player) * auraVsPlayer, AuraOrder);
+            gun.Aura.Show(gun.Player.transform.position);
         }
 
         private void ShowLock(Gun gun)
@@ -301,19 +304,9 @@ namespace BountyHunter.Thieves
             else gun.LockRing.Show(BodyCentre(gun.Target), gun.Charge);
         }
 
-        private SpriteRenderer FloorPicture(string name, Sprite sprite, int order)
-        {
-            var holder = new GameObject(name, typeof(SpriteRenderer));
-            holder.transform.SetParent(transform, false);
-            var picture = holder.GetComponent<SpriteRenderer>();
-            picture.sprite = sprite;
-            picture.sortingOrder = order;
-            return picture;
-        }
-
         private static void RemoveLook(Gun gun)
         {
-            if (gun.HolderRing != null) Destroy(gun.HolderRing.gameObject);
+            if (gun.Aura != null) Destroy(gun.Aura.gameObject);
             if (gun.LockRing != null) Destroy(gun.LockRing.gameObject);
         }
 

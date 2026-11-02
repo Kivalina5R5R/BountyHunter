@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
@@ -9,6 +10,8 @@ namespace BountyHunter.Thieves
     // score on the paper below. Display only; whatever keeps score calls SetScore. In Play a new
     // score counts up (or down) like a rolling counter, a "+N$" (or "-N$") floats up from it and the
     // number pops in the gain or loss colour (the same for every player) at the end.
+    // While the dogs' pictures are away (the boss chase) the character's face shows before the name
+    // (ShowFace), so everyone still knows whose tag it is.
     // Changes made in the Inspector show straight away, outside Play too.
     public sealed class PlayerScoreTag : MonoBehaviour
     {
@@ -35,6 +38,13 @@ namespace BountyHunter.Thieves
         [SerializeField] private Color lossColor = new Color(0.78f, 0.1f, 0.08f, 1f);
         [SerializeField] private string lossFormat = "-{0}$";
 
+        [Header("Face")]
+        // The character's face before the name, off until ShowFace; may be empty.
+        [SerializeField] private Image face;
+        // The name's left and right edges (this tag's units) while the face shows, shrinking to fit.
+        [SerializeField] private Vector2 nameBesideFace = new Vector2(-222f, 78f);
+        [SerializeField, Min(1f)] private float smallestNameSize = 44f;
+
         [Header("Leader badge")]
         // Where the leader's star (LeaderStar) sits, in this tag's own units: centred on the tag's ragged
         // left edge and big enough that its arms hide the whole edge, from under the name tab to the bottom.
@@ -45,6 +55,11 @@ namespace BountyHunter.Thieves
         private int shownScore;
         private Coroutine counting;
         private Color changeColor;
+        private Vector2 namePosition;
+        private Vector2 nameSize;
+        private bool nameAutoSized;
+        private float nameFontSize;
+        private bool faceShown;
 
         public int PlayerNumber => playerNumber;
         public int Score => currentScore;
@@ -63,6 +78,41 @@ namespace BountyHunter.Thieves
         {
             currentScore = startingScore;
             Refresh();
+        }
+
+        // The character's face for ShowFace.
+        public void SetFace(Sprite picture)
+        {
+            if (face != null && picture != null) face.sprite = picture;
+        }
+
+        // Shows the character's face before the name (the name moves over to make room), or hides it.
+        public void ShowFace(bool show)
+        {
+            if (face == null || label == null || show == faceShown) return;
+
+            faceShown = show;
+            face.gameObject.SetActive(show);
+            RectTransform name = label.rectTransform;
+            if (show)
+            {
+                namePosition = name.anchoredPosition;
+                nameSize = name.sizeDelta;
+                nameAutoSized = label.enableAutoSizing;
+                nameFontSize = label.fontSize;
+                float width = nameBesideFace.y - nameBesideFace.x;
+                name.anchoredPosition = new Vector2(nameBesideFace.x + width * 0.5f, namePosition.y);
+                name.sizeDelta = new Vector2(width, nameSize.y);
+                label.fontSizeMax = nameFontSize;
+                label.fontSizeMin = Mathf.Min(smallestNameSize, nameFontSize);
+                label.enableAutoSizing = true;
+                return;
+            }
+
+            name.anchoredPosition = namePosition;
+            name.sizeDelta = nameSize;
+            label.enableAutoSizing = nameAutoSized;
+            label.fontSize = nameFontSize;
         }
 
         public void SetPlayer(int number, Color color)

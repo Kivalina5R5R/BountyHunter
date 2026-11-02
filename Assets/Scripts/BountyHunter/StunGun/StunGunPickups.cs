@@ -68,6 +68,9 @@ namespace BountyHunter.Thieves
         private readonly Dictionary<ThiefController, float> thiefReadyAt = new Dictionary<ThiefController, float>();
 
         // A gun landed on the floor, a player picked one up, and a thief snatched one away.
+        // The guns lying on the floor waiting to be picked up.
+        public IReadOnlyList<StunGunPickup> Waiting => waiting;
+
         public event Action<Vector3> Dropped;
         public event Action<UWBPlayerController> PickedUp;
         public event Action<ThiefController> Snatched;

@@ -129,7 +129,7 @@ namespace BountyHunter.Thieves
         // Raised as a row's score has finished counting up, with its place (1 is the winner).
         public event Action<int> ScoreCounted;
 
-        // Raised as the result comes up, before anything moves (WinnerSpotlight switches off).
+        // Raised as the result comes up, before anything moves.
         public event Action Showing;
 
         // The winner's picture on the bench (its pivot at its feet), or null when nobody won.

@@ -889,15 +889,19 @@ MonoBehaviour:
   - character: Rex
     tag: {fileID: 879857161}
     dog: {fileID: 1762042445}
+    face: {fileID: 21300000, guid: 9c95019c24a49d6439f3567d69724149, type: 3}
   - character: Tedly
     tag: {fileID: 1077542171}
     dog: {fileID: 573300348}
+    face: {fileID: 21300000, guid: 0be34374df72ebe409474811fd89a57b, type: 3}
   - character: Simba
     tag: {fileID: 354115127}
     dog: {fileID: 1994020501}
+    face: {fileID: 21300000, guid: 2e5d08b4f07a24e40b3bbfdecbe6efba, type: 3}
   - character: Pompo
     tag: {fileID: 1804798657}
     dog: {fileID: 628510089}
+    face: {fileID: 21300000, guid: 48da410822ed67946ba89cc28ea71009, type: 3}
 --- !u!114 &156425237
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -955,8 +959,16 @@ MonoBehaviour:
   lockSeconds: 1
   stunSeconds: 3
   npcInTheWay: 0.35
-  holderRing: {fileID: 21300000, guid: f3a942418897c1545ba2ca2d144dcc51, type: 3}
-  holderRingVsPlayer: 1.35
+  auraRing: {fileID: 21300000, guid: 7771b0abd5b4d37468c991923dfa39b1, type: 3}
+  auraCrackles:
+  - {fileID: 21300000, guid: 641511d488d938d4c9998ff9c0c4297c, type: 3}
+  - {fileID: 21300000, guid: 7e52d3ed2ca24c648bd362c66714879e, type: 3}
+  - {fileID: 21300000, guid: 4e042f30073e1bc428506c7de22cf60f, type: 3}
+  - {fileID: 21300000, guid: 7cadbbc3f301adb41aa6267344221067, type: 3}
+  - {fileID: 21300000, guid: 149c036b70ce9774582b3c7f7bf2f0cf, type: 3}
+  - {fileID: 21300000, guid: e491f0cb15774c749a7a5886506e444f, type: 3}
+  auraVsPlayer: 1.35
+  zapWidth: 1.1
   reticleBack: {fileID: 21300000, guid: 7423a713665d78e4bb06971fd23c63dd, type: 3}
   reticleFill: {fileID: 21300000, guid: cc88e66dd6199d0429a7da098e98a940, type: 3}
   radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
@@ -1008,19 +1020,26 @@ MonoBehaviour:
   areaMin: {x: -3.8, y: -1.5}
   areaMax: {x: 3.8, y: 1.5}
   clearOfSpots: 0.4
+  mud: {fileID: 156425239}
+  guns: {fileID: 156425237}
+  clearOfGuns: 0.4
   radius: 0.6
   holdSeconds: 1.5
   cooldownSeconds: 15
   tapedSpots: {x: 2, y: 3}
   lockSeconds: 10
-  crate: {fileID: 21300000, guid: 44144f15a22a2ff4fab7c60e25f7514d, type: 3}
+  tapeItem: {fileID: 21300000, guid: d79c5da4c93793745a0a91061e82208e, type: 3}
   crateWidth: 0.55
-  tape: {fileID: 21300000, guid: c6347b95005e8ab4fb9c69a26093a806, type: 3}
-  tapeVsSpot: 2.8
-  switchRingBack: {fileID: 21300000, guid: f38f6e0bd29f24340a0eda3624a180d2, type: 3}
-  switchRingFill: {fileID: 21300000, guid: fa28033769829e4418f06cdf2fed86a2, type: 3}
+  sparkles:
+  - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
+  - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
+  tapeStrip: {fileID: 21300000, guid: b7e2f6c02d463ca4a8327df6eb6e1f70, type: 3}
+  tapeWidth: 0.16
+  tapeOverhang: 0.08
+  smallSpotSize: 1
+  selectRing: {fileID: 21300000, guid: 8e2e7c8a2047803448ea7332356dea0e, type: 3}
   radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
-  fillColour: {r: 0.6, g: 0.85, b: 0.87, a: 1}
+  selectRingTint: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &160278826
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2880,6 +2899,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d46fd231693dfe0479288f87cc257ddc, type: 3}
+--- !u!114 &621645247 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1716076058557043301, guid: be9305e6b92e63c47828b15131ee9890, type: 3}
+  m_PrefabInstance: {fileID: 1237965589}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e96831bbe269f7d43b725d849ce52502, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BossChaseBoard
 --- !u!1 &628510089 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5762527491888622525, guid: d6be824ed9f5fe34686f15e3a77d7dae, type: 3}
@@ -5428,6 +5458,7 @@ MonoBehaviour:
   floorImage: {fileID: 734738229}
   bossFloor: {fileID: 2800000, guid: 54a9eedb5fc616645948e654a01794ab, type: 3}
   wallPanel: {fileID: 13306568}
+  board: {fileID: 621645247}
   wallSky: {fileID: 123566150}
   hideDuringChase:
   - {fileID: 1311994743}

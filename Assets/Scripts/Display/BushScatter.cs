@@ -219,22 +219,10 @@ namespace Fortal.Display
             return bush.transform;
         }
 
-        // Width and height of the drawn leaves from the sprite's tight outline, ignoring transparent
-        // padding. The images differ (1254 x 1254 squares and a 1920 x 1080 canvas), so each is measured.
+        // Width and height of the drawn leaves, ignoring transparent padding (SpriteExtents).
         private static Vector2 VisibleSize(Sprite sprite)
         {
-            Vector2[] vertices = sprite.vertices;
-            if (vertices == null || vertices.Length == 0) return sprite.bounds.size;
-
-            Vector2 min = vertices[0];
-            Vector2 max = vertices[0];
-            foreach (Vector2 vertex in vertices)
-            {
-                min = Vector2.Min(min, vertex);
-                max = Vector2.Max(max, vertex);
-            }
-
-            return max - min;
+            return SpriteExtents.Visible(sprite).size;
         }
 
         private void Clear()

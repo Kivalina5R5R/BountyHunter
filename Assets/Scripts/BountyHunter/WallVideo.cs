@@ -13,9 +13,9 @@ namespace BountyHunter.Thieves
     // RawImage sized to the whole video frame, left clear in the scene so the still picture shows
     // while editing. Unity's own looping stalls a moment each time it jumps back to the start, which
     // shows on big characters; Seamless Loop instead keeps a second player waiting at the start and
-    // hands over to it just before the end. Seamless players never loop by themselves (jumping back
-    // makes Windows flush the decoder, which fails once several videos are open and freezes the
-    // picture): one that reaches its end with no spare ready stops and starts again instead. A
+    // hands over to it just before the end. No player loops by itself (jumping back makes Windows
+    // flush the decoder, which fails once several videos are open and freezes the picture): a loop
+    // that reaches its end (a seamless one with no spare ready) stops and starts again instead. A
     // player that reports an error is restarted the same way, so a character never stays frozen.
     [RequireComponent(typeof(RawImage))]
     public sealed class WallVideo : MonoBehaviour
@@ -119,7 +119,8 @@ namespace BountyHunter.Thieves
             created.clip = clip;
             created.renderMode = VideoRenderMode.RenderTexture;
             created.targetTexture = target;
-            created.isLooping = loop && !seamlessLoop;
+            // No player loops by itself (see above): one that reaches its end starts over (OnEnd).
+            created.isLooping = false;
             created.skipOnDrop = skipFramesToKeepUp;
             created.audioOutputMode = VideoAudioOutputMode.None;
             created.playbackSpeed = playbackSpeed;
@@ -150,14 +151,13 @@ namespace BountyHunter.Thieves
 
         private void OnEnd(VideoPlayer source)
         {
-            // A seamless loop that got here missed its hand-over (no spare ready): start over.
-            if (UsesSpare && source == player && !handingOver)
+            // A loop starts over from a clean stop (a seamless one only when it missed its hand-over,
+            // having no spare ready).
+            if (loop)
             {
-                Restart(source);
+                if (source == player && !handingOver) Restart(source);
                 return;
             }
-
-            if (loop) return;
 
             wanted = false;
             Finished?.Invoke(this);
