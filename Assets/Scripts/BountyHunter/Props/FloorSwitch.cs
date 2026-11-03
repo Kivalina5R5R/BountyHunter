@@ -131,6 +131,12 @@ namespace BountyHunter.Thieves
             return floorSwitch;
         }
 
+        // Draws the prop with material (such as one that recolours it) instead of the default.
+        public void UsePropMaterial(Material material)
+        {
+            if (prop != null && material != null) prop.sharedMaterial = material;
+        }
+
         // Shrinks away in a burst of stars, then removes itself; it takes no more players meanwhile.
         public void Vanish()
         {

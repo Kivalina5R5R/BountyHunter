@@ -70,7 +70,13 @@ namespace BountyHunter.Thieves
         [SerializeField] private Vector2 flyInFrom = new Vector2(900f, 300f);
         // Where it flies off to, from its spot: this far ahead and this far up.
         [SerializeField] private Vector2 flyOffTo = new Vector2(350f, 650f);
-        // Wing beats a second while flying in or off, and while hovering.
+        // The pigeon's flight, frame by frame (Assets/ART/Transition/Boss Open/PigeonFly, cut from
+        // Pigeon_Fly_Loop.mp4 by Tools/PigeonArt), played on every pigeon, each a little further on
+        // so they do not flap in step; empty to squash the still picture instead (below). The video
+        // is 30 frames a second as cut; a little faster looks livelier.
+        [SerializeField] private Sprite[] pigeonFrames = new Sprite[0];
+        [SerializeField, Min(1f)] private float pigeonFramesPerSecond = 39f;
+        // Wing beats a second while flying in or off, and while hovering (the still picture only).
         [SerializeField, Min(0f)] private float flapsPerSecond = 7f;
         [SerializeField, Min(0f)] private float hoverFlapsPerSecond = 4f;
         // How much a wing beat squashes the picture up and down (0 to 1).
@@ -102,6 +108,7 @@ namespace BountyHunter.Thieves
         private Vector3 bossSize;
         private Vector2[] pigeonRests;
         private Vector3[] pigeonSizes;
+        private Image[] pigeonPictures;
         private bool measured;
         private AudioSource voice;
         private bool pigeonsHeard;
@@ -302,10 +309,14 @@ namespace BountyHunter.Thieves
             pigeons ??= new RectTransform[0];
             pigeonRests = new Vector2[pigeons.Length];
             pigeonSizes = new Vector3[pigeons.Length];
+            pigeonPictures = new Image[pigeons.Length];
             for (int i = 0; i < pigeons.Length; i++)
             {
                 pigeonRests[i] = pigeons[i].anchoredPosition;
                 pigeonSizes[i] = pigeons[i].localScale;
+                pigeonPictures[i] = pigeons[i].GetComponent<Image>();
+                // The flight's frames are a different shape from the still picture: keep theirs.
+                if (pigeonPictures[i] != null && Animated) pigeonPictures[i].preserveAspect = true;
             }
         }
 
@@ -379,14 +390,26 @@ namespace BountyHunter.Thieves
             float tilt = flyTilt * (offU - (1f - inU));
             pigeon.localRotation = Quaternion.Euler(0f, 0f, facing * tilt);
 
-            bool moving = inU < 1f || offU > 0f;
-            float flaps = moving ? flapsPerSecond : hoverFlapsPerSecond;
-            float wing = 0.5f + 0.5f * Mathf.Sin(time * flaps * Mathf.PI * 2f + i * 1.3f);
             float grow = Smooth(inU * 3f);
             Vector3 size = pigeonSizes[i] * grow;
-            size.y *= 1f - flapSquash * wing;
+            if (Animated && pigeonPictures[i] != null)
+            {
+                // The flight's own wing beats; each pigeon a third of the way on from the one before.
+                int frame = Mathf.FloorToInt(time * pigeonFramesPerSecond + i * pigeonFrames.Length / 3f);
+                pigeonPictures[i].sprite = pigeonFrames[(frame % pigeonFrames.Length + pigeonFrames.Length) % pigeonFrames.Length];
+            }
+            else
+            {
+                bool moving = inU < 1f || offU > 0f;
+                float flaps = moving ? flapsPerSecond : hoverFlapsPerSecond;
+                float wing = 0.5f + 0.5f * Mathf.Sin(time * flaps * Mathf.PI * 2f + i * 1.3f);
+                size.y *= 1f - flapSquash * wing;
+            }
+
             pigeon.localScale = size;
         }
+
+        private bool Animated => pigeonFrames != null && pigeonFrames.Length > 0;
 
         private static void SetAlpha(Graphic picture, float alpha)
         {

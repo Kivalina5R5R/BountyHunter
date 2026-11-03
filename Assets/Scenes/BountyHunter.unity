@@ -932,6 +932,11 @@ MonoBehaviour:
   gunsPerDrop: {x: 2, y: 3}
   mostGunsWaiting: 5
   pickUpRadius: 0.5
+  stageDrops:
+  - stage: 3
+    secondsBetweenDrops: 25
+    gunsPerDrop: {x: 1, y: 1}
+    mostGunsWaiting: 2
   thiefNoticeRadius: 3
   thiefLookEverySeconds: 2
   thiefGrabSpeedUp: 1.4
@@ -1073,6 +1078,10 @@ MonoBehaviour:
   carSpots:
   - {x: -4.6, y: 0}
   - {x: 4.6, y: 0}
+  endSpots:
+  - {x: 0, y: -1.75}
+  - {x: 0, y: 1.75}
+  driveSeconds: 1.4
   carRadius: 0.85
   policeCar: {fileID: 21300000, guid: 7025094898314f44a9b671e2e91123ff, type: 3}
   carLength: 1.6
@@ -1101,7 +1110,10 @@ MonoBehaviour:
   rounds: {fileID: 156425235}
   players: {fileID: 594936650}
   thieves: {fileID: 1226030214}
-  bombs: {fileID: 1898598048}
+  hidingSpots: {fileID: 1849188211}
+  passersBy: {fileID: 1530458020}
+  stunGuns: {fileID: 156425238}
+  cuffs: {fileID: 156425241}
   stage: 3
   spot: {x: 0, y: 0}
   wall: {fileID: 1588305481}
@@ -1110,27 +1122,29 @@ MonoBehaviour:
   cooldownSeconds: 20
   spinSeconds: 2.5
   weights:
-  - 3
-  - 3
-  - 2
-  - 2
-  effectSeconds: 6
-  slowFactor: 0.5
-  fastFactor: 1.4
-  bountyRaise: 5
+  - 1
+  - 1
+  - 1
+  - 1
+  extraSpots: 2
+  extraSpotSeconds: 20
+  mostThieves: 5
+  extraPassersBy: 2
   wheel: {fileID: 21300000, guid: 025eb10f0be325849acf283f96102556, type: 3}
   pointer: {fileID: 21300000, guid: 63d878339df732647b46599bc5c31da4, type: 3}
   resultIcons:
-  - {fileID: 21300000, guid: 65b3428c8fc745749a3302e7298abe0f, type: 3}
-  - {fileID: 21300000, guid: 9ca2522773329c04baa0bc8dd994829e, type: 3}
-  - {fileID: 21300000, guid: a892c46878770e64aba751e7c20aedde, type: 3}
-  - {fileID: 21300000, guid: 3b12ddb2968aaf946a8103ec0eaaed63, type: 3}
+  - {fileID: 21300000, guid: 8ddec4b80dc23764699184bf743c1c0c, type: 3}
+  - {fileID: 21300000, guid: 4e4831c487db6c145924188fbb633bb8, type: 3}
+  - {fileID: 21300000, guid: 63496c5ea84b8e24686ad9d0bf3b6ea3, type: 3}
+  - {fileID: 21300000, guid: e4aa098bf8dee854f9196a9ed31c7821, type: 3}
   resultColours:
   - {r: 0.4, g: 0.85, b: 0.35, a: 1}
   - {r: 1, g: 0.82, b: 0.2, a: 1}
   - {r: 0.3, g: 0.6, b: 1, a: 1}
   - {r: 1, g: 0.3, b: 0.25, a: 1}
-  wheelWidth: 0.75
+  mysteryBox: {fileID: 21300000, guid: 89558648d85b64c49a8ccfa4f3797844, type: 3}
+  rainbow: {fileID: 2100000, guid: d30aefb6b6fbb7749b0ef287b9833a4c, type: 2}
+  wheelWidth: 0.55
   sparkles:
   - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
   - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
@@ -4104,6 +4118,158 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
+--- !u!1 &863286018
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 863286021}
+  - component: {fileID: 863286020}
+  - component: {fileID: 863286019}
+  m_Layer: 0
+  m_Name: Boss Finale
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &863286019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863286018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6aa61bacea150c24383a61a9b4af5591, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BossVault
+  entryTransition: {fileID: 0}
+  exitTransition: {fileID: 0}
+  playerSpawner: {fileID: 594936650}
+  scoreTags:
+  - {fileID: 1077542171}
+  - {fileID: 354115127}
+  - {fileID: 1804798657}
+  - {fileID: 879857161}
+  npcs: {fileID: 1530458020}
+  hidingSpots: {fileID: 1226030214}
+  timer: {fileID: 1445836966812051384}
+  chase: {fileID: 1105797308}
+  floorImage: {fileID: 734738229}
+  wallBackground: {fileID: 1595949009}
+  floorPicture: {fileID: 2800000, guid: 636de8bbb47112747b86be7df915e11e, type: 3}
+  wallPicture: {fileID: 21300000, guid: a538ff7eb6446ac4bb2ad6c195029090, type: 3}
+  areaMin: {x: -5.15, y: -2.3}
+  areaMax: {x: 5.15, y: 2.3}
+  diamondPedestal: {fileID: 21300000, guid: 2753fdab30f40b24b89256f45d5a76d8, type: 3}
+  diamondWidth: 0.9
+  stealRing: {fileID: 21300000, guid: 8e2e7c8a2047803448ea7332356dea0e, type: 3}
+  radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
+  stealColour: {r: 1, g: 0.25, b: 0.2, a: 1}
+  stealRadius: 0.45
+  stealSeconds: 4
+  drainSeconds: 24
+  speeds:
+    Approach: 1.25
+    Sneak: 0.8
+    Disguised: 0.6
+    BumpRadius: 0.6
+    BumpCooldownSeconds: 1.5
+  arriveAfterSeconds: 1.5
+  sneakSeenWithin: 1.8
+  alwaysSeenNear: 1.2
+  edgeInset: 0.5
+  edgeClearOfPlayers: 2.5
+  disguiseSeconds: 8
+  warpPuffRadius: 0.7
+  warpPuffSeconds: 0.6
+  smokeFirstAt: 7
+  smokeEvery: {x: 9, y: 13}
+  smokeWhenPlayerWithin: 2.5
+  smokeRadius: 1.15
+  smokeSeconds: 6
+  blackoutFirstAt: 16
+  blackoutSeconds: 8
+  blackoutEverySeconds: 26
+  flashlightRadius: 0.9
+  flashSeconds: 0.14
+  flashEvery: {x: 2, y: 3}
+  darkAlpha: 0.94
+  switchSpots:
+  - {x: -4.6, y: -1.75}
+  - {x: 4.6, y: 1.75}
+  switchRadius: 0.6
+  switchHoldSeconds: 1
+  lightSwitch: {fileID: 21300000, guid: 396fbfe1cafe73b4f88077ce52977ba0, type: 3}
+  switchWidth: 0.55
+  sparkles:
+  - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
+  - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
+  lasers:
+  - Upright: 1
+    SweepSeconds: 14
+    Phase: 0
+  - Upright: 1
+    SweepSeconds: 19
+    Phase: 0.5
+  - Upright: 0
+    SweepSeconds: 11
+    Phase: 0.25
+  laserSweepInset: 0.3
+  laserWidth: 0.07
+  laserReach: 0.18
+  laserColour: {r: 1, g: 0.15, b: 0.2, a: 1}
+  revealSeconds: 2
+  alarmCooldownSeconds: 1.5
+  alarmColour: {r: 1, g: 0.1, b: 0.1, a: 1}
+  bumpReward: 5
+  securedReward: 10
+  stolenFine: 10
+  gainColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+  damageColor: {r: 1, g: 0.22, b: 0.16, a: 1}
+  damageFont: {fileID: 11400000, guid: d4e98a79a56adb245b3f28d26d672faf, type: 2}
+  damageMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
+  guardHeading: GUARD THE DIAMOND!
+  stealingHeading: DIAMOND {0}%!
+--- !u!114 &863286020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863286018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64574f7e089777c4eb2236a357133d9e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.BossFinale
+  entryTransition: {fileID: 0}
+  exitTransition: {fileID: 0}
+  vault: {fileID: 863286019}
+  chase: {fileID: 1105797308}
+  curtain: {fileID: 1680354128}
+  fadeOutSeconds: 0.6
+  fadeInSeconds: 0.6
+--- !u!4 &863286021
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863286018}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &863714241
 GameObject:
   m_ObjectHideFlags: 0
@@ -4776,6 +4942,8 @@ MonoBehaviour:
     - {x: -4.6, y: 0, z: 0.96000004}
     - {x: 4.6, y: 0, z: 0.96000004}
     - {x: 0, y: 0, z: 0.6}
+    - {x: 0, y: -1.75, z: 0.96}
+    - {x: 0, y: 1.75, z: 0.96}
     interludeAfter: {fileID: 0}
   curtain: {fileID: 1680354128}
   hideDuringInterlude:
@@ -4783,7 +4951,7 @@ MonoBehaviour:
   - {fileID: 1588305480}
   fadeOutSeconds: 0.45
   fadeInSeconds: 0.6
-  finale: {fileID: 1105797308}
+  finale: {fileID: 863286020}
   bossTransition: {fileID: 1276662425}
 --- !u!1 &965323109
 GameObject:
@@ -5563,6 +5731,15 @@ MonoBehaviour:
   wallPanel: {fileID: 13306568}
   board: {fileID: 621645247}
   wallSky: {fileID: 123566150}
+  spotScatter: {fileID: 1849188211}
+  rooftopSpots:
+  - {fileID: 21300000, guid: 27d4a348c2b8f7641ad67b99c8c4e8ab, type: 3}
+  - {fileID: 21300000, guid: ca557f7e645ecd54fbbf5e476869c78c, type: 3}
+  - {fileID: 21300000, guid: e89ac8c4228869846857066fe03f4e0e, type: 3}
+  - {fileID: 21300000, guid: 2d823a19d5536174e8f10751cff95066, type: 3}
+  - {fileID: 21300000, guid: cdcb4d040fd62bb4ab5ed3457ff07eb4, type: 3}
+  rooftopSpotTilt: 20
+  rooftopSpotSize: {x: 1.1, y: 1.35}
   hideDuringChase:
   - {fileID: 1311994743}
   - {fileID: 1394834305}
@@ -7534,6 +7711,8 @@ MonoBehaviour:
   bountyRange: {x: 10, y: 15}
   pinStagger: 0.22
   closeUpDelay: 1.1
+  mostShown: 5
+  fullSizeUpTo: 3
 --- !u!114 &1449044724 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3204436679111921992, guid: d6be824ed9f5fe34686f15e3a77d7dae, type: 3}
@@ -9421,18 +9600,6 @@ PrefabInstance:
     - target: {fileID: 4366183809595638178, guid: a14f960aa48b4514f9cff46c6512eaf6, type: 3}
       propertyPath: m_IsActive
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6792835205171153947, guid: a14f960aa48b4514f9cff46c6512eaf6, type: 3}
-      propertyPath: m_AnchorMax.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6792835205171153947, guid: a14f960aa48b4514f9cff46c6512eaf6, type: 3}
-      propertyPath: m_AnchorMax.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6792835205171153947, guid: a14f960aa48b4514f9cff46c6512eaf6, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 493.49335
       objectReference: {fileID: 0}
     - target: {fileID: 7702725191710047229, guid: a14f960aa48b4514f9cff46c6512eaf6, type: 3}
       propertyPath: m_Pivot.x
@@ -11802,3 +11969,4 @@ SceneRoots:
   - {fileID: 1957981330}
   - {fileID: 1105797309}
   - {fileID: 594936651}
+  - {fileID: 863286021}

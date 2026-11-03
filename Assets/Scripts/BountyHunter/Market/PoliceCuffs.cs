@@ -61,6 +61,10 @@ namespace BountyHunter.Thieves
         [Header("Police cars")]
         // Where the cars stand (x and world z) and how close a leader comes to hand their thieves over.
         [SerializeField] private Vector2[] carSpots = { new Vector2(-4.6f, 0f), new Vector2(4.6f, 0f) };
+        // Where the cars drive to when moved (MoveCars, the market's lucky wheel): the middle of the
+        // floor's bottom and top edges. Moved again, they drive back.
+        [SerializeField] private Vector2[] endSpots = { new Vector2(0f, -1.75f), new Vector2(0f, 1.75f) };
+        [SerializeField, Min(0.1f)] private float driveSeconds = 1.4f;
         [SerializeField, Min(0.1f)] private float carRadius = 0.85f;
 
         [Header("Look")]
@@ -86,6 +90,12 @@ namespace BountyHunter.Thieves
         private readonly List<GameObject> cars = new List<GameObject>();
         // When each car last took thieves (it bounces), the same order as cars.
         private readonly List<float> carBouncedAt = new List<float>();
+        // Where each car drives from while moving (MoveCars), and when they set off.
+        private readonly List<Vector3> carFrom = new List<Vector3>();
+        private readonly List<Quaternion> carFromTurn = new List<Quaternion>();
+        private float droveAt = float.MinValue;
+        // Parked on endSpots (bottom and top) rather than carSpots (left and right).
+        private bool onEnds;
         private readonly List<SpriteRenderer> carRings = new List<SpriteRenderer>();
         private readonly List<SpriteRenderer> sirens = new List<SpriteRenderer>();
         private readonly List<ThiefController> handedOver = new List<ThiefController>();
@@ -301,6 +311,10 @@ namespace BountyHunter.Thieves
 
             cars.Clear();
             carBouncedAt.Clear();
+            carFrom.Clear();
+            carFromTurn.Clear();
+            onEnds = false;
+            droveAt = float.MinValue;
             carRings.Clear();
             sirens.Clear();
         }
@@ -368,10 +382,12 @@ namespace BountyHunter.Thieves
         // The car whose hand-over ring the point is in.
         private bool TryGetCar(Vector3 point, out int car)
         {
-            for (car = 0; car < carSpots.Length; car++)
+            // Where the cars stand now (they may be driving); the spots when none are down.
+            int count = cars.Count > 0 ? cars.Count : carSpots.Length;
+            for (car = 0; car < count; car++)
             {
-                Vector2 spot = carSpots[car];
-                if (Flat(point, new Vector3(spot.x, 0f, spot.y)) <= carRadius) return true;
+                Vector3 at = car < cars.Count ? cars[car].transform.position : Spot(car);
+                if (Flat(point, at) <= carRadius) return true;
             }
 
             car = -1;
@@ -423,18 +439,65 @@ namespace BountyHunter.Thieves
             return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;
         }
 
+        // The cars drive over to the other pair of spots (left and right, or bottom and top), turning
+        // as they go, and bounce as they park; the hiding spots keep off the new spots too.
+        public void MoveCars()
+        {
+            if (!inUse || cars.Count == 0) return;
+
+            onEnds = !onEnds;
+            droveAt = Time.time;
+            for (int i = 0; i < cars.Count; i++)
+            {
+                carFrom[i] = cars[i].transform.position;
+                carFromTurn[i] = cars[i].transform.rotation;
+                KeepBushesOff(Spot(i));
+            }
+
+            string where = onEnds ? "top and bottom" : "left and right";
+            Debug.Log($"[PoliceCuffs] The police cars drive to the {where}", this);
+        }
+
+        // A bush laid during play (the lucky wheel) keeps off the cars' spots, both pairs.
+        public void KeepClearOfCars(BushWalker walker)
+        {
+            if (walker == null) return;
+
+            foreach (Vector2 spot in carSpots) walker.KeepClearOf(new Vector3(spot.x, 0f, spot.y), CarReach);
+            foreach (Vector2 spot in endSpots) walker.KeepClearOf(new Vector3(spot.x, 0f, spot.y), CarReach);
+        }
+
+        private float CarReach => Mathf.Max(carRadius, carLength * 0.6f);
+
+        // Where car index parks now (on the floor, at the cars' height).
+        private Vector3 Spot(int index)
+        {
+            Vector2[] spots = onEnds && endSpots.Length > 0 ? endSpots : carSpots;
+            Vector2 spot = spots[Mathf.Min(index, spots.Length - 1)];
+            return new Vector3(spot.x, Height, spot.y);
+        }
+
+        // Nose up on the left and down on the right; lying along the edge on the bottom and top.
+        private Quaternion Turn(int index)
+        {
+            Vector3 spot = Spot(index);
+            float degrees = onEnds ? (spot.z > 0f ? 90f : -90f) : (spot.x > 0f ? 180f : 0f);
+            return Quaternion.Euler(90f, 0f, degrees);
+        }
+
         // A car on each spot, its ring round it, and its siren light on its roof; the right-hand car
         // faces the other way, so both look parked along the floor's ends.
         private void PutCarsDown()
         {
             for (int i = 0; i < carSpots.Length; i++)
             {
-                Vector2 spot = carSpots[i];
                 var car = new GameObject("Police Car");
                 car.transform.SetParent(transform, false);
-                car.transform.SetPositionAndRotation(new Vector3(spot.x, Height, spot.y), Quaternion.Euler(90f, 0f, spot.x > 0f ? 180f : 0f));
+                car.transform.SetPositionAndRotation(Spot(i), Turn(i));
                 cars.Add(car);
                 carBouncedAt.Add(float.MinValue);
+                carFrom.Add(car.transform.position);
+                carFromTurn.Add(car.transform.rotation);
 
                 SpriteRenderer ring = Part(car.transform, "Ring", carRing != null ? carRing : PosterSprites.Ring, RingOrder);
                 ring.transform.localScale = Vector3.one * (carRadius * 2f / Mathf.Max(0.0001f, ring.sprite.bounds.size.x));
@@ -459,7 +522,7 @@ namespace BountyHunter.Thieves
         {
             if (thieves == null) return;
 
-            float reach = Mathf.Max(carRadius, carLength * 0.6f);
+            float reach = CarReach;
             foreach (HidingBush bush in thieves.Bushes)
             {
                 if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.KeepClearOf(at, reach);
@@ -470,6 +533,7 @@ namespace BountyHunter.Thieves
         // a car that has just taken thieves squashes and stretches and flashes its siren.
         private void ShowCars()
         {
+            Drive();
             for (int i = 0; i < cars.Count; i++)
             {
                 float t = (Time.time - carBouncedAt[i]) / BounceSeconds;
@@ -490,6 +554,34 @@ namespace BountyHunter.Thieves
                 bool bouncing = Time.time - carBouncedAt[i] < BounceSeconds * 2f;
                 sirenColour.a = leading || bouncing ? 0.85f : 0f;
                 sirens[i].color = sirenColour;
+            }
+        }
+
+        // Cars on the move ease over to their spots, turning on the way with a little hop, and park
+        // with a bounce and a burst; their sirens flash all the while (they count as bouncing).
+        private void Drive()
+        {
+            float driven = (Time.time - droveAt) / driveSeconds;
+            if (driven < 0f || driven > 1.5f) return;
+
+            for (int i = 0; i < cars.Count; i++)
+            {
+                Transform car = cars[i].transform;
+                if (driven >= 1f)
+                {
+                    if (car.position == Spot(i)) continue;
+
+                    car.SetPositionAndRotation(Spot(i), Turn(i));
+                    Bounce(i);
+                    continue;
+                }
+
+                float eased = Mathf.SmoothStep(0f, 1f, driven);
+                Vector3 at = Vector3.Lerp(carFrom[i], Spot(i), eased);
+                // Up the floor a touch mid-way, as if it hops the kerb.
+                at.z += 0.15f * Mathf.Sin(driven * Mathf.PI);
+                car.SetPositionAndRotation(at, Quaternion.Slerp(carFromTurn[i], Turn(i), eased));
+                carBouncedAt[i] = Time.time - BounceSeconds;
             }
         }
 
@@ -523,6 +615,7 @@ namespace BountyHunter.Thieves
         {
             Gizmos.color = new Color(0.35f, 0.65f, 1f, 1f);
             foreach (Vector2 spot in carSpots) Gizmos.DrawWireSphere(new Vector3(spot.x, Height, spot.y), carRadius);
+            foreach (Vector2 spot in endSpots) Gizmos.DrawWireSphere(new Vector3(spot.x, Height, spot.y), carRadius);
         }
 #endif
     }

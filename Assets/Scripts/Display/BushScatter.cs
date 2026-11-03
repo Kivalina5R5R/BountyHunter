@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -91,6 +92,15 @@ namespace Fortal.Display
         // Raised just before the current bushes are removed for a new layout, while they still exist.
         public event Action Clearing;
 
+        // Raised when AddMore lays more bushes in the current layout (which ones).
+        public event Action<IReadOnlyList<ScatteredBush>> Added;
+
+        // Raised just before Remove takes one bush away, while it still exists.
+        public event Action<Transform> Removing;
+
+        // How long a bush laid or taken away during play takes to spring up or shrink away.
+        private const float GrowSeconds = 0.4f;
+
         private void Start()
         {
             Scatter();
@@ -130,26 +140,103 @@ namespace Fortal.Display
             var placed = new List<(Vector2 position, float reach)>();
             var timesUsed = new Dictionary<Sprite, int>();
             int attempts = count * 300;
-            while (bushes.Count < count && attempts-- > 0)
+            while (bushes.Count < count && attempts-- > 0 && bushSprites.Length > 0)
             {
-                Sprite sprite = PickSprite(timesUsed);
-                if (sprite == null) break;
-
-                Vector2 leaves = VisibleSize(sprite);
-                float scale = Random.Range(MinimumSize, MaximumSize) / Mathf.Max(0.0001f, Mathf.Min(leaves.x, leaves.y));
-                // Half of the longest side covers the bush at any tilt.
-                float reach = Mathf.Max(leaves.x, leaves.y) * scale * 0.5f;
-                Vector2 position = PickSpot(reach, placed, out float clearance);
-                if (clearance < edgeGap) continue;
-
-                placed.Add((position, reach));
-                timesUsed[sprite] = timesUsed.TryGetValue(sprite, out int used) ? used + 1 : 1;
-                Transform bush = SpawnBush(sprite, position, scale, bushes.Count + 1);
-                bushes.Add(new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f, reach));
+                if (TryLay(placed, timesUsed, out ScatteredBush bush)) bushes.Add(bush);
             }
 
             if (seed > 0) Random.state = previousState;
             Scattered?.Invoke();
+        }
+
+        // Lays count more bushes among the ones there now (clear of them and of the spots kept clear),
+        // each springing up from nothing, and returns them (Added says so too). Fewer when the floor
+        // has no room left.
+        public IReadOnlyList<ScatteredBush> AddMore(int count)
+        {
+            var added = new List<ScatteredBush>();
+            if (bushSprites == null || bushSprites.Length == 0) return added;
+
+            var placed = new List<(Vector2 position, float reach)>();
+            foreach (ScatteredBush bush in bushes)
+            {
+                if (bush.Transform != null) placed.Add((new Vector2(bush.Transform.position.x, bush.Transform.position.z), bush.Reach));
+            }
+
+            // Pictures may repeat across the layout here; only the new ones are kept apart.
+            var timesUsed = new Dictionary<Sprite, int>();
+            int attempts = count * 300;
+            while (added.Count < count && attempts-- > 0)
+            {
+                if (!TryLay(placed, timesUsed, out ScatteredBush bush)) continue;
+
+                bushes.Add(bush);
+                added.Add(bush);
+                StartCoroutine(Grow(bush.Transform, 0f, 1f, false));
+            }
+
+            if (added.Count > 0) Added?.Invoke(added);
+            return added;
+        }
+
+        // Takes one bush away (Removing first), shrinking it to nothing.
+        public void Remove(Transform bush)
+        {
+            int index = bushes.FindIndex(scattered => scattered.Transform == bush);
+            if (index < 0) return;
+
+            Removing?.Invoke(bush);
+            bushes.RemoveAt(index);
+            spawned.Remove(bush.gameObject);
+            StartCoroutine(Grow(bush, 1f, 0f, true));
+        }
+
+        // A bush of a random picture and size at the clearest of a few spots, unless even that would
+        // crowd its neighbours (false). The spot is added to placed.
+        private bool TryLay(List<(Vector2 position, float reach)> placed, Dictionary<Sprite, int> timesUsed, out ScatteredBush laid)
+        {
+            laid = default;
+            Sprite sprite = PickSprite(timesUsed);
+            if (sprite == null) return false;
+
+            Vector2 leaves = VisibleSize(sprite);
+            float scale = Random.Range(MinimumSize, MaximumSize) / Mathf.Max(0.0001f, Mathf.Min(leaves.x, leaves.y));
+            // Half of the longest side covers the bush at any tilt.
+            float reach = Mathf.Max(leaves.x, leaves.y) * scale * 0.5f;
+            Vector2 position = PickSpot(reach, placed, out float clearance);
+            if (clearance < edgeGap) return false;
+
+            placed.Add((position, reach));
+            timesUsed[sprite] = timesUsed.TryGetValue(sprite, out int used) ? used + 1 : 1;
+            Transform bush = SpawnBush(sprite, position, scale, spawned.Count + 1);
+            laid = new ScatteredBush(bush, Mathf.Min(leaves.x, leaves.y) * scale * 0.5f, reach);
+            return true;
+        }
+
+        // Scales a bush from one share of its size to another, springing a little past it on the way
+        // up; destroys it at the end when asked.
+        private IEnumerator Grow(Transform bush, float from, float to, bool destroyAfter)
+        {
+            Vector3 full = bush.localScale;
+            for (float time = 0f; time < GrowSeconds && bush != null; time += Time.deltaTime)
+            {
+                float t = time / GrowSeconds;
+                float eased = to > from ? EaseOutBack(t) : t * t;
+                bush.localScale = full * Mathf.LerpUnclamped(from, to, eased);
+                yield return null;
+            }
+
+            if (bush == null) yield break;
+
+            bush.localScale = full * to;
+            if (destroyAfter) Destroy(bush.gameObject);
+        }
+
+        private static float EaseOutBack(float t)
+        {
+            const float overshoot = 1.70158f;
+            float back = Mathf.Clamp01(t) - 1f;
+            return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;
         }
 
         // Where the centre of a bush reaching this far may go: inside the bush area, and far enough in

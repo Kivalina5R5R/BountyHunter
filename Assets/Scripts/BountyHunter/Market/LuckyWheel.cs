@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Fortal.Display;
 using Fortal.Players;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -9,32 +11,36 @@ namespace BountyHunter.Thieves
     // What the lucky wheel can land on, in the order of its segments (clockwise from the top).
     public enum LuckyWheelResult
     {
-        // The thieves run at slowFactor of their speed for effectSeconds.
-        SlowThieves,
-        // Every wanted thief's bounty goes up by bountyRaise.
-        BountiesUp,
-        // Every bomb on the floor goes, and none is dropped for effectSeconds.
-        NoBombs,
-        // The bad one: the thieves run at fastFactor of their speed for effectSeconds.
-        FastThieves
+        // extraSpots more hiding spots spring up for extraSpotSeconds (good for the thieves).
+        MoreHiding,
+        // The loudspeaker: more thieves join the round until mostThieves are wanted, and
+        // extraPassersBy more passers-by come in.
+        CallOut,
+        // Every player on the floor gets a stun gun.
+        StunGunsForAll,
+        // The police cars drive from the left and right ends to the bottom and top (or back).
+        MoveCars
     }
 
-    // The market's lucky wheel (stage 3): a small wheel lies in the middle of the floor (the market's
-    // hiding spots keep off it: MapSwitcher's Keep Clear). A player who stands on it for holdSeconds
-    // sets it off: it goes from the floor in a burst of stars and spins big on the wall instead,
-    // stopping on one result picked by weights (LuckyWheelSpin), which then hits the whole floor at
-    // once. Hiding spots creeping away with a thief inside steer round its spot all stage, even
-    // while it is away. cooldownSeconds after the
-    // spin it springs up again in the same spot. Gone when the floor is cleared.
+    // The market's lucky wheel (stage 3): a mystery box lies in the middle of the floor, its panels
+    // running through the rainbow (the market's hiding spots keep off it: MapSwitcher's Keep Clear).
+    // A player who stands on it for holdSeconds sets it off: it goes from the floor in a burst of
+    // stars and a wheel spins big on the wall instead, stopping on one result picked by weights
+    // (LuckyWheelSpin), which then happens on the floor. Hiding spots creeping away with a thief
+    // inside steer round its spot all stage, even while it is away. cooldownSeconds after the spin
+    // it springs up again in the same spot. Gone when the floor is cleared.
     public sealed class LuckyWheel : MonoBehaviour
     {
         [SerializeField] private BountyRounds rounds;
         [SerializeField] private UWBPlayerSpawner players;
-        // The thieves (sped up or slowed) and their hiding spots (kept clear of).
+        // The thieves and their hiding spots, and what lays the hiding spots out.
         [SerializeField] private ThiefSpawner thieves;
-        [SerializeField] private BombSquad bombs;
+        [SerializeField] private BushScatter hidingSpots;
+        [SerializeField] private NpcCrowd passersBy;
+        [SerializeField] private StunGuns stunGuns;
+        [SerializeField] private PoliceCuffs cuffs;
         [SerializeField] private int stage = 3;
-        // Where the wheel lies (x and world z).
+        // Where the box lies (x and world z).
         [SerializeField] private Vector2 spot = Vector2.zero;
         // The game wall's area the spin fills.
         [SerializeField] private RectTransform wall;
@@ -45,13 +51,13 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float cooldownSeconds = 20f;
         [SerializeField, Min(0.5f)] private float spinSeconds = 2.5f;
         // How likely each result is, in LuckyWheelResult order.
-        [SerializeField] private float[] weights = { 3f, 3f, 2f, 2f };
+        [SerializeField] private float[] weights = { 1f, 1f, 1f, 1f };
 
         [Header("Results")]
-        [SerializeField, Min(0f)] private float effectSeconds = 6f;
-        [SerializeField, Range(0.1f, 1f)] private float slowFactor = 0.5f;
-        [SerializeField, Range(1f, 2.5f)] private float fastFactor = 1.4f;
-        [SerializeField, Min(0)] private int bountyRaise = 5;
+        [SerializeField, Min(1)] private int extraSpots = 2;
+        [SerializeField, Min(1f)] private float extraSpotSeconds = 20f;
+        [SerializeField, Min(1)] private int mostThieves = 5;
+        [SerializeField, Min(0)] private int extraPassersBy = 2;
 
         [Header("Look")]
         // The wheel with its result icons on its segments (Tools/MarketArt), the pointer over it while
@@ -67,8 +73,12 @@ namespace BountyHunter.Thieves
             new Color(0.3f, 0.6f, 1f, 1f),
             new Color(1f, 0.3f, 0.25f, 1f),
         };
-        // The wheel on the floor, small enough to sit inside the ring that fills as a player stands on it.
-        [SerializeField, Min(0.2f)] private float wheelWidth = 0.75f;
+        // What lies on the floor: the mystery box (the wheel when empty), drawn with the rainbow
+        // material (Sprite Rainbow) so its panels run through the rainbow, small enough to sit inside
+        // the ring that fills as a player stands on it.
+        [SerializeField] private Sprite mysteryBox;
+        [SerializeField] private Material rainbow;
+        [SerializeField, Min(0.2f)] private float wheelWidth = 0.55f;
         // The stars twinkling round it while it waits, and the ring filling round it as a player
         // stands on it: the players' own select ring, drawn with the radial fill material.
         [SerializeField] private Sprite[] sparkles = new Sprite[0];
@@ -78,14 +88,14 @@ namespace BountyHunter.Thieves
 
         private static readonly int ResultCount = Enum.GetValues(typeof(LuckyWheelResult)).Length;
 
+        private readonly List<Coroutine> extraSpotTimers = new List<Coroutine>();
         private FloorSwitch waiting;
         private Coroutine comingBack;
-        private float effectUntil;
-        private float speedFactor = 1f;
-        private bool bombsHeld;
 
-        // How far the wheel and its ring reach from its centre.
+        // How far the box and its ring reach from its centre.
         private float Reach => Mathf.Max(radius, wheelWidth * 0.5f);
+
+        private Vector3 Spot => new Vector3(spot.x, 0f, spot.y);
 
         // A player set the wheel spinning and it landed on this.
         public event Action<UWBPlayerController, LuckyWheelResult> Landed;
@@ -113,27 +123,17 @@ namespace BountyHunter.Thieves
             Clear();
             if (started != stage) return;
 
-            // The wheel always comes back to the same spot, so the hiding spots keep off it all stage.
-            KeepBushesOff(new Vector3(spot.x, 0f, spot.y));
-            PutWheelDown();
+            // The box always comes back to the same spot, so the hiding spots keep off it all stage.
+            KeepBushesOff();
+            PutBoxDown();
         }
 
-        // Speeds the thieves up or slows them down while a result lasts, and lets the bombs back after.
-        private void Update()
+        private void PutBoxDown()
         {
-            bool lasting = Time.time < effectUntil;
-            if (!lasting && bombsHeld) ReleaseBombs();
-            if (!lasting && speedFactor == 1f) return;
-
-            if (!lasting) speedFactor = 1f;
-            SetThiefSpeed(speedFactor);
-        }
-
-        private void PutWheelDown()
-        {
-            var at = new Vector3(spot.x, 0f, spot.y);
-            waiting = FloorSwitch.Create(transform, "Lucky Wheel", at, wheel, wheelWidth, null, selectRing, radialFill, selectRingTint, radius,
+            Sprite onFloor = mysteryBox != null ? mysteryBox : wheel;
+            waiting = FloorSwitch.Create(transform, "Lucky Wheel", Spot, onFloor, wheelWidth, null, selectRing, radialFill, selectRingTint, radius,
                 holdSeconds, 0f, players, sparkles);
+            if (rainbow != null && mysteryBox != null) waiting.UsePropMaterial(rainbow);
             waiting.Triggered += OnTriggered;
         }
 
@@ -151,24 +151,25 @@ namespace BountyHunter.Thieves
             // Without a wall to spin on, it lands at once.
             if (wall != null) LuckyWheelSpin.Play(wall, wheel, pointer, icon, index, ResultCount, spinSeconds, colour, () => Apply(result, player));
             else Apply(result, player);
-            comingBack = StartCoroutine(BringWheelBack());
+            comingBack = StartCoroutine(BringBoxBack());
         }
 
         private void Apply(LuckyWheelResult result, UWBPlayerController player)
         {
             switch (result)
             {
-                case LuckyWheelResult.SlowThieves:
-                    StartSpeed(slowFactor);
+                case LuckyWheelResult.MoreHiding:
+                    AddHidingSpots();
                     break;
-                case LuckyWheelResult.FastThieves:
-                    StartSpeed(fastFactor);
+                case LuckyWheelResult.CallOut:
+                    if (rounds != null) rounds.CallOutThieves(mostThieves);
+                    if (passersBy != null) passersBy.CallOut(extraPassersBy);
                     break;
-                case LuckyWheelResult.BountiesUp:
-                    if (rounds != null) rounds.RaiseEveryBounty(bountyRaise);
+                case LuckyWheelResult.StunGunsForAll:
+                    ArmEveryone();
                     break;
-                case LuckyWheelResult.NoBombs:
-                    HoldBombs();
+                case LuckyWheelResult.MoveCars:
+                    if (cuffs != null) cuffs.MoveCars();
                     break;
             }
 
@@ -176,44 +177,48 @@ namespace BountyHunter.Thieves
             Landed?.Invoke(player, result);
         }
 
-        private void StartSpeed(float factor)
+        // More hiding spots spring up, keeping off the box and the cars, and go again after a while.
+        private void AddHidingSpots()
         {
-            speedFactor = factor;
-            effectUntil = Time.time + effectSeconds;
-        }
+            if (hidingSpots == null) return;
 
-        private void HoldBombs()
-        {
-            if (bombs == null) return;
-
-            bombs.ClearBombs();
-            bombs.SetArmed(false);
-            bombsHeld = true;
-            effectUntil = Mathf.Max(effectUntil, Time.time + effectSeconds);
-        }
-
-        private void ReleaseBombs()
-        {
-            bombsHeld = false;
-            if (bombs != null) bombs.SetArmed(true);
-        }
-
-        private void SetThiefSpeed(float factor)
-        {
-            if (thieves == null) return;
-
-            foreach (ThiefController thief in thieves.Thieves)
+            IReadOnlyList<ScatteredBush> added = hidingSpots.AddMore(extraSpots);
+            foreach (ScatteredBush bush in added)
             {
-                if (thief != null) thief.SpeedFactor = factor;
+                if (bush.Transform == null || !bush.Transform.TryGetComponent(out BushWalker walker)) continue;
+
+                walker.KeepClearOf(Spot, Reach);
+                if (cuffs != null) cuffs.KeepClearOfCars(walker);
+            }
+
+            extraSpotTimers.Add(StartCoroutine(TakeAwayLater(added)));
+        }
+
+        private IEnumerator TakeAwayLater(IReadOnlyList<ScatteredBush> added)
+        {
+            yield return new WaitForSeconds(extraSpotSeconds);
+            foreach (ScatteredBush bush in added)
+            {
+                if (bush.Transform != null) hidingSpots.Remove(bush.Transform);
             }
         }
 
-        private IEnumerator BringWheelBack()
+        private void ArmEveryone()
+        {
+            if (stunGuns == null || players == null) return;
+
+            foreach (UWBPlayerController player in players.SpawnedPlayers)
+            {
+                if (player != null && player.isActiveAndEnabled) stunGuns.Arm(player);
+            }
+        }
+
+        private IEnumerator BringBoxBack()
         {
             yield return new WaitForSeconds(spinSeconds + cooldownSeconds);
             comingBack = null;
-            PutWheelDown();
-            Debug.Log("[LuckyWheel] A new lucky wheel is down", this);
+            PutBoxDown();
+            Debug.Log("[LuckyWheel] The mystery box is back", this);
         }
 
         // A result index by the weights (all alike when none are set).
@@ -239,11 +244,18 @@ namespace BountyHunter.Thieves
         }
 
         // Everything the wheel set going stops; the floor is being cleared or another stage starts.
+        // Extra hiding spots still up go with the next layout, and so does what the hiding spots keep
+        // clear of (each stage lays new ones; the cars' spots must not be forgotten here either).
         private void Clear()
         {
-            ForgetBushSpots();
             if (comingBack != null) StopCoroutine(comingBack);
             comingBack = null;
+            foreach (Coroutine timer in extraSpotTimers)
+            {
+                if (timer != null) StopCoroutine(timer);
+            }
+
+            extraSpotTimers.Clear();
             if (waiting != null)
             {
                 waiting.Triggered -= OnTriggered;
@@ -251,35 +263,19 @@ namespace BountyHunter.Thieves
             }
 
             waiting = null;
-            if (wall != null)
-            {
-                foreach (LuckyWheelSpin spin in wall.GetComponentsInChildren<LuckyWheelSpin>()) Destroy(spin.gameObject);
-            }
+            if (wall == null) return;
 
-            if (speedFactor != 1f) SetThiefSpeed(1f);
-            speedFactor = 1f;
-            effectUntil = 0f;
-            bombsHeld = false;
+            foreach (LuckyWheelSpin spin in wall.GetComponentsInChildren<LuckyWheelSpin>()) Destroy(spin.gameObject);
         }
 
-        // The hiding spots that creep about steer round the wheel and its ring.
-        private void KeepBushesOff(Vector3 at)
+        // The hiding spots that creep about steer round the box and its ring.
+        private void KeepBushesOff()
         {
             if (thieves == null) return;
 
             foreach (HidingBush bush in thieves.Bushes)
             {
-                if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.KeepClearOf(at, Reach);
-            }
-        }
-
-        private void ForgetBushSpots()
-        {
-            if (thieves == null) return;
-
-            foreach (HidingBush bush in thieves.Bushes)
-            {
-                if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.ForgetSpots();
+                if (bush != null && bush.TryGetComponent(out BushWalker walker)) walker.KeepClearOf(Spot, Reach);
             }
         }
     }

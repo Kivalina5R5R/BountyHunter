@@ -21,8 +21,9 @@ namespace BountyHunter.Thieves
     // first, it runs off the floor and the result comes once it is gone. The wall shows the catches
     // so far on its board (BossChaseBoard), or as the clock's heading without one (headingFormat). Its water (warning circles all over the floor
     // after it shoots) costs shotFine (or what the player has). The passers-by stroll about as in a
-    // stage, so it has someone to pass for, and it can duck into the map's hiding spots. It plays on
-    // the boss's own rooftop: its floor picture and its wall (the Boss Wall prefab, with a police
+    // stage, so it has someone to pass for, and it can duck into hiding spots: its rooftop's own
+    // (rooftopSpots, laid out afresh as the chase begins), or the last map's when there are none.
+    // It plays on the boss's own rooftop: its floor picture and its wall (the Boss Wall prefab, with a police
     // helicopter flying past behind the buildings), the stage's own wall pieces put away meanwhile.
     // In Simulation mode, for trying the moves out while it runs about: 1 shoots, 2 throws the smoke
     // bomb, 3 puts on a disguise, 4 ducks into the nearest free hiding spot.
@@ -53,6 +54,13 @@ namespace BountyHunter.Thieves
         // handcuffs per catch; with it, the clock shows no heading of its own. May be empty.
         [SerializeField] private BossChaseBoard board;
         [SerializeField] private RectTransform wallSky;
+        // The rooftop's own hiding spots (Assets/ART/BG/MapBoss/BossHide*), laid out by the hiding
+        // spots' scatter in place of the last map's, turned at most rooftopSpotTilt degrees either way
+        // and sized against the player like a map's (MapSwitcher). Empty keeps the last map's.
+        [SerializeField] private Fortal.Display.BushScatter spotScatter;
+        [SerializeField] private Sprite[] rooftopSpots;
+        [SerializeField, Range(0f, 180f)] private float rooftopSpotTilt = 20f;
+        [SerializeField] private Vector2 rooftopSpotSize = new Vector2(1.1f, 1.35f);
         [SerializeField] private GameObject[] hideDuringChase;
         // Parts switched off rather than hidden, where the object itself must stay (a dog's own
         // picture, whose score tag is a child of it).
@@ -109,10 +117,7 @@ namespace BountyHunter.Thieves
         private bool ready;
         private BossFeatherShower wallFeathers;
         private PictureSwap floorSwap;
-        private readonly List<GameObject> putAway = new List<GameObject>();
-        private readonly List<Behaviour> switchedOff = new List<Behaviour>();
-        // The score tags lined up for the chase, with where each stood before.
-        private readonly List<(PlayerScoreTag Tag, Vector3 Was)> linedUp = new List<(PlayerScoreTag Tag, Vector3 Was)>();
+        private BossStaging staging;
         private BossHelicopter hovering;
         private int touches;
         private ScenePreload.Ticket preparation;
@@ -154,15 +159,40 @@ namespace BountyHunter.Thieves
             foreach (BossSheet sheet in new[] { walk, smokeBomb, shoot, capeWrap, capeReveal }) sheet?.Release();
         }
 
-        public override void Begin()
+        // What the boss phases put away on the wall and how the score tags line up (the vault before
+        // the chase clears the wall the same way).
+        public BossStaging NewStaging() => new BossStaging(hideDuringChase, switchOffDuringChase, scoreTags);
+
+        // How long the chase lasts, its entrance and all (the vault before it lasts as long).
+        public float Seconds => entranceSeconds + chaseSeconds;
+
+        // The boss's settings, for the vault before the chase (BossVault), which plays the same boss.
+        public BossSettings Settings => boss;
+
+        // The boss's walk, smoke bomb and cape moves (made once the sheets are ready: after Prepare).
+        public void GetMoves(out BossMove walking, out BossMove smoking, out BossMove wrapping, out BossMove revealing)
         {
-            skipping = false;
-            touches = 0;
+            MakeMoves();
+            walking = walkMove;
+            smoking = smokeMove;
+            wrapping = capeMove;
+            revealing = revealMove;
+        }
+
+        private void MakeMoves()
+        {
             walkMove ??= new BossMove(walk, boss.PixelsPerUnit);
             shootMove ??= new BossMove(shoot, boss.PixelsPerUnit);
             smokeMove ??= new BossMove(smokeBomb, boss.PixelsPerUnit);
             capeMove ??= new BossMove(capeWrap, boss.PixelsPerUnit);
             revealMove ??= new BossMove(capeReveal, boss.PixelsPerUnit);
+        }
+
+        public override void Begin()
+        {
+            skipping = false;
+            touches = 0;
+            MakeMoves();
             ready = !walkMove.IsEmpty;
             if (!ready)
             {
@@ -170,6 +200,8 @@ namespace BountyHunter.Thieves
                 return;
             }
 
+            // Before the boss and the passers-by come, so they find the rooftop's spots.
+            LayOutRooftopSpots();
             chased = BossController.Create(Middle(), transform, boss, walkMove, shootMove, smokeMove, capeMove, revealMove, players, npcs, hidingSpots, areaMin, areaMax);
             if (dustSprites != null && dustSprites.Length > 0) chased.gameObject.AddComponent<DustTrail>().Initialize(dustSprites, chased.Picture);
             if (sounds != null) chased.gameObject.AddComponent<Footsteps>().Initialize(sounds, chased.Picture);
@@ -298,33 +330,23 @@ namespace BountyHunter.Thieves
         {
             floorSwap = new PictureSwap(floorImage, bossFloor);
             floorSwap.Show();
-            putAway.Clear();
-            if (hideDuringChase != null)
-            {
-                foreach (GameObject piece in hideDuringChase)
-                {
-                    if (piece == null || !piece.activeSelf) continue;
-                    piece.SetActive(false);
-                    putAway.Add(piece);
-                }
-            }
-
-            switchedOff.Clear();
-            if (switchOffDuringChase != null)
-            {
-                foreach (Behaviour part in switchOffDuringChase)
-                {
-                    if (part == null || !part.enabled) continue;
-                    part.enabled = false;
-                    switchedOff.Add(part);
-                }
-            }
-
-            LineUpScoreTags();
+            staging = NewStaging();
+            staging.Show();
             if (wallPanel != null) wallPanel.SetActive(true);
             if (board != null) board.Show(Mathf.Min(touches, touchesToCatch), touchesToCatch);
             if (helicopter != null && wallSky != null) hovering = BossHelicopter.Fly(wallSky, helicopter, helicopterRotor);
             if (hovering != null) HelicopterFlying?.Invoke(hovering);
+        }
+
+        // The rooftop's own hiding spots in place of the last map's (nothing else stands on the
+        // rooftop, so nothing is kept clear).
+        private void LayOutRooftopSpots()
+        {
+            if (spotScatter == null || rooftopSpots == null || rooftopSpots.Length == 0) return;
+
+            spotScatter.UseSprites(rooftopSpots, rooftopSpotTilt, rooftopSpotSize);
+            spotScatter.UseKeepClear(null);
+            spotScatter.Scatter();
         }
 
         private void LeaveRooftop()
@@ -333,49 +355,8 @@ namespace BountyHunter.Thieves
             if (hovering != null) Destroy(hovering.gameObject);
             hovering = null;
             if (wallPanel != null) wallPanel.SetActive(false);
-            foreach (GameObject piece in putAway)
-            {
-                if (piece != null) piece.SetActive(true);
-            }
-
-            putAway.Clear();
-            foreach (Behaviour part in switchedOff)
-            {
-                if (part != null) part.enabled = true;
-            }
-
-            switchedOff.Clear();
-            foreach ((PlayerScoreTag tag, Vector3 was) in linedUp)
-            {
-                if (tag == null) continue;
-                tag.transform.position = was;
-                tag.ShowFace(false);
-            }
-
-            linedUp.Clear();
-        }
-
-        // With the dogs' pictures away, their score tags stand in one straight row, level with the
-        // highest of them (each keeps its place across), each with its character's face by the name.
-        private void LineUpScoreTags()
-        {
-            linedUp.Clear();
-            if (scoreTags == null) return;
-
-            float top = float.NegativeInfinity;
-            foreach (PlayerScoreTag tag in scoreTags)
-            {
-                if (tag != null && tag.InPlay) top = Mathf.Max(top, tag.transform.position.y);
-            }
-
-            foreach (PlayerScoreTag tag in scoreTags)
-            {
-                if (tag == null || !tag.InPlay) continue;
-                Transform place = tag.transform;
-                linedUp.Add((tag, place.position));
-                place.position = new Vector3(place.position.x, top, place.position.z);
-                tag.ShowFace(true);
-            }
+            staging?.PutBack();
+            staging = null;
         }
 
         private Rect FeatherFloor()

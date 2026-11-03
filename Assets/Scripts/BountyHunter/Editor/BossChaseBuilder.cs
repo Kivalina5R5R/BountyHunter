@@ -39,7 +39,8 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Sheets = BossArtImport.Folder + "Sheets/";
         private const string HatPath = BossArtImport.Folder + "BossHat.png";
         // The boss's rooftop map pictures.
-        private const string BossMap = "Assets/ART/BG/MapBoss/";
+        // The chase is boss phase 2; its pictures are in their own folder.
+        private const string BossMap = "Assets/ART/BG/MapBoss/P2/";
         private const string BossWallPath = "Assets/Prefabs/Boss/Boss Wall.prefab";
         // The feather blowing about in the entrance, the same as the cut-in's.
         private const string FeatherPath = BossTransitionArtImport.Folder + "Boss Open/Boss_Feather.png";

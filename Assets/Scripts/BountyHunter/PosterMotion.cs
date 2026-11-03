@@ -7,7 +7,8 @@ namespace BountyHunter.Thieves
     // Moves one WANTED poster on the cork board. Putting it up pushes a pin in, unrolls the poster
     // down from the pin and lets it swing to rest. Catching its thief slams a CAUGHT stamp on it,
     // then the pin pops out and the poster drops away. Taking it down without a catch (a new stage)
-    // skips the stamp. The row closing up glides it, pin and all, to its new spot.
+    // skips the stamp. The row closing up glides it, pin and all, to its new spot; a fuller row
+    // shrinks it (SetSize), which it grows or shrinks into as it glides.
     [RequireComponent(typeof(CanvasGroup))]
     public sealed class PosterMotion : MonoBehaviour
     {
@@ -33,7 +34,10 @@ namespace BountyHunter.Thieves
 
         private RectTransform rect;
         private CanvasGroup group;
+        // Its scale in the scene, the scale it is meant to have now (SetSize), and the one it shows.
+        private Vector3 fullScale;
         private Vector3 baseScale;
+        private Vector3 shownScale;
         private RectTransform layer;
         private PosterPin pin;
         private PosterStamp stamp;
@@ -43,7 +47,7 @@ namespace BountyHunter.Thieves
         private float tilt;
 
         // The poster's size in the layer's units.
-        private Vector2 Size => Vector2.Scale(rect.rect.size, baseScale);
+        private Vector2 Size => Vector2.Scale(rect.rect.size, shownScale);
 
         // From the pin down to the poster's centre, in the layer's units.
         private float PinToCentre => Size.y * (0.5f - pinInset);
@@ -55,9 +59,22 @@ namespace BountyHunter.Thieves
             layer = effectLayer;
             rect = (RectTransform)transform;
             group = GetComponent<CanvasGroup>();
-            baseScale = rect.localScale;
+            fullScale = rect.localScale;
+            baseScale = fullScale;
+            shownScale = fullScale;
             pin = PosterPin.Create(layer, Size.x * pinSize);
             stamp = PosterStamp.Create(rect, stampText, stampColor, font);
+        }
+
+        // Its width at full size, in the layer's units.
+        public float FullWidth => rect.rect.size.x * fullScale.x;
+
+        // Sizes it to share of its full size: at once when it is not on the wall, else as it next
+        // glides (SlideTo) or goes up (Appear).
+        public void SetSize(float share)
+        {
+            baseScale = fullScale * share;
+            if (!gameObject.activeInHierarchy) shownScale = baseScale;
         }
 
         public void HideNow()
@@ -114,7 +131,7 @@ namespace BountyHunter.Thieves
         // next before it is stamped), and it must come down where it is, not jump to that slot.
         private void StayWhereItHangs()
         {
-            float unrolled = baseScale.y != 0f ? rect.localScale.y / baseScale.y : 1f;
+            float unrolled = shownScale.y != 0f ? rect.localScale.y / shownScale.y : 1f;
             float degrees = rect.localEulerAngles.z;
             Vector2 pinPoint = rect.anchoredPosition - Rotate(Vector2.down * (PinToCentre * unrolled), degrees);
             home = pinPoint - Rotate(Vector2.up * PinToCentre, tilt);
@@ -128,6 +145,7 @@ namespace BountyHunter.Thieves
 
         private IEnumerator AppearRoutine(float delay)
         {
+            shownScale = baseScale;
             float side = Random.value < 0.5f ? -1f : 1f;
             pin.Hide();
             Hang(PinPoint(), tilt, 0f, 0f);
@@ -165,16 +183,19 @@ namespace BountyHunter.Thieves
 
             // Swings a little behind the move, as if carried by its pin.
             Vector2 to = home;
+            Vector3 fromScale = shownScale;
             float lean = Mathf.Clamp((from.x - to.x) * 0.05f, -7f, 7f);
             for (float time = 0f; time < slideSeconds; time += Time.deltaTime)
             {
                 float u = time / slideSeconds;
+                shownScale = Vector3.Lerp(fromScale, baseScale, Mathf.SmoothStep(0f, 1f, u));
                 Vector2 point = PinPoint(Vector2.Lerp(from, to, 1f - Mathf.Pow(1f - u, 3f)));
                 Hang(point, tilt + lean * Mathf.Sin(u * Mathf.PI), 1f, 1f);
                 pin.Place(point, 1f, 1f);
                 yield return null;
             }
 
+            shownScale = baseScale;
             Hang(PinPoint(), tilt, 1f, 1f);
             pin.Place(PinPoint(), 1f, 1f);
             playing = null;
@@ -255,7 +276,7 @@ namespace BountyHunter.Thieves
         {
             rect.anchoredPosition = position;
             rect.localRotation = Quaternion.Euler(0f, 0f, degrees);
-            rect.localScale = new Vector3(baseScale.x, baseScale.y * unrolled, baseScale.z);
+            rect.localScale = new Vector3(shownScale.x, shownScale.y * unrolled, shownScale.z);
             group.alpha = alpha;
         }
 

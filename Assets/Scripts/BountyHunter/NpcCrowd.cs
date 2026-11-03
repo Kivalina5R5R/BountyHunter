@@ -96,6 +96,15 @@ namespace BountyHunter.Thieves
             schedule = StartCoroutine(ComeAndGo());
         }
 
+        // Sends count more passers-by in at once, past mostOnFloor (the market's loudspeaker); only
+        // kinds not out already come, so fewer when most are out.
+        public void CallOut(int count)
+        {
+            if (schedule == null) return;
+
+            for (int i = 0; i < count; i++) SendOne();
+        }
+
         // A few at the start, then one more every arriveEverySeconds while there is room.
         private IEnumerator ComeAndGo()
         {

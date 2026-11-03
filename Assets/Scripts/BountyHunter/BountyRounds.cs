@@ -115,12 +115,22 @@ namespace BountyHunter.Thieves
             }
         }
 
-        // Raises every wanted thief's bounty by amount (the market's lucky wheel).
-        public void RaiseEveryBounty(int amount)
+        // More thieves join the round until upTo are wanted (the market's loudspeaker), each with its
+        // poster pinned up at the end of the row; catching them all still ends the round. Returns
+        // how many came.
+        public int CallOutThieves(int upTo)
         {
-            if (stopped) return;
+            // Between rounds (every thief caught, the next round on its way) nobody comes.
+            if (stopped || waitingForIntro || board == null || spawner == null || wanted.Count == 0) return 0;
 
-            foreach (WantedPoster poster in wanted.Values) poster.RaiseBounty(amount);
+            IReadOnlyList<WantedPoster> posters = board.AddPosters(upTo - wanted.Count, 0f);
+            for (int i = 0; i < posters.Count; i++)
+            {
+                wanted[spawner.SpawnThief(posters[i].Thief, i * board.PinStagger + thiefAfterPoster)] = posters[i];
+            }
+
+            if (posters.Count > 0) Debug.Log($"[BountyRounds] {posters.Count} more thieves called out, {wanted.Count} wanted", this);
+            return posters.Count;
         }
 
         // Keeps the first round from starting until Begin; called by the intro before Start.

@@ -127,6 +127,8 @@ namespace BountyHunter.Thieves
             {
                 bushScatter.Clearing += EvictHiddenThieves;
                 bushScatter.Scattered += RegisterBushes;
+                bushScatter.Added += OnBushesAdded;
+                bushScatter.Removing += OnBushRemoving;
                 RegisterBushes();
             }
         }
@@ -136,6 +138,8 @@ namespace BountyHunter.Thieves
             if (bushScatter == null) return;
             bushScatter.Clearing -= EvictHiddenThieves;
             bushScatter.Scattered -= RegisterBushes;
+            bushScatter.Added -= OnBushesAdded;
+            bushScatter.Removing -= OnBushRemoving;
         }
 
         public HidingBush FindHidingBush(ThiefController thief, IReadOnlyList<Vector3> playerPositions, HidingBush excluded)
@@ -204,23 +208,42 @@ namespace BountyHunter.Thieves
         private void RegisterBushes()
         {
             hidingBushes.Clear();
-            foreach (ScatteredBush scattered in bushScatter.Bushes)
-            {
-                if (scattered.Transform == null) continue;
-
-                HidingBush bush = scattered.Transform.GetComponent<HidingBush>();
-                if (bush == null) bush = scattered.Transform.gameObject.AddComponent<HidingBush>();
-                bush.Initialize(players, scattered.Radius, scattered.Reach, secondsToFlushBush);
-                BushReaction reaction = bush.GetComponent<BushReaction>();
-                if (reaction == null) bush.gameObject.AddComponent<BushReaction>().Initialize(leafSprites);
-                BushWalker walker = bush.GetComponent<BushWalker>();
-                if (walker == null) walker = bush.gameObject.AddComponent<BushWalker>();
-                bushScatter.CentreLimits(scattered.Reach, out Vector2 moveMin, out Vector2 moveMax);
-                walker.Initialize(players, hidingBushes, moveMin, moveMax);
-                hidingBushes.Add(bush);
-            }
+            foreach (ScatteredBush scattered in bushScatter.Bushes) Register(scattered);
 
             Debug.Log($"[ThiefSpawner] {hidingBushes.Count} bushes ready for hiding ({secondsToFlushBush:0.#}s on a bush flushes its thief)", this);
+        }
+
+        // Bushes laid during play (the market's lucky wheel) become hiding spots too.
+        private void OnBushesAdded(IReadOnlyList<ScatteredBush> added)
+        {
+            foreach (ScatteredBush scattered in added) Register(scattered);
+            Debug.Log($"[ThiefSpawner] {added.Count} more hiding spots, {hidingBushes.Count} in all", this);
+        }
+
+        // A bush taken away during play: a thief inside comes out first.
+        private void OnBushRemoving(Transform removed)
+        {
+            HidingBush bush = removed.GetComponent<HidingBush>();
+            if (bush == null) return;
+
+            bush.EvictOccupant();
+            hidingBushes.Remove(bush);
+        }
+
+        private void Register(ScatteredBush scattered)
+        {
+            if (scattered.Transform == null) return;
+
+            HidingBush bush = scattered.Transform.GetComponent<HidingBush>();
+            if (bush == null) bush = scattered.Transform.gameObject.AddComponent<HidingBush>();
+            bush.Initialize(players, scattered.Radius, scattered.Reach, secondsToFlushBush);
+            BushReaction reaction = bush.GetComponent<BushReaction>();
+            if (reaction == null) bush.gameObject.AddComponent<BushReaction>().Initialize(leafSprites);
+            BushWalker walker = bush.GetComponent<BushWalker>();
+            if (walker == null) walker = bush.gameObject.AddComponent<BushWalker>();
+            bushScatter.CentreLimits(scattered.Reach, out Vector2 moveMin, out Vector2 moveMax);
+            walker.Initialize(players, hidingBushes, moveMin, moveMax);
+            hidingBushes.Add(bush);
         }
 
         // Sprites thrown out of hiding spots registered from now on (leaves for bushes, trash for bins).

@@ -8,7 +8,8 @@ using Random = UnityEngine.Random;
 namespace BountyHunter.Thieves
 {
     // Drops stun guns on the floor during the stages that have them (2 and 3): the first
-    // firstDropSeconds into the stage, then every secondsBetweenDrops, a few at a time, in the open:
+    // firstDropSeconds into the stage, then every secondsBetweenDrops, a few at a time (a stage in
+    // stageDrops, the market, drops fewer, less often), in the open:
     // well apart from each other and the players, and off the hiding spots, the things on the floor a
     // player uses (FloorSwitch, such as the police tape crate) and the mud; of a number of random
     // spots that are clear, the one with the most room round it. A player who steps within pickUpRadius of one picks it up
@@ -19,6 +20,21 @@ namespace BountyHunter.Thieves
     // noticed; whatever is left goes when the floor is cleared or the next stage starts.
     public sealed class StunGunPickups : MonoBehaviour
     {
+        // A stage that drops guns its own way instead of the usual Drops settings.
+        [Serializable]
+        private sealed class StageDrops
+        {
+            [SerializeField] private int stage = 3;
+            [SerializeField, Min(1f)] private float secondsBetweenDrops = 25f;
+            [SerializeField] private Vector2Int gunsPerDrop = new Vector2Int(1, 1);
+            [SerializeField, Min(1)] private int mostGunsWaiting = 2;
+
+            public int Stage => stage;
+            public float SecondsBetweenDrops => secondsBetweenDrops;
+            public Vector2Int GunsPerDrop => gunsPerDrop;
+            public int MostGunsWaiting => mostGunsWaiting;
+        }
+
         [SerializeField] private BountyRounds rounds;
         [SerializeField] private StunGuns guns;
         [SerializeField] private UWBPlayerSpawner players;
@@ -34,6 +50,8 @@ namespace BountyHunter.Thieves
         // Never more than this many waiting on the floor.
         [SerializeField, Min(1)] private int mostGunsWaiting = 5;
         [SerializeField, Min(0.1f)] private float pickUpRadius = 0.5f;
+        // Stages with fewer drops: the market, where the lucky wheel can hand everyone a gun too.
+        [SerializeField] private StageDrops[] stageDrops = { new StageDrops() };
 
         [Header("Thieves")]
         // A calm thief this close to a gun may go for it, checked this often, at this times its
@@ -63,6 +81,10 @@ namespace BountyHunter.Thieves
         private readonly List<Vector3> taken = new List<Vector3>();
         private bool dropping;
         private float nextDropAt;
+        // This stage's drops (stageDrops, or the usual settings).
+        private float dropEverySeconds;
+        private Vector2Int dropCount;
+        private int mostWaiting;
         private float nextThiefLookAt;
         // When each thief that has snatched a gun may snatch another.
         private readonly Dictionary<ThiefController, float> thiefReadyAt = new Dictionary<ThiefController, float>();
@@ -100,6 +122,25 @@ namespace BountyHunter.Thieves
 
             dropping = true;
             nextDropAt = Time.time + firstDropSeconds;
+            UseDropsOf(stage);
+        }
+
+        private void UseDropsOf(int stage)
+        {
+            dropEverySeconds = secondsBetweenDrops;
+            dropCount = gunsPerDrop;
+            mostWaiting = mostGunsWaiting;
+            if (stageDrops == null) return;
+
+            foreach (StageDrops drops in stageDrops)
+            {
+                if (drops == null || drops.Stage != stage) continue;
+
+                dropEverySeconds = drops.SecondsBetweenDrops;
+                dropCount = drops.GunsPerDrop;
+                mostWaiting = drops.MostGunsWaiting;
+                return;
+            }
         }
 
         // No more drops, and the guns still waiting are taken away.
@@ -122,9 +163,9 @@ namespace BountyHunter.Thieves
 
             if (Time.time >= nextDropAt)
             {
-                nextDropAt = Time.time + secondsBetweenDrops;
-                int count = Random.Range(gunsPerDrop.x, Mathf.Max(gunsPerDrop.x, gunsPerDrop.y) + 1);
-                for (int i = 0; i < count && waiting.Count < mostGunsWaiting; i++) Drop();
+                nextDropAt = Time.time + dropEverySeconds;
+                int count = Random.Range(dropCount.x, Mathf.Max(dropCount.x, dropCount.y) + 1);
+                for (int i = 0; i < count && waiting.Count < mostWaiting; i++) Drop();
             }
 
             PickUp();
