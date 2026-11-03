@@ -161,7 +161,11 @@ namespace BountyHunter.Thieves
 
         // What the boss phases put away on the wall and how the score tags line up (the vault before
         // the chase clears the wall the same way).
-        public BossStaging NewStaging() => new BossStaging(hideDuringChase, switchOffDuringChase, scoreTags);
+        public BossStaging NewStaging()
+        {
+            BossScoreTagSpots tagSpots = wallPanel != null ? wallPanel.GetComponentInChildren<BossScoreTagSpots>(true) : null;
+            return new BossStaging(hideDuringChase, switchOffDuringChase, scoreTags, tagSpots);
+        }
 
         // How long the chase lasts, its entrance and all (the vault before it lasts as long).
         public float Seconds => entranceSeconds + chaseSeconds;

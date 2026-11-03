@@ -68,8 +68,10 @@ namespace BountyHunter.Thieves
         private void PrepareFrame(float pixelsPerUnit)
         {
             int rows = Mathf.CeilToInt(frames / (float)columns);
-            float cellWidth = texture.width / (float)columns;
-            float cellHeight = texture.height / (float)rows;
+            // Rounded down: Tools/pad_textures_to_4.py adds up to 3 pixels on the right and bottom
+            // so the sheet can be compressed, and those pixels belong to no cell.
+            float cellWidth = Mathf.Floor(texture.width / (float)columns);
+            float cellHeight = Mathf.Floor(texture.height / (float)rows);
             int i = preparedFrames;
             var cell = new Rect((i % columns) * cellWidth, texture.height - (i / columns + 1) * cellHeight, cellWidth, cellHeight);
             cached[i] = Sprite.Create(texture, cell, pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);

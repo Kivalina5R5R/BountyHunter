@@ -19,6 +19,9 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Art = "Assets/ART/Vault/";
         private const string Diamond = Art + "DiamondPedestal.png";
         private const string LightSwitch = Art + "LightSwitch.png";
+        // The blackout's dark sheet (made from the Vault Darkness shader when missing).
+        private const string Darkness = Art + "VaultDarkness.mat";
+        private const string DarknessShader = "BountyHunter/Vault Darkness";
         private static readonly string[] Sparkles = { "Assets/ART/Park/Sparkle1.png", "Assets/ART/Park/Sparkle2.png" };
         private const string SelectRing = "Assets/ART/Player/Floor/Load.png";
         private const string RadialFill = "Assets/ART/Player/Floor/Sprite_RadialFill.mat";
@@ -43,6 +46,7 @@ namespace BountyHunter.Thieves.EditorTools
 
             ImportAsSprite(Diamond);
             ImportAsSprite(LightSwitch);
+            MakeDarkness();
 
             var switcher = Object.FindFirstObjectByType<MapSwitcher>(FindObjectsInactive.Include);
             var chase = Object.FindFirstObjectByType<BossChase>(FindObjectsInactive.Include);
@@ -83,11 +87,13 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= CopyList(chaseFields.FindProperty("scoreTags"), vaultFields.FindProperty("scoreTags"));
             changed |= Fill(vaultFields, "diamondPedestal", AssetDatabase.LoadAssetAtPath<Sprite>(Diamond));
             changed |= Fill(vaultFields, "lightSwitch", AssetDatabase.LoadAssetAtPath<Sprite>(LightSwitch));
+            changed |= Fill(vaultFields, "darknessMaterial", AssetDatabase.LoadAssetAtPath<Material>(Darkness));
             changed |= Fill(vaultFields, "floorPicture", AssetDatabase.LoadAssetAtPath<Texture2D>(VaultFloor));
             changed |= Fill(vaultFields, "wallPicture", AssetDatabase.LoadAssetAtPath<Sprite>(VaultWall));
             changed |= Fill(vaultFields, "stealRing", AssetDatabase.LoadAssetAtPath<Sprite>(SelectRing));
             changed |= Fill(vaultFields, "radialFill", AssetDatabase.LoadAssetAtPath<Material>(RadialFill));
             changed |= FillSprites(vaultFields.FindProperty("sparkles"), Sparkles);
+            changed |= FillThieves(vaultFields.FindProperty("thiefKinds"));
             vaultFields.ApplyModifiedPropertiesWithoutUndo();
 
             var switcherFields = new SerializedObject(switcher);
@@ -112,6 +118,16 @@ namespace BountyHunter.Thieves.EditorTools
             Debug.Log("[BossVaultAutoWire] Boss phase 1 (the vault) is set up before the chase; save the scene to keep it.", finale);
         }
 
+        private static void MakeDarkness()
+        {
+            if (AssetDatabase.LoadAssetAtPath<Material>(Darkness) != null) return;
+
+            Shader shader = Shader.Find(DarknessShader);
+            if (shader == null) return;
+
+            AssetDatabase.CreateAsset(new Material(shader) { name = "VaultDarkness" }, Darkness);
+        }
+
         // Sets an empty reference; true when it did.
         private static bool Fill(SerializedObject fields, string name, Object value)
         {
@@ -130,6 +146,23 @@ namespace BountyHunter.Thieves.EditorTools
             to.arraySize = from.arraySize;
             for (int i = 0; i < from.arraySize; i++) to.GetArrayElementAtIndex(i).objectReferenceValue = from.GetArrayElementAtIndex(i).objectReferenceValue;
             return true;
+        }
+
+        // Every thief prefab (Assets/Prefabs/Thieves), for the boss to pass for, when the list is empty.
+        private static bool FillThieves(SerializedProperty list)
+        {
+            if (list == null || list.arraySize > 0) return false;
+
+            var thieves = new System.Collections.Generic.List<ThiefController>();
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs/Thieves" }))
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+                if (prefab != null && prefab.TryGetComponent(out ThiefController thief)) thieves.Add(thief);
+            }
+
+            list.arraySize = thieves.Count;
+            for (int i = 0; i < thieves.Count; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = thieves[i];
+            return thieves.Count > 0;
         }
 
         private static bool FillSprites(SerializedProperty list, string[] paths)

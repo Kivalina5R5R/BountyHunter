@@ -93,6 +93,14 @@ namespace BountyHunter.Thieves
             shakeAmount = Mathf.MoveTowards(shakeAmount, bush.Occupant != null || bush.IsHeldByOther ? 1f : 0f, dt * 3f);
             urgency = Mathf.MoveTowards(urgency, TargetUrgency(), dt * 2.5f);
 
+            // Still: leaves its size to others (a bush springing up or shrinking away during play)
+            // and rests at whatever size that is.
+            if (shakeAmount <= 0f && swellTime >= swellSeconds)
+            {
+                restScale = transform.localScale;
+                return;
+            }
+
             // Phases advance by the current speed, so speeding up stays smooth instead of jumping.
             float rustlesPerSecond = Mathf.Lerp(calmRustlesPerSecond, urgentRustlesPerSecond, urgency);
             puffPhase += dt * rustlesPerSecond * Mathf.PI * 2f;

@@ -168,8 +168,13 @@ namespace BountyHunter.Thieves
         }
 
         // A cone of light, narrow at the lamp (top) and widening and fading downwards, soft at its sides.
+        // Drawn once and shared by every pass, rather than a new texture per flight.
+        private static Sprite beamSprite;
+
         private static Sprite BeamSprite()
         {
+            if (beamSprite != null) return beamSprite;
+
             const int width = 64;
             const int height = 256;
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, false) { name = "Searchlight Beam", wrapMode = TextureWrapMode.Clamp };
@@ -190,7 +195,8 @@ namespace BountyHunter.Thieves
 
             texture.SetPixels32(pixels);
             texture.Apply();
-            return Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 1f), 100f);
+            beamSprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 1f), 100f);
+            return beamSprite;
         }
     }
 }

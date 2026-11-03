@@ -64,6 +64,9 @@ namespace BountyHunter.Thieves
         private Coroutine schedule;
         private readonly List<Vector3> playerPositions = new List<Vector3>();
         private readonly List<Vector3> walkerPositions = new List<Vector3>();
+        // Others on the floor the passers-by keep clear of too (the vault's boss), handed to every
+        // passer-by at once so ones already out follow changes.
+        private readonly OtherWalkers alsoAvoided = new OtherWalkers();
 
         // Where a passer-by comes onto the floor: over an edge (heading inward) or out of a hiding spot.
         private struct Entrance
@@ -73,6 +76,32 @@ namespace BountyHunter.Thieves
             public HidingBush Bush;
         }
         private SpawnerPlayerLocator players;
+
+        // Every walker group in others, as one.
+        private sealed class OtherWalkers : IFloorWalkers
+        {
+            private readonly List<IFloorWalkers> others = new List<IFloorWalkers>();
+
+            public void Add(IFloorWalkers walkers)
+            {
+                if (walkers != null && !others.Contains(walkers)) others.Add(walkers);
+            }
+
+            public void Remove(IFloorWalkers walkers)
+            {
+                others.Remove(walkers);
+            }
+
+            public void AddPositions(List<Vector3> positions, Transform except)
+            {
+                foreach (IFloorWalkers group in others) group.AddPositions(positions, except);
+            }
+
+            public void AddTakenSpots(List<Vector3> spots)
+            {
+                foreach (IFloorWalkers group in others) group.AddTakenSpots(spots);
+            }
+        }
 
         // The kinds out on the floor now (or waiting to come in), and every kind there is.
         public IReadOnlyCollection<NpcWalker> KindsOut => kindOf.Values;
@@ -130,7 +159,7 @@ namespace BountyHunter.Thieves
 
             NpcWalker walker = Instantiate(kind, transform);
             walker.name = kind.name;
-            walker.Initialize(players, new IFloorWalkers[] { this, thieves }, thieves, areaMin, areaMax);
+            walker.Initialize(players, new IFloorWalkers[] { this, thieves, alsoAvoided }, thieves, areaMin, areaMax);
             walker.Bumped += OnBumped;
             walker.Left += OnLeft;
             walkers.Add(walker);
@@ -182,6 +211,17 @@ namespace BountyHunter.Thieves
         }
 
         // The passers-by on the floor now (not ones waiting off it to come back).
+        // The passers-by keep clear of walkers too (and come in away from them) until StopAvoiding.
+        public void AlsoAvoid(IFloorWalkers walkers)
+        {
+            alsoAvoided.Add(walkers);
+        }
+
+        public void StopAvoiding(IFloorWalkers walkers)
+        {
+            alsoAvoided.Remove(walkers);
+        }
+
         public void AddPositions(List<Vector3> positions, Transform except)
         {
             foreach (NpcWalker walker in walkers)
@@ -276,6 +316,8 @@ namespace BountyHunter.Thieves
                 thieves.AddPositions(walkerPositions, null);
                 thieves.AddTakenSpots(walkerPositions);
             }
+
+            alsoAvoided.AddPositions(walkerPositions, null);
 
             var candidates = new List<Entrance>();
             for (int i = 0; i < 24; i++)

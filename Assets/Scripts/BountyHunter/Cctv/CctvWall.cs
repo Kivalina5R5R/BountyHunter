@@ -96,6 +96,7 @@ namespace BountyHunter.Thieves
         private Transform[] screenOrder;
         private DateTime clockStart;
         private float clockStartedAt = -1f;
+        private int clockShownSecond = -1;
         private int shownSeconds = -1;
 
         // Moments for its sounds (CctvSfx): a thief jumping (into the picture or out of a bin) and
@@ -149,7 +150,13 @@ namespace BountyHunter.Thieves
             if (recLight != null) recLight.enabled = Mathf.Repeat(Time.time, 1f) < 0.6f;
             if (clock != null && clockStartedAt >= 0f)
             {
-                clock.text = clockStart.AddSeconds(Time.time - clockStartedAt).ToString("HH:mm:ss");
+                // Only when the shown second changes, so the label is not rebuilt every frame.
+                int second = Mathf.FloorToInt(Time.time - clockStartedAt);
+                if (second != clockShownSecond)
+                {
+                    clockShownSecond = second;
+                    clock.text = clockStart.AddSeconds(second).ToString("HH:mm:ss");
+                }
             }
         }
 

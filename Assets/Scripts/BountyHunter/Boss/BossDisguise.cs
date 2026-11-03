@@ -59,6 +59,13 @@ namespace BountyHunter.Thieves
         // Puts on the look of kind (a passer-by prefab); its frames play as the boss moves.
         public void Wear(NpcWalker kind, BossSettings settings)
         {
+            Wear(kind, kind.ArtFacesRight, settings);
+        }
+
+        // Puts on the look of any character prefab (a passer-by or a thief): its picture and frames,
+        // which face right when facesRight.
+        public void Wear(Component kind, bool facesRight, BossSettings settings)
+        {
             TakeOff();
             var frames = kind.GetComponentInChildren<ThiefFrameAnimation>(true);
             GameObject source = frames != null ? frames.gameObject : kind.GetComponentInChildren<SpriteRenderer>(true).gameObject;
@@ -69,7 +76,7 @@ namespace BountyHunter.Thieves
             // A shadow like the real passers-by, so the missing one gives nothing away.
             CharacterShadow.Add(lookBody);
             StandOnFeet();
-            artFacesRight = kind.ArtFacesRight;
+            artFacesRight = facesRight;
             shimmerColor = settings.ShimmerColor;
             shimmerEvery = settings.ShimmerEverySeconds;
             sinceShimmer = 0f;

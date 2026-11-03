@@ -50,7 +50,6 @@ namespace BountyHunter.Thieves
         // left edge and big enough that its arms hide the whole edge, from under the name tab to the bottom.
         [SerializeField] private Vector2 badgeSpot = new Vector2(-362f, -30f);
         [SerializeField, Min(1f)] private float badgeSize = 440f;
-
         private int currentScore;
         private int shownScore;
         private Coroutine counting;
@@ -60,6 +59,8 @@ namespace BountyHunter.Thieves
         private bool nameAutoSized;
         private float nameFontSize;
         private bool faceShown;
+        // Set by PlaceBadgeOn: where the star goes for now instead of badgeSpot.
+        private RectTransform badgePlace;
 
         public int PlayerNumber => playerNumber;
         public int Score => currentScore;
@@ -70,8 +71,22 @@ namespace BountyHunter.Thieves
         // Where the leader's star goes on this tag, in world space, and its width there.
         public void GetBadge(out Vector3 worldPosition, out float worldSize)
         {
+            if (badgePlace != null)
+            {
+                worldPosition = badgePlace.TransformPoint(badgePlace.rect.center);
+                worldSize = badgePlace.rect.width * badgePlace.lossyScale.x;
+                return;
+            }
+
             worldPosition = transform.TransformPoint(badgeSpot);
             worldSize = badgeSize * transform.lossyScale.x;
+        }
+
+        // The star goes on place (its middle, its width the star's size) until this is called again
+        // with null, which puts it back at badgeSpot.
+        public void PlaceBadgeOn(RectTransform place)
+        {
+            badgePlace = place;
         }
 
         private void Awake()

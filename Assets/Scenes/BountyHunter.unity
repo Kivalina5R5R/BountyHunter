@@ -4157,6 +4157,11 @@ MonoBehaviour:
   - {fileID: 1804798657}
   - {fileID: 879857161}
   npcs: {fileID: 1530458020}
+  thiefKinds:
+  - {fileID: 3971676936731283268, guid: 15395a36362c1444aa4bc81f623aa4f0, type: 3}
+  - {fileID: 6128973433359212458, guid: ff3804531f97ddd42a4d74adbd17fe38, type: 3}
+  - {fileID: 3703331366831257569, guid: 9e7bf876ff053344990bd2eb880026b7, type: 3}
+  - {fileID: 567263788121558056, guid: ad37426227231e244869384d5b35bd39, type: 3}
   hidingSpots: {fileID: 1226030214}
   timer: {fileID: 1445836966812051384}
   chase: {fileID: 1105797308}
@@ -4174,12 +4179,11 @@ MonoBehaviour:
   stealRadius: 0.45
   stealSeconds: 4
   drainSeconds: 24
-  speeds:
-    Approach: 1.25
-    Sneak: 0.8
-    Disguised: 0.6
+  bossSpeeds:
+    Approach: 0.7
+    Sneak: 0.5
+    Disguised: 0.35
     BumpRadius: 0.6
-    BumpCooldownSeconds: 1.5
   arriveAfterSeconds: 1.5
   sneakSeenWithin: 1.8
   alwaysSeenNear: 1.2
@@ -4188,6 +4192,7 @@ MonoBehaviour:
   disguiseSeconds: 8
   warpPuffRadius: 0.7
   warpPuffSeconds: 0.6
+  warpDelaySeconds: 0.5
   smokeFirstAt: 7
   smokeEvery: {x: 9, y: 13}
   smokeWhenPlayerWithin: 2.5
@@ -4196,9 +4201,10 @@ MonoBehaviour:
   blackoutFirstAt: 16
   blackoutSeconds: 8
   blackoutEverySeconds: 26
+  darknessMaterial: {fileID: 2100000, guid: 0b727ebe560bc7c45875227dbe115f67, type: 2}
   flashlightRadius: 0.9
-  flashSeconds: 0.14
-  flashEvery: {x: 2, y: 3}
+  flashlightLift: 0.35
+  lampRadius: 1.1
   darkAlpha: 0.94
   switchSpots:
   - {x: -4.6, y: -1.75}
@@ -4210,17 +4216,19 @@ MonoBehaviour:
   sparkles:
   - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
   - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
-  lasers:
+  laserPasses:
   - Upright: 1
-    SweepSeconds: 14
-    Phase: 0
+    CrossSeconds: 5
+    WaitSeconds: 13
+    StartAfter: 3
   - Upright: 1
-    SweepSeconds: 19
-    Phase: 0.5
+    CrossSeconds: 6
+    WaitSeconds: 17
+    StartAfter: 8
   - Upright: 0
-    SweepSeconds: 11
-    Phase: 0.25
-  laserSweepInset: 0.3
+    CrossSeconds: 4
+    WaitSeconds: 21
+    StartAfter: 5
   laserWidth: 0.07
   laserReach: 0.18
   laserColour: {r: 1, g: 0.15, b: 0.2, a: 1}
@@ -4234,8 +4242,7 @@ MonoBehaviour:
   damageColor: {r: 1, g: 0.22, b: 0.16, a: 1}
   damageFont: {fileID: 11400000, guid: d4e98a79a56adb245b3f28d26d672faf, type: 2}
   damageMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
-  guardHeading: GUARD THE DIAMOND!
-  stealingHeading: DIAMOND {0}%!
+  phaseHeading: BOSS PHASE 1
 --- !u!114 &863286020
 MonoBehaviour:
   m_ObjectHideFlags: 0

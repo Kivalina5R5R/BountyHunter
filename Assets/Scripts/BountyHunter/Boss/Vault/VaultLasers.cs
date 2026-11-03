@@ -1,31 +1,37 @@
 using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace BountyHunter.Thieves
 {
     // The vault's laser beams: each runs right across the floor, from the top edge to the bottom
-    // (Upright) or from the left edge to the right, and sweeps back and forth across the floor,
-    // easing as it turns at the far edges, once every SweepSeconds (starting Phase of the way through
-    // a sweep). They glow over the dark, so they show in a blackout too. A beam the boss touches
-    // (HitBy) shakes for shakeSeconds, hardest where it was touched and less towards its ends, and
-    // glows brighter and thicker meanwhile. Each beam is drawn as a row of short pieces so it can bend
-    // as it shakes. Lies flat on the floor.
+    // (Upright) or from the left edge to the right, and passes over the floor once: it comes in past
+    // one edge (either, at random), crosses at an even pace in CrossSeconds and goes out past the
+    // other, then stays away for WaitSeconds before the next pass (the first after StartAfter).
+    // Hidden (SetShown false, as in a blackout) no beam shows or can be touched, and each comes back
+    // only from an edge once shown again. A beam the boss touches (HitBy) shakes for shakeSeconds,
+    // hardest where it was touched and less towards its ends, and glows brighter and thicker
+    // meanwhile. Each beam is drawn as a row of short pieces so it can bend as it shakes. Lies flat
+    // on the floor.
     public sealed class VaultLasers : MonoBehaviour
     {
-        // One beam: upright (top to bottom, sweeping left and right) or lying (left to right,
-        // sweeping up and down), how long one sweep there and back takes, and where in it it starts.
+        // One beam: upright (top to bottom, passing left or right) or lying (left to right, passing
+        // up or down), how long one pass across takes, how long it stays away after, and how long
+        // before its first pass.
         [Serializable]
         public struct Beam
         {
             public bool Upright;
-            public float SweepSeconds;
-            [Range(0f, 1f)] public float Phase;
+            public float CrossSeconds;
+            public float WaitSeconds;
+            public float StartAfter;
 
-            public Beam(bool upright, float sweepSeconds, float phase)
+            public Beam(bool upright, float crossSeconds, float waitSeconds, float startAfter)
             {
                 Upright = upright;
-                SweepSeconds = sweepSeconds;
-                Phase = phase;
+                CrossSeconds = crossSeconds;
+                WaitSeconds = waitSeconds;
+                StartAfter = startAfter;
             }
         }
 
@@ -46,40 +52,57 @@ namespace BountyHunter.Thieves
             public SpriteRenderer[] Pieces;
             public float ShookAt = float.MinValue;
             public float ShakeAlong;
+            // Crossing now: since PassStart, from the low edge (left or bottom) when FromLow.
+            public bool Crossing;
+            public float PassStart;
+            public bool FromLow;
+            public float NextAt;
         }
 
         private Lit[] beams;
         private Vector2 areaMin;
         private Vector2 areaMax;
-        // How far in from the edges a beam turns round.
-        private float sweepInset;
         private float width;
         private Color colour;
-        private float bornAt;
+        private bool shown = true;
 
-        // Beams across the floor (areaMin to areaMax, x and world z), width metres wide, turning
-        // sweepInset in from the edges, drawn at sortingOrder (over the blackout's dark).
-        public static VaultLasers Create(Transform parent, Vector2 areaMin, Vector2 areaMax, Beam[] beams, float sweepInset, float width, Color colour, int sortingOrder)
+        // Beams across the floor (areaMin to areaMax, x and world z), width metres wide, drawn at
+        // sortingOrder.
+        public static VaultLasers Create(Transform parent, Vector2 areaMin, Vector2 areaMax, Beam[] beams, float width, Color colour, int sortingOrder)
         {
             var holder = new GameObject("Lasers");
             holder.transform.SetParent(parent, false);
             var lasers = holder.AddComponent<VaultLasers>();
             lasers.areaMin = areaMin;
             lasers.areaMax = areaMax;
-            lasers.sweepInset = sweepInset;
             lasers.width = width;
             lasers.colour = colour;
-            lasers.bornAt = Time.time;
             lasers.beams = new Lit[beams.Length];
             for (int i = 0; i < beams.Length; i++)
             {
-                var lit = new Lit { Beam = beams[i], Pieces = new SpriteRenderer[Pieces] };
+                var lit = new Lit { Beam = beams[i], Pieces = new SpriteRenderer[Pieces], NextAt = Time.time + beams[i].StartAfter };
                 for (int p = 0; p < Pieces; p++) lit.Pieces[p] = lasers.Piece(sortingOrder);
                 lasers.beams[i] = lit;
             }
 
             lasers.Show();
             return lasers;
+        }
+
+        // Shows the beams (true) or takes them all away at once (false); shown again, each comes
+        // back in from an edge after a short wait.
+        public void SetShown(bool show)
+        {
+            if (show == shown) return;
+
+            shown = show;
+            foreach (Lit lit in beams)
+            {
+                lit.Crossing = false;
+                if (show) lit.NextAt = Time.time + lit.Beam.WaitSeconds * Random.Range(0.2f, 0.6f);
+            }
+
+            Show();
         }
 
         // The beam within reach of point (on the floor), or -1; where along it (metres from its start)
@@ -89,9 +112,12 @@ namespace BountyHunter.Thieves
             along = 0f;
             for (int i = 0; i < beams.Length; i++)
             {
-                Beam beam = beams[i].Beam;
+                Lit lit = beams[i];
+                if (!lit.Crossing) continue;
+
+                Beam beam = lit.Beam;
                 float across = beam.Upright ? point.x : point.z;
-                if (Mathf.Abs(across - Where(beam)) > reach) continue;
+                if (Mathf.Abs(across - Where(lit)) > reach) continue;
 
                 along = beam.Upright ? point.z - (areaMin.y - Overhang) : point.x - (areaMin.x - Overhang);
                 return i;
@@ -111,18 +137,46 @@ namespace BountyHunter.Thieves
 
         private void Update()
         {
+            if (shown)
+            {
+                foreach (Lit lit in beams) Pass(lit);
+            }
+
             Show();
+        }
+
+        // Starts a pass when its wait is over, and ends it once it is out past the far edge.
+        private void Pass(Lit lit)
+        {
+            if (!lit.Crossing)
+            {
+                if (Time.time < lit.NextAt) return;
+
+                lit.Crossing = true;
+                lit.PassStart = Time.time;
+                lit.FromLow = Random.value < 0.5f;
+                return;
+            }
+
+            if (Progress(lit) < 1f) return;
+
+            lit.Crossing = false;
+            lit.NextAt = Time.time + lit.Beam.WaitSeconds;
         }
 
         private void Show()
         {
             foreach (Lit lit in beams)
             {
+                bool on = shown && lit.Crossing;
+                foreach (SpriteRenderer piece in lit.Pieces) piece.enabled = on;
+                if (!on) continue;
+
                 Beam beam = lit.Beam;
                 // Along the beam (its start at one edge) and across it, on the floor's x and z.
                 Vector2 direction = beam.Upright ? Vector2.up : Vector2.right;
                 Vector2 across = beam.Upright ? Vector2.right : Vector2.up;
-                Vector2 start = beam.Upright ? new Vector2(Where(beam), areaMin.y - Overhang) : new Vector2(areaMin.x - Overhang, Where(beam));
+                Vector2 start = beam.Upright ? new Vector2(Where(lit), areaMin.y - Overhang) : new Vector2(areaMin.x - Overhang, Where(lit));
                 float length = (beam.Upright ? areaMax.y - areaMin.y : areaMax.x - areaMin.x) + Overhang * 2f;
                 float pieceLength = length / Pieces;
                 float shook = (Time.time - lit.ShookAt) / ShakeSeconds;
@@ -146,15 +200,21 @@ namespace BountyHunter.Thieves
             }
         }
 
-        // Where the beam is across the floor now (x for an upright beam, world z for a lying one).
-        private float Where(Beam beam)
+        // How far through its pass the beam is: 0 just out past its first edge, 1 out past the other.
+        private static float Progress(Lit lit)
         {
-            float low = (beam.Upright ? areaMin.x : areaMin.y) + sweepInset;
-            float high = (beam.Upright ? areaMax.x : areaMax.y) - sweepInset;
-            float turn = (Time.time - bornAt) / Mathf.Max(0.1f, beam.SweepSeconds) + beam.Phase;
-            // 0 at one edge, 1 at the other, easing as it turns.
-            float share = 0.5f - 0.5f * Mathf.Cos(turn * Mathf.PI * 2f);
-            return Mathf.Lerp(low, high, share);
+            return (Time.time - lit.PassStart) / Mathf.Max(0.1f, lit.Beam.CrossSeconds);
+        }
+
+        // Where the beam is across the floor now (x for an upright beam, world z for a lying one),
+        // moving at an even pace from just past one edge to just past the other.
+        private float Where(Lit lit)
+        {
+            Beam beam = lit.Beam;
+            float low = (beam.Upright ? areaMin.x : areaMin.y) - width;
+            float high = (beam.Upright ? areaMax.x : areaMax.y) + width;
+            float share = Mathf.Clamp01(Progress(lit));
+            return lit.FromLow ? Mathf.Lerp(low, high, share) : Mathf.Lerp(high, low, share);
         }
 
         private SpriteRenderer Piece(int order)

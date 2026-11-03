@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -82,8 +83,22 @@ namespace BountyHunter.Thieves
         private float FeetZ()
         {
             Sprite sprite = body.sprite;
-            Vector2[] vertices = sprite != null ? sprite.vertices : null;
-            if (vertices == null || vertices.Length == 0) return body.bounds.min.z;
+            if (sprite == null || !TryGetToes(sprite, out float toesY)) return body.bounds.min.z;
+
+            Vector3 lowest = body.transform.TransformPoint(new Vector3(0f, toesY, 0f));
+            return lowest.z;
+        }
+
+        // Sprite.vertices copies a new array on every call, so each frame's toe height is worked out
+        // once and remembered (the frames are shared by every thief of a kind).
+        private static readonly Dictionary<Sprite, float> ToesBySprite = new Dictionary<Sprite, float>();
+
+        private static bool TryGetToes(Sprite sprite, out float toesY)
+        {
+            if (ToesBySprite.TryGetValue(sprite, out toesY)) return true;
+
+            Vector2[] vertices = sprite.vertices;
+            if (vertices == null || vertices.Length == 0) return false;
 
             float minY = float.MaxValue;
             float maxY = float.MinValue;
@@ -93,8 +108,9 @@ namespace BountyHunter.Thieves
                 maxY = Mathf.Max(maxY, vertex.y);
             }
 
-            Vector3 lowest = body.transform.TransformPoint(new Vector3(0f, minY + (maxY - minY) * 0.06f, 0f));
-            return lowest.z;
+            toesY = minY + (maxY - minY) * 0.06f;
+            ToesBySprite[sprite] = toesY;
+            return true;
         }
 
         private void OnDestroy()

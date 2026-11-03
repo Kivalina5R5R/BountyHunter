@@ -30,8 +30,12 @@ namespace BountyHunter.Thieves
             if (spawner == null) return false;
 
             float best = float.MaxValue;
-            foreach (UWBPlayerController player in spawner.SpawnedPlayers)
+            // Indexed, as foreach over the read-only list would allocate an enumerator, and this runs
+            // many times a frame (every thief, passer-by and bush asks).
+            IReadOnlyList<UWBPlayerController> players = spawner.SpawnedPlayers;
+            for (int i = 0; i < players.Count; i++)
             {
+                UWBPlayerController player = players[i];
                 if (player == null || !player.isActiveAndEnabled) continue;
 
                 float candidate = FlatDistance(from, player.transform.position);
@@ -54,8 +58,10 @@ namespace BountyHunter.Thieves
             positions.Clear();
             if (spawner == null) return;
 
-            foreach (UWBPlayerController player in spawner.SpawnedPlayers)
+            IReadOnlyList<UWBPlayerController> players = spawner.SpawnedPlayers;
+            for (int i = 0; i < players.Count; i++)
             {
+                UWBPlayerController player = players[i];
                 if (player != null && player.isActiveAndEnabled) positions.Add(player.transform.position);
             }
         }
@@ -66,8 +72,10 @@ namespace BountyHunter.Thieves
             players.Clear();
             if (spawner == null) return;
 
-            foreach (UWBPlayerController player in spawner.SpawnedPlayers)
+            IReadOnlyList<UWBPlayerController> spawned = spawner.SpawnedPlayers;
+            for (int i = 0; i < spawned.Count; i++)
             {
+                UWBPlayerController player = spawned[i];
                 if (player != null && player.isActiveAndEnabled && FlatDistance(center, player.transform.position) <= radius) players.Add(player);
             }
         }

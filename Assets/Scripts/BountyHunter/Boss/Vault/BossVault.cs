@@ -18,35 +18,45 @@ namespace BountyHunter.Thieves
     // securedReward. Either way the chase follows at once. The boss comes in at a random spot along
     // the floor's edge (as far from the players as it can) and makes for the diamond. A player who
     // catches it (touches it) earns bumpReward, and it warps in a puff of smoke to another random
-    // spot along the edge and comes back disguised as one of the passers-by for disguiseSeconds.
+    // spot along the edge and comes back in another look than before: as one of the passers-by or
+    // thieves (any kind, out on the floor or not) for disguiseSeconds, or as itself. In a blackout
+    // it cannot be caught at all: the lights must go back on first.
     // Whether the boss can be seen: never inside its smoke; always for revealSeconds after it trips
     // a laser and always within alwaysSeenNear of the diamond; otherwise while the lights are on,
     // always as it first comes in, but sneaking (after a catch or its smoke bomb) only with a player
-    // within sneakSeenWithin; in a blackout only in a player's flashlight or a flash. Its skills: a
+    // within sneakSeenWithin; in a blackout only in a player's glow or under a switch's lamp. Its skills: a
     // smoke bomb (smokeRadius, smokeSeconds) when a player comes within smokeWhenPlayerWithin, the
     // first after smokeFirstAt and then every smokeEvery; and the blackout, the first at
     // blackoutFirstAt for blackoutSeconds, then every blackoutEverySeconds from the last. In a
     // blackout two light switches stand in opposite corners (switchSpots); a player who stands on
     // one for switchHoldSeconds puts the lights on.
-    // Lasers sweep across the floor from edge to edge (VaultLasers); the boss touching one shakes it,
-    // and sets the alarm off (it is seen for revealSeconds, the wall's edge flashes red) at most once
+    // Lasers pass across the floor from edge to edge, one pass at a time, and are gone in a
+    // blackout (VaultLasers); the boss touching one shakes it,
+    // and sets the alarm off (it is seen for revealSeconds, the wall's edge glows red once) at most once
     // every alarmCooldownSeconds. A few passers-by stroll about to pass for (NpcCrowd; grabbing one
     // costs as in a stage). It has its own floor and wall pictures (black where one is missing).
     // Console lines start with [BossVault].
     public sealed class BossVault : StageInterlude
     {
-        // The diamond's ring, the lasers and the dark sheet, over the characters (up to the players'
-        // markers, 20) so they show in the dark.
+        // The diamond and its ring lie on the floor under the characters (thieves 8, players 20), who
+        // walk over it; the dark sheet and the lasers go over the characters.
         private const int RingOrder = 5;
+        private const int DiamondOrder = 6;
         private const int DarkOrder = 24;
         private const int LaserOrder = 25;
-        private const int DiamondOrder = 26;
         private const int SmokeOrder = 21;
-        private const float WallFrameThickness = 14f;
+        // The alarm glow: how far it reaches in from the wall's edge, how long its one swell and
+        // fade lasts (shorter than alarmCooldownSeconds, so glows never overlap) and how strong it gets.
+        private const float AlarmGlowWidth = 70f;
+        private const float AlarmGlowSeconds = 1.2f;
+        private const float AlarmGlowPeak = 0.75f;
+        private const int AlarmGlowPixels = 64;
 
         [SerializeField] private UWBPlayerSpawner playerSpawner;
         [SerializeField] private PlayerScoreTag[] scoreTags;
         [SerializeField] private NpcCrowd npcs;
+        // The thieves the boss can pass for, besides every passer-by kind (prefabs; none need be out).
+        [SerializeField] private ThiefController[] thiefKinds = new ThiefController[0];
         // The market's hiding spots, put away while the vault plays (there are none in a vault).
         [SerializeField] private ThiefSpawner hidingSpots;
         [SerializeField] private StageTimer timer;
@@ -76,9 +86,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(1f)] private float drainSeconds = 24f;
 
         [Header("Boss")]
-        [SerializeField] private VaultBoss.Speeds speeds = new VaultBoss.Speeds
+        // Passers-by stroll at 0.3, so a disguised boss walks only a little faster.
+        [SerializeField] private VaultBoss.Speeds bossSpeeds = new VaultBoss.Speeds
         {
-            Approach = 1.25f, Sneak = 0.8f, Disguised = 0.6f, BumpRadius = 0.6f, BumpCooldownSeconds = 1.5f,
+            Approach = 0.7f, Sneak = 0.5f, Disguised = 0.35f, BumpRadius = 0.6f,
         };
         [SerializeField, Min(0f)] private float arriveAfterSeconds = 1.5f;
         [SerializeField, Min(0f)] private float sneakSeenWithin = 1.8f;
@@ -91,6 +102,8 @@ namespace BountyHunter.Thieves
         // The puff of smoke it warps in and out of.
         [SerializeField, Min(0.1f)] private float warpPuffRadius = 0.7f;
         [SerializeField, Min(0.1f)] private float warpPuffSeconds = 0.6f;
+        // How long it is gone after a catch before it comes back at another spot.
+        [SerializeField, Min(0f)] private float warpDelaySeconds = 0.5f;
 
         [Header("Skills")]
         [SerializeField, Min(0f)] private float smokeFirstAt = 7f;
@@ -103,9 +116,14 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(1f)] private float blackoutEverySeconds = 26f;
 
         [Header("Blackout")]
+        // The dark sheet's material (Assets/ART/Vault/VaultDarkness.mat, the Vault Darkness shader).
+        [SerializeField] private Material darknessMaterial;
+        // Round each player the dark lifts a little (flashlightLift of it), enough to see themselves,
+        // and the boss can be seen there; round each light switch it lifts fully, out to lampRadius.
+        // Both fade softly at their edges.
         [SerializeField, Min(0.2f)] private float flashlightRadius = 0.9f;
-        [SerializeField, Min(0.05f)] private float flashSeconds = 0.14f;
-        [SerializeField] private Vector2 flashEvery = new Vector2(2f, 3f);
+        [SerializeField, Range(0f, 1f)] private float flashlightLift = 0.35f;
+        [SerializeField, Min(0.2f)] private float lampRadius = 1.1f;
         [SerializeField, Range(0.5f, 1f)] private float darkAlpha = 0.94f;
         [SerializeField] private Vector2[] switchSpots = { new Vector2(-4.6f, -1.75f), new Vector2(4.6f, 1.75f) };
         [SerializeField, Min(0.1f)] private float switchRadius = 0.6f;
@@ -115,16 +133,15 @@ namespace BountyHunter.Thieves
         [SerializeField] private Sprite[] sparkles = new Sprite[0];
 
         [Header("Lasers")]
-        // Two upright beams sweeping left and right, one lying beam sweeping up and down, each at
-        // its own pace so the gaps between them keep changing.
-        [SerializeField] private VaultLasers.Beam[] lasers =
+        // Two upright beams passing left or right, one lying beam passing up or down: each crosses
+        // the floor once and is gone for a while, at its own times so they seldom come together.
+        // None shows in a blackout.
+        [SerializeField] private VaultLasers.Beam[] laserPasses =
         {
-            new VaultLasers.Beam(true, 14f, 0f),
-            new VaultLasers.Beam(true, 19f, 0.5f),
-            new VaultLasers.Beam(false, 11f, 0.25f),
+            new VaultLasers.Beam(true, 5f, 13f, 3f),
+            new VaultLasers.Beam(true, 6f, 17f, 8f),
+            new VaultLasers.Beam(false, 4f, 21f, 5f),
         };
-        // How far in from the edges a beam turns round.
-        [SerializeField, Min(0f)] private float laserSweepInset = 0.3f;
         [SerializeField, Min(0.01f)] private float laserWidth = 0.07f;
         [SerializeField, Min(0.01f)] private float laserReach = 0.18f;
         [SerializeField] private Color laserColour = new Color(1f, 0.15f, 0.2f, 1f);
@@ -142,9 +159,9 @@ namespace BountyHunter.Thieves
         [SerializeField] private Material damageMaterial;
 
         [Header("Wall")]
-        [SerializeField] private string guardHeading = "GUARD THE DIAMOND!";
-        // {0} is how much of the diamond is stolen, in per cent.
-        [SerializeField] private string stealingHeading = "DIAMOND {0}%!";
+        // The clock's heading all through the vault (the steal ring on the floor shows how far the
+        // boss has got).
+        [SerializeField] private string phaseHeading = "BOSS PHASE 1";
 
         private static readonly int FillId = Shader.PropertyToID("_Fill");
 
@@ -153,6 +170,7 @@ namespace BountyHunter.Thieves
         private readonly List<VaultSmoke> smokes = new List<VaultSmoke>();
         private readonly List<FloorSwitch> switches = new List<FloorSwitch>();
         private readonly List<Image> wallFrame = new List<Image>();
+        private readonly List<Vector3> passerPositions = new List<Vector3>();
         private SpawnerPlayerLocator players;
         private BossStaging staging;
         private PictureSwap floorSwap;
@@ -216,13 +234,14 @@ namespace BountyHunter.Thieves
 
             ShowRoom();
             BuildDiamond();
-            laserBeams = VaultLasers.Create(transform, areaMin, areaMax, lasers, laserSweepInset, laserWidth, laserColour, LaserOrder);
+            laserBeams = VaultLasers.Create(transform, areaMin, areaMax, laserPasses, laserWidth, laserColour, LaserOrder);
             built.Add(laserBeams.gameObject);
-            darkness = VaultDarkness.Create(transform, areaMax - areaMin, DarkOrder, playerSpawner, flashlightRadius, switchRadius + 0.15f, flashSeconds, flashEvery, darkAlpha);
+            darkness = VaultDarkness.Create(transform, areaMax - areaMin, DarkOrder, darknessMaterial, playerSpawner, flashlightRadius, flashlightLift, lampRadius,
+                darkAlpha);
             built.Add(darkness.gameObject);
             PutBossDown();
             if (npcs != null) npcs.Begin();
-            if (timer != null) timer.StartCountdown(guardHeading, chase.Seconds);
+            if (timer != null) timer.StartCountdown(phaseHeading, chase.Seconds);
             Debug.Log("[BossVault] The vault is open", this);
         }
 
@@ -272,7 +291,12 @@ namespace BountyHunter.Thieves
             darkness = null;
             ring = null;
             if (timer != null) timer.Stop();
-            if (npcs != null) npcs.Clear();
+            if (npcs != null)
+            {
+                npcs.StopAvoiding(boss);
+                npcs.Clear();
+            }
+
             LeaveRoom();
         }
 
@@ -290,6 +314,7 @@ namespace BountyHunter.Thieves
             Lasers();
             Steal();
             boss.Seen = CanSee();
+            boss.Catchable = darkness == null || !darkness.Dark;
             ShowWallFrame();
         }
 
@@ -320,15 +345,37 @@ namespace BountyHunter.Thieves
             Debug.Log("[BossVault] The boss throws a smoke bomb", this);
         }
 
-        // A passer-by kind to pass for: one of those strolling about, else any.
-        private NpcWalker PasserByKind()
+        // Another look than was (null being itself): any passer-by or thief kind, or itself, at
+        // random, all alike.
+        private Component NextLook(Component was)
         {
-            if (npcs == null) return null;
+            var looks = new List<Component> { null };
+            if (npcs != null && npcs.Kinds != null)
+            {
+                foreach (NpcWalker kind in npcs.Kinds)
+                {
+                    if (kind != null) looks.Add(kind);
+                }
+            }
 
-            var kinds = new List<NpcWalker>(npcs.KindsOut);
-            if (kinds.Count == 0 && npcs.Kinds != null) kinds.AddRange(npcs.Kinds);
-            kinds.RemoveAll(kind => kind == null);
-            return kinds.Count > 0 ? kinds[Random.Range(0, kinds.Count)] : null;
+            if (thiefKinds != null)
+            {
+                foreach (ThiefController kind in thiefKinds)
+                {
+                    if (kind != null) looks.Add(kind);
+                }
+            }
+
+            // Itself counts as a look too: as itself before, it now passes for someone.
+            looks.Remove(was);
+            return looks.Count > 0 ? looks[Random.Range(0, looks.Count)] : null;
+        }
+
+        private static bool FacesRight(Component kind)
+        {
+            if (kind is NpcWalker passerBy) return passerBy.ArtFacesRight;
+            if (kind is ThiefController thief) return thief.ArtFacesRight;
+            return false;
         }
 
         private void Blackout()
@@ -338,6 +385,7 @@ namespace BountyHunter.Thieves
             if (!darkness.Dark && Time.time >= nextBlackoutAt)
             {
                 darkness.SetDark(true);
+                laserBeams.SetShown(false);
                 lightsBackAt = Time.time + blackoutSeconds;
                 nextBlackoutAt = Time.time + blackoutEverySeconds;
                 PutSwitchesDown();
@@ -355,6 +403,7 @@ namespace BountyHunter.Thieves
 
             darkness.SetDark(false);
             darkness.SetLamps(Array.Empty<Vector3>());
+            if (laserBeams != null) laserBeams.SetShown(true);
             lightsBackAt = float.MaxValue;
             foreach (FloorSwitch lights in switches)
             {
@@ -415,7 +464,6 @@ namespace BountyHunter.Thieves
             bool onDiamond = Flat(boss.Position, Diamond) <= stealRadius;
             stolen = onDiamond ? stolen + Time.deltaTime / stealSeconds : Mathf.Max(0f, stolen - Time.deltaTime / drainSeconds);
             ShowRing();
-            if (timer != null) timer.SetHeading(stolen > 0f ? string.Format(stealingHeading, Mathf.FloorToInt(Mathf.Clamp01(stolen) * 100f)) : guardHeading);
         }
 
         // Everyone's money settles the outcome, and the chase follows at once.
@@ -444,22 +492,32 @@ namespace BountyHunter.Thieves
             }
         }
 
-        // Caught: the catcher is paid, and the boss warps in a puff to another spot along the edge
-        // and comes back disguised.
+        // Caught: the catcher is paid, and the boss vanishes in a puff, then warpDelaySeconds later
+        // comes back in another puff at another spot along the edge, disguised.
         private void OnBumped(UWBPlayerController player)
         {
             BossBumped?.Invoke(player);
             Pay(player, bumpReward);
 
-            Vector3 from = boss.Position;
+            smokes.Add(VaultSmoke.Throw(transform, boss.Position, warpPuffRadius, warpPuffSeconds, SmokeOrder));
+            Component was = boss.Look;
+            boss.Vanish();
+            StartCoroutine(ComeBack(was));
+        }
+
+        private IEnumerator ComeBack(Component was)
+        {
+            yield return new WaitForSeconds(warpDelaySeconds);
+            if (boss == null) yield break;
+
             Vector3 to = EdgeSpot();
-            smokes.Add(VaultSmoke.Throw(transform, from, warpPuffRadius, warpPuffSeconds, SmokeOrder));
             smokes.Add(VaultSmoke.Throw(transform, to, warpPuffRadius, warpPuffSeconds, SmokeOrder));
             boss.WarpTo(to);
-            NpcWalker kind = PasserByKind();
-            if (kind != null) boss.Disguise(kind, disguiseSeconds);
-            string look = kind != null ? $", passing for a {kind.name}" : string.Empty;
-            Debug.Log($"[BossVault] The boss warps to ({to.x:0.0}, {to.z:0.0}){look}", this);
+            Component kind = NextLook(was);
+            if (kind != null) boss.Disguise(kind, FacesRight(kind), disguiseSeconds);
+            else boss.BeItself();
+            string look = kind != null ? $"passing for a {kind.name}" : "as itself";
+            Debug.Log($"[BossVault] The boss warps to ({to.x:0.0}, {to.z:0.0}), {look}", this);
         }
 
         private void Pay(UWBPlayerController player, int amount)
@@ -472,14 +530,19 @@ namespace BountyHunter.Thieves
         }
 
         // A random spot along the floor's edge (edgeInset in), clear of the players by
-        // edgeClearOfPlayers; of the spots tried, the one furthest from them when none is.
+        // edgeClearOfPlayers and of the passers-by; of the spots tried, the one furthest from the
+        // players when none is.
         private Vector3 EdgeSpot()
         {
             Vector3 best = Diamond;
             float bestRoom = float.MinValue;
+            passerPositions.Clear();
+            if (npcs != null) npcs.AddPositions(passerPositions, null);
             for (int i = 0; i < 40; i++)
             {
                 Vector3 spot = RandomEdgePoint();
+                if (NearPasser(spot)) continue;
+
                 float room = players.TryGetNearest(spot, out _, out float nearest) ? nearest : float.MaxValue;
                 if (room >= edgeClearOfPlayers) return spot;
                 if (room <= bestRoom) continue;
@@ -488,6 +551,17 @@ namespace BountyHunter.Thieves
             }
 
             return best;
+        }
+
+        private bool NearPasser(Vector3 spot)
+        {
+            float gap = chase.Settings.PasserClearance;
+            foreach (Vector3 passer in passerPositions)
+            {
+                if (Flat(spot, passer) < gap) return true;
+            }
+
+            return false;
         }
 
         // A point along the edge of the floor (edgeInset in), every part of the edge alike.
@@ -524,8 +598,9 @@ namespace BountyHunter.Thieves
         {
             chase.GetMoves(out BossMove walk, out _, out _, out _);
             Vector3 start = EdgeSpot();
-            boss = VaultBoss.Create(transform, start, Diamond, chase.Settings, walk, players, npcs, areaMin, areaMax, speeds);
+            boss = VaultBoss.Create(transform, start, Diamond, chase.Settings, walk, players, npcs, areaMin, areaMax, bossSpeeds);
             boss.Bumped += OnBumped;
+            if (npcs != null) npcs.AlsoAvoid(boss);
         }
 
         private void BuildDiamond()
@@ -570,7 +645,7 @@ namespace BountyHunter.Thieves
         }
 
         // The vault's floor and wall pictures (black where one is missing), the stage's wall pieces
-        // and the hiding spots away; the wall gets its red alarm frame (hidden until the alarm rings).
+        // and the hiding spots away; the wall gets its red alarm glow (hidden until the alarm rings).
         private void ShowRoom()
         {
             staging = chase.NewStaging();
@@ -581,16 +656,13 @@ namespace BountyHunter.Thieves
             {
                 wallSheet = WallPiece("Vault Wall", wallPicture != null ? Color.white : Color.black, Vector2.zero, Vector2.one, Vector2.zero);
                 wallSheet.sprite = wallPicture;
-                foreach ((Vector2 min, Vector2 max, Vector2 size) in new[]
-                {
-                    (new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, WallFrameThickness)),
-                    (new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, WallFrameThickness)),
-                    (new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(WallFrameThickness, 0f)),
-                    (new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(WallFrameThickness, 0f)),
-                })
-                {
-                    wallFrame.Add(WallPiece("Alarm Edge", Color.clear, min, max, size));
-                }
+                // One sheet over the whole wall, its glow sliced so it keeps one width along every edge.
+                Image glow = WallPiece("Alarm Glow", Color.clear, Vector2.zero, Vector2.one, Vector2.zero);
+                glow.sprite = AlarmGlowSprite();
+                glow.type = Image.Type.Sliced;
+                glow.fillCenter = true;
+                glow.pixelsPerUnitMultiplier = (AlarmGlowPixels / 2f) / AlarmGlowWidth;
+                wallFrame.Add(glow);
             }
 
             hiddenSpots.Clear();
@@ -620,17 +692,49 @@ namespace BountyHunter.Thieves
             hiddenSpots.Clear();
         }
 
-        // The wall's edge flashes red for a moment after the alarm rings.
+        // The wall's edge glows red once after the alarm rings: it swells quickly, then fades gently,
+        // with no flashing.
         private void ShowWallFrame()
         {
-            float since = Time.time - alarmAt;
-            float alpha = since < revealSeconds ? (Mathf.Repeat(since * 6f, 1f) < 0.5f ? 1f : 0.35f) * (1f - since / revealSeconds) : 0f;
+            float t = (Time.time - alarmAt) / AlarmGlowSeconds;
+            float swell = t < 0.2f ? Mathf.SmoothStep(0f, 1f, t / 0.2f) : 1f - Mathf.SmoothStep(0f, 1f, (t - 0.2f) / 0.8f);
             Color colour = alarmColour;
-            colour.a = alpha;
+            colour.a = t >= 0f && t < 1f ? alarmColour.a * AlarmGlowPeak * swell : 0f;
             foreach (Image edge in wallFrame) edge.color = colour;
         }
 
-        // A plain sheet on the wall's background, anchored between min and max, size sizeDelta.
+        // Drawn once and shared: white, strongest at the border and fading to nothing inwards, with
+        // a clear middle that the sliced image stretches over the wall.
+        private static Sprite alarmGlowSprite;
+
+        private static Sprite AlarmGlowSprite()
+        {
+            if (alarmGlowSprite != null) return alarmGlowSprite;
+
+            const int size = AlarmGlowPixels;
+            const float reach = size / 2f;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Alarm Glow", wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float fromEdge = Mathf.Min(Mathf.Min(x, size - 1 - x), Mathf.Min(y, size - 1 - y)) + 0.5f;
+                    float strength = 1f - Mathf.Clamp01(fromEdge / reach);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(strength * strength * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            float border = reach - 1f;
+            alarmGlowSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border));
+            return alarmGlowSprite;
+        }
+
+        // A plain sheet on the wall's background, anchored between min and max, size sizeDelta: over
+        // the stage's wall pictures but under the clock when the clock is on the same background.
         private Image WallPiece(string name, Color colour, Vector2 min, Vector2 max, Vector2 size)
         {
             var piece = new GameObject(name, typeof(RectTransform), typeof(Image));
@@ -642,11 +746,23 @@ namespace BountyHunter.Thieves
             rect.sizeDelta = size;
             rect.anchoredPosition = Vector2.zero;
             rect.SetAsLastSibling();
+            Transform clock = ClockOnWall();
+            if (clock != null) rect.SetSiblingIndex(clock.GetSiblingIndex());
             var image = piece.GetComponent<Image>();
             image.color = colour;
             image.raycastTarget = false;
             built.Add(piece);
             return image;
+        }
+
+        // The child of the wall's background that holds the clock, or null when it is elsewhere.
+        private Transform ClockOnWall()
+        {
+            if (timer == null) return null;
+
+            Transform holder = timer.transform;
+            while (holder != null && holder.parent != wallBackground) holder = holder.parent;
+            return holder;
         }
 
         private static float Flat(Vector3 a, Vector3 b)

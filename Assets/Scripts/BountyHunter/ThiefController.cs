@@ -131,6 +131,8 @@ namespace BountyHunter.Thieves
         public SpriteRenderer Body => body;
         public bool IsHidden => state == ThiefState.Hidden;
         public bool IsCuffed => state == ThiefState.Cuffed;
+        // Which way its picture faces (the boss passing for a thief walks it the same way).
+        public bool ArtFacesRight => artFacesRight;
         // Caught by being handed over at a police car (Deliver), not reached in the open.
         public bool WasDelivered { get; private set; }
         // Held still by a stun gun's hit (Stun).
@@ -810,8 +812,10 @@ namespace BountyHunter.Thieves
             Vector3 bend = Vector3.zero;
             if (crowd != null)
             {
-                foreach (ThiefController other in crowd.Thieves)
+                // Indexed, as foreach over the read-only list would allocate an enumerator each call.
+                for (int thiefIndex = 0; thiefIndex < crowd.Thieves.Count; thiefIndex++)
                 {
+                    ThiefController other = crowd.Thieves[thiefIndex];
                     if (InTheOpen(other)) bend += BendAwayFrom(position, other.transform.position, heading, right);
                 }
             }
@@ -851,8 +855,9 @@ namespace BountyHunter.Thieves
             if (crowd == null) return 0f;
 
             float crowding = 0f;
-            foreach (ThiefController other in crowd.Thieves)
+            for (int thiefIndex = 0; thiefIndex < crowd.Thieves.Count; thiefIndex++)
             {
+                ThiefController other = crowd.Thieves[thiefIndex];
                 if (!InTheOpen(other)) continue;
                 float distance = SpawnerPlayerLocator.FlatDistance(point, other.transform.position);
                 crowding = Mathf.Max(crowding, 1f - distance / comfortDistance);
@@ -875,8 +880,9 @@ namespace BountyHunter.Thieves
 
             Vector3 position = transform.position;
             Vector3 push = Vector3.zero;
-            foreach (ThiefController other in crowd.Thieves)
+            for (int thiefIndex = 0; thiefIndex < crowd.Thieves.Count; thiefIndex++)
             {
+                ThiefController other = crowd.Thieves[thiefIndex];
                 if (other == null || other == this || other.IsHidden || other.State == ThiefState.Caught || other.IsCuffed) continue;
 
                 Vector3 away = position - other.transform.position;
@@ -916,8 +922,9 @@ namespace BountyHunter.Thieves
             float nearest = float.MaxValue;
             if (crowd != null)
             {
-                foreach (ThiefController other in crowd.Thieves)
+                for (int thiefIndex = 0; thiefIndex < crowd.Thieves.Count; thiefIndex++)
                 {
+                    ThiefController other = crowd.Thieves[thiefIndex];
                     if (!InTheOpen(other)) continue;
                     nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other.transform.position));
                     if (other.hasTarget) nearest = Mathf.Min(nearest, SpawnerPlayerLocator.FlatDistance(point, other.target));
@@ -937,8 +944,9 @@ namespace BountyHunter.Thieves
         {
             if (crowd == null) return false;
 
-            foreach (ThiefController other in crowd.Thieves)
+            for (int thiefIndex = 0; thiefIndex < crowd.Thieves.Count; thiefIndex++)
             {
+                ThiefController other = crowd.Thieves[thiefIndex];
                 if (other == null || other == this || other.IsHidden) continue;
                 if (SpawnerPlayerLocator.FlatDistance(point, other.transform.position) < comfortDistance) return true;
                 if (other.hasTarget && SpawnerPlayerLocator.FlatDistance(point, other.target) < comfortDistance) return true;

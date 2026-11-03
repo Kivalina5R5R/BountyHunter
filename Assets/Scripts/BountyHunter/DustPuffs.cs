@@ -11,6 +11,8 @@ namespace BountyHunter.Thieves
         private const int SortingOrder = 7;
 
         private readonly List<Puff> puffs = new List<Puff>();
+        // Faded puffs wait here to be used again, as a running thief kicks up about 20 a second.
+        private readonly Stack<SpriteRenderer> spare = new Stack<SpriteRenderer>();
         private bool ownerGone;
 
         private sealed class Puff
@@ -36,11 +38,9 @@ namespace BountyHunter.Thieves
         // Sizes are world widths; drift is world units per second, slowing as the puff ages.
         public void Spawn(Sprite sprite, Vector3 position, Vector3 drift, float startWidth, float endWidth, float life, float alpha)
         {
-            var puffObject = new GameObject("Dust", typeof(SpriteRenderer));
-            puffObject.transform.SetParent(transform, false);
-            puffObject.transform.position = position;
-            puffObject.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
-            var puffRenderer = puffObject.GetComponent<SpriteRenderer>();
+            SpriteRenderer puffRenderer = TakeRenderer();
+            puffRenderer.transform.position = position;
+            puffRenderer.transform.rotation = Quaternion.Euler(90f, Random.Range(0f, 360f), 0f);
             puffRenderer.sprite = sprite;
             puffRenderer.sortingOrder = SortingOrder;
             puffRenderer.flipX = Random.value < 0.5f;
@@ -60,6 +60,20 @@ namespace BountyHunter.Thieves
             Apply(puff, 0f);
         }
 
+        private SpriteRenderer TakeRenderer()
+        {
+            if (spare.Count > 0)
+            {
+                SpriteRenderer reused = spare.Pop();
+                reused.gameObject.SetActive(true);
+                return reused;
+            }
+
+            var puffObject = new GameObject("Dust", typeof(SpriteRenderer));
+            puffObject.transform.SetParent(transform, false);
+            return puffObject.GetComponent<SpriteRenderer>();
+        }
+
         // Called when the thief is gone; the object removes itself once the last puff fades.
         public void ReleaseWhenDone()
         {
@@ -76,7 +90,8 @@ namespace BountyHunter.Thieves
                 float t = puff.Age / puff.Life;
                 if (t >= 1f)
                 {
-                    Destroy(puff.Renderer.gameObject);
+                    puff.Renderer.gameObject.SetActive(false);
+                    spare.Push(puff.Renderer);
                     puffs.RemoveAt(i);
                     continue;
                 }

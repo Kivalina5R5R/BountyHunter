@@ -10,10 +10,11 @@ namespace BountyHunter.Thieves
     // disguise): it makes for the diamond, steering round the players, and stands on it to steal it.
     // It moves at approachSpeed at first, sneakSpeed once it has been caught or thrown its smoke bomb,
     // and disguiseSpeed while it passes for a passer-by. A player who comes within bumpRadius catches
-    // it (Bumped; not again for bumpCooldownSeconds); the vault then warps it away (WarpTo) and
-    // disguises it. Whether it can be seen is the vault's call (Seen); the disguise always shows, as
-    // a passer-by does.
-    public sealed class VaultBoss : MonoBehaviour
+    // it (Bumped); the vault then warps it away (WarpTo) and disguises it, and it can be caught
+    // again at once. Whether it can be seen is the vault's call (Seen); the disguise always shows, as
+    // a passer-by does. It goes round passers-by, and tells them where it is (IFloorWalkers) so they
+    // keep clear of it too.
+    public sealed class VaultBoss : MonoBehaviour, IFloorWalkers
     {
         private enum Mode
         {
@@ -36,9 +37,9 @@ namespace BountyHunter.Thieves
         private VaultBoss.Speeds speeds;
         private Vector3 diamond;
         private Mode mode = Mode.Waiting;
-        private float bumpReadyAt;
         private float disguisedUntil;
         private float shown;
+        private bool away;
 
         // Its speeds and the bump's reach and push.
         [Serializable]
@@ -48,7 +49,6 @@ namespace BountyHunter.Thieves
             public float Sneak;
             public float Disguised;
             public float BumpRadius;
-            public float BumpCooldownSeconds;
         }
 
         // A player bumped it.
@@ -64,6 +64,12 @@ namespace BountyHunter.Thieves
 
         // Whether the players can see it (the vault decides each frame); it fades in and out.
         public bool Seen { get; set; } = true;
+
+        // Whether a player reaching it catches it now (not in a blackout: the vault decides).
+        public bool Catchable { get; set; } = true;
+
+        // The character it passes for now (a passer-by or thief prefab), or null as itself.
+        public Component Look { get; private set; }
 
         // The boss standing at position, out of sight until Arrive.
         public static VaultBoss Create(Transform parent, Vector3 position, Vector3 diamond, BossSettings settings, BossMove walk, SpawnerPlayerLocator players,
@@ -105,21 +111,51 @@ namespace BountyHunter.Thieves
             if (mode == Mode.Approaching) mode = Mode.Sneaking;
         }
 
-        // Gone from where it is and there at once (after a catch); it sneaks from there.
+        // Gone from where it is (after a catch): out of any disguise and unseen, standing still and
+        // not to be caught until WarpTo brings it back.
+        public void Vanish()
+        {
+            away = true;
+            TakeOffDisguise();
+            shown = 0f;
+            body.SetAlpha(0f);
+        }
+
+        // There, back from Vanish (fading in when it can be seen); it sneaks from there.
         public void WarpTo(Vector3 position)
         {
             body.Position = position;
+            away = false;
             if (mode != Mode.Waiting) mode = Mode.Sneaking;
         }
 
-        // Passes for kind (a passer-by) for seconds.
-        public void Disguise(NpcWalker kind, float seconds)
+        // Itself again, out of any disguise.
+        public void BeItself()
+        {
+            TakeOffDisguise();
+        }
+
+        // Passes for kind (a passer-by or thief prefab, facing right when facesRight) for seconds.
+        public void Disguise(Component kind, bool facesRight, float seconds)
         {
             if (kind == null || mode == Mode.Waiting) return;
 
-            body.Disguise.Wear(kind, body.Settings);
+            body.Disguise.Wear(kind, facesRight, body.Settings);
             body.Animator.Body.enabled = false;
             disguisedUntil = Time.time + seconds;
+            Look = kind;
+        }
+
+        // Where it is, once it has come in (as itself or disguised), unless except is it.
+        public void AddPositions(List<Vector3> positions, Transform except)
+        {
+            if (mode == Mode.Waiting || except == transform) return;
+
+            positions.Add(body.Position);
+        }
+
+        public void AddTakenSpots(List<Vector3> spots)
+        {
         }
 
         // Stands still where it is (the vault is over).
@@ -131,7 +167,7 @@ namespace BountyHunter.Thieves
 
         private void Update()
         {
-            if (mode == Mode.Waiting) return;
+            if (mode == Mode.Waiting || away) return;
 
             if (body.Disguise.IsOn && Time.time >= disguisedUntil) TakeOffDisguise();
             CheckBump();
@@ -139,10 +175,10 @@ namespace BountyHunter.Thieves
             ShowSeen();
         }
 
-        // The nearest player in reach bumps it, unless it was bumped a moment ago.
+        // The nearest player in reach bumps it.
         private void CheckBump()
         {
-            if (Time.time < bumpReadyAt) return;
+            if (!Catchable) return;
 
             players.GetPlayersWithin(body.Position, speeds.BumpRadius, nearPlayers);
             if (nearPlayers.Count == 0) return;
@@ -157,8 +193,8 @@ namespace BountyHunter.Thieves
                 bumper = player;
             }
 
-            bumpReadyAt = Time.time + speeds.BumpCooldownSeconds;
-            TakeOffDisguise();
+            // The vault picks its next look from the one it has now (Look), so the disguise stays on
+            // until then.
             Debug.Log($"[VaultBoss] Player {bumper.PlayerId} catches the boss", this);
             Bumped?.Invoke(bumper);
         }
@@ -178,8 +214,8 @@ namespace BountyHunter.Thieves
             return mode == Mode.Sneaking ? speeds.Sneak : speeds.Approach;
         }
 
-        // Towards the diamond, round the players near it, kept off the floor's edges and corners;
-        // standing still once it is on the diamond.
+        // Towards the diamond, round the players and passers-by near it, kept off the floor's edges
+        // and corners; standing still once it is on the diamond.
         private Vector3 Steering()
         {
             Vector3 position = body.Position;
@@ -199,7 +235,7 @@ namespace BountyHunter.Thieves
                 wanted += away / gap * (1f - gap / AvoidRadius) * AvoidWeight;
             }
 
-            wanted += body.EdgePush(position) + body.CornerPush(position);
+            wanted += body.PasserPush(position) + body.EdgePush(position) + body.CornerPush(position);
             wanted.y = 0f;
             // Slows into its stop on the diamond.
             float slow = Mathf.Clamp01(distance / 0.5f);
@@ -208,6 +244,7 @@ namespace BountyHunter.Thieves
 
         private void TakeOffDisguise()
         {
+            Look = null;
             if (!body.Disguise.IsOn) return;
 
             body.DropDisguise();
