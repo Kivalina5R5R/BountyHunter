@@ -1,4 +1,5 @@
 using Fortal.Players;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -6,8 +7,7 @@ using UnityEngine;
 namespace BountyHunter.Thieves.EditorTools
 {
     // Sets up the market (stage 3) each time the editor loads: imports the art Codex drew
-    // (Assets/ART/Market, prepared by Tools/MarketArt) as sprites, makes the mystery box's rainbow
-    // material, adds the handcuffs and police cars
+    // (Assets/ART/Market, prepared by Tools/MarketArt) as sprites, adds the handcuffs and police cars
     // (PoliceCuffs) and the lucky wheel (LuckyWheel) next to the open scene's BountyRounds when they
     // are missing, fills every reference left empty (the wheel spins on the game wall the posters
     // hang on; its ring and stars are the park tape box's: the players' select ring with the radial
@@ -22,11 +22,12 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Handcuffs = Art + "Handcuffs.png";
         private const string Wheel = Art + "LuckyWheel.png";
         private const string WheelPointer = Art + "LuckyWheelPointer.png";
-        // The mystery box lying on the floor, and the material that runs its panels through the
-        // rainbow (made from the Sprite Rainbow shader when missing).
+        // What the wheel landed on is written on this banner in the wall's font and its outlined material.
+        private const string CaptionBack = Art + "LuckyWheelCaptionBack.png";
+        private const string Font = "Assets/Front/BebasNeue-Regular SDF.asset";
+        private const string FontMaterial = "Assets/Front/BebasNeue-Regular SDF - Outline.mat";
+        // The mystery box lying on the floor.
         private const string MysteryBox = Art + "MysteryBox.png";
-        private const string Rainbow = Art + "MysteryBoxRainbow.mat";
-        private const string RainbowShader = "BountyHunter/Sprite Rainbow";
         // In LuckyWheelResult order.
         private static readonly string[] ResultIcons =
         {
@@ -45,8 +46,7 @@ namespace BountyHunter.Thieves.EditorTools
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
-            foreach (string path in new[] { PoliceCar, Handcuffs, Wheel, WheelPointer, MysteryBox }) ImportAsSprite(path);
-            MakeRainbow();
+            foreach (string path in new[] { PoliceCar, Handcuffs, Wheel, WheelPointer, MysteryBox, CaptionBack }) ImportAsSprite(path);
             foreach (string path in ResultIcons) ImportAsSprite(path);
 
             var rounds = Object.FindFirstObjectByType<BountyRounds>(FindObjectsInactive.Include);
@@ -114,23 +114,15 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(fields, "wheel", AssetDatabase.LoadAssetAtPath<Sprite>(Wheel));
             changed |= Fill(fields, "pointer", AssetDatabase.LoadAssetAtPath<Sprite>(WheelPointer));
             changed |= Fill(fields, "mysteryBox", AssetDatabase.LoadAssetAtPath<Sprite>(MysteryBox));
-            changed |= Fill(fields, "rainbow", AssetDatabase.LoadAssetAtPath<Material>(Rainbow));
+            changed |= Fill(fields, "captionBack", AssetDatabase.LoadAssetAtPath<Sprite>(CaptionBack));
+            changed |= Fill(fields, "font", AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(Font));
+            changed |= Fill(fields, "fontMaterial", AssetDatabase.LoadAssetAtPath<Material>(FontMaterial));
             changed |= FillList(fields, "resultIcons", ResultIcons);
             changed |= FillList(fields, "sparkles", Sparkles);
             changed |= Fill(fields, "selectRing", AssetDatabase.LoadAssetAtPath<Sprite>(SelectRing));
             changed |= Fill(fields, "radialFill", AssetDatabase.LoadAssetAtPath<Material>(RadialFill));
             fields.ApplyModifiedPropertiesWithoutUndo();
             return changed;
-        }
-
-        private static void MakeRainbow()
-        {
-            if (AssetDatabase.LoadAssetAtPath<Material>(Rainbow) != null) return;
-
-            Shader shader = Shader.Find(RainbowShader);
-            if (shader == null) return;
-
-            AssetDatabase.CreateAsset(new Material(shader) { name = "MysteryBoxRainbow" }, Rainbow);
         }
 
         // A list of sprites filled in, in order, when it is empty.

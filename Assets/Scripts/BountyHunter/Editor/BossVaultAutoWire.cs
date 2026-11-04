@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves.EditorTools
 {
-    // Sets up boss phase 1, the vault, each time the editor loads: imports its props Codex drew
-    // (Assets/ART/Vault, prepared by Tools/VaultArt) as sprites; when the open scene's MapSwitcher
+    // Sets up boss phase 1, the vault, each time the editor loads: imports its props (Assets/ART/Vault:
+    // the diamond, its glint, the light switch off and on) as sprites; when the open scene's MapSwitcher
     // still plays the chase as its finale, adds a Boss Finale next to the chase (BossFinale and
     // BossVault) and makes it the finale, so the vault plays first and the chase after. Fills every
     // reference left empty, most of them taken from the chase (its score tags, floor picture, the
@@ -19,6 +19,10 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Art = "Assets/ART/Vault/";
         private const string Diamond = Art + "DiamondPedestal.png";
         private const string LightSwitch = Art + "LightSwitch.png";
+        private const string LightSwitchOn = Art + "LightSwitchOn.png";
+        private const string DiamondGlint = Art + "DiamondGlint.png";
+        // The banner the blackout's what-to-do is written on (the lucky wheel's caption banner).
+        private const string HintBanner = "Assets/ART/Market/LuckyWheelCaptionBack.png";
         // The blackout's dark sheet (made from the Vault Darkness shader when missing).
         private const string Darkness = Art + "VaultDarkness.mat";
         private const string DarknessShader = "BountyHunter/Vault Darkness";
@@ -46,6 +50,8 @@ namespace BountyHunter.Thieves.EditorTools
 
             ImportAsSprite(Diamond);
             ImportAsSprite(LightSwitch);
+            ImportAsSprite(LightSwitchOn);
+            ImportAsSprite(DiamondGlint);
             MakeDarkness();
 
             var switcher = Object.FindFirstObjectByType<MapSwitcher>(FindObjectsInactive.Include);
@@ -87,6 +93,9 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= CopyList(chaseFields.FindProperty("scoreTags"), vaultFields.FindProperty("scoreTags"));
             changed |= Fill(vaultFields, "diamondPedestal", AssetDatabase.LoadAssetAtPath<Sprite>(Diamond));
             changed |= Fill(vaultFields, "lightSwitch", AssetDatabase.LoadAssetAtPath<Sprite>(LightSwitch));
+            changed |= Fill(vaultFields, "lightSwitchOn", AssetDatabase.LoadAssetAtPath<Sprite>(LightSwitchOn));
+            changed |= Fill(vaultFields, "diamondGlint", AssetDatabase.LoadAssetAtPath<Sprite>(DiamondGlint));
+            changed |= Fill(vaultFields, "hintBanner", AssetDatabase.LoadAssetAtPath<Sprite>(HintBanner));
             changed |= Fill(vaultFields, "darknessMaterial", AssetDatabase.LoadAssetAtPath<Material>(Darkness));
             changed |= Fill(vaultFields, "floorPicture", AssetDatabase.LoadAssetAtPath<Texture2D>(VaultFloor));
             changed |= Fill(vaultFields, "wallPicture", AssetDatabase.LoadAssetAtPath<Sprite>(VaultWall));

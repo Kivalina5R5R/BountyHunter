@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Fortal.Display;
 using Fortal.Players;
+using TMPro;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -23,8 +24,8 @@ namespace BountyHunter.Thieves
         MoveCars
     }
 
-    // The market's lucky wheel (stage 3): a mystery box lies in the middle of the floor, its panels
-    // running through the rainbow (the market's hiding spots keep off it: MapSwitcher's Keep Clear).
+    // The market's lucky wheel (stage 3): a mystery box lies in the middle of the floor (the market's
+    // hiding spots keep off it: MapSwitcher's Keep Clear).
     // A player who stands on it for holdSeconds sets it off: it goes from the floor in a burst of
     // stars and a wheel spins big on the wall instead, stopping on one result picked by weights
     // (LuckyWheelSpin), which then happens on the floor. Hiding spots creeping away with a thief
@@ -53,6 +54,10 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.5f)] private float spinSeconds = 2.5f;
         // How likely each result is, in LuckyWheelResult order.
         [SerializeField] private float[] weights = { 1f, 1f, 1f, 1f };
+        // Which segment of the wheel picture each result is on (0 centred at the top, then clockwise),
+        // in LuckyWheelResult order: the loudspeaker at the top, then the cars, the stun gun and the
+        // extra hiding spots.
+        [SerializeField] private int[] segments = { 3, 0, 2, 1 };
 
         [Header("Results")]
         [SerializeField, Min(1)] private int extraSpots = 2;
@@ -66,20 +71,38 @@ namespace BountyHunter.Thieves
         [SerializeField] private Sprite wheel;
         [SerializeField] private Sprite pointer;
         [SerializeField] private Sprite[] resultIcons = new Sprite[0];
-        // Each segment's colour, in LuckyWheelResult order, for the glow as it lands.
+        // Each result's segment colour, in LuckyWheelResult order, for the glow as it lands.
         [SerializeField] private Color[] resultColours =
         {
-            new Color(0.4f, 0.85f, 0.35f, 1f),
-            new Color(1f, 0.82f, 0.2f, 1f),
-            new Color(0.3f, 0.6f, 1f, 1f),
-            new Color(1f, 0.3f, 0.25f, 1f),
+            new Color(0.76f, 0.7f, 0.29f, 1f),
+            new Color(0f, 0.72f, 1f, 1f),
+            new Color(0.97f, 0.37f, 0.45f, 1f),
+            new Color(0.35f, 0.92f, 0.7f, 1f),
         };
-        // What lies on the floor: the mystery box (the wheel when empty), drawn with the rainbow
-        // material (Sprite Rainbow) so its panels run through the rainbow, small enough to sit inside
-        // the ring that fills as a player stands on it.
+        // What each result is, shown under its icon as the wheel lands, in LuckyWheelResult order:
+        // its title and a line saying what it does.
+        [SerializeField] private string[] resultTitles =
+        {
+            "MORE HIDING SPOTS",
+            "MORE THIEVES!",
+            "STUN GUNS FOR ALL",
+            "POLICE CARS MOVE",
+        };
+        [SerializeField] private string[] resultLines =
+        {
+            "Extra hiding boxes pop up for a while",
+            "More thieves and passers-by join the round",
+            "Every player gets a stun gun",
+            "The police cars drive to new spots",
+        };
+        // Lettered like the wall's other words: the font and its outlined material, on this banner.
+        [SerializeField] private TMP_FontAsset font;
+        [SerializeField] private Material fontMaterial;
+        [SerializeField] private Sprite captionBack;
+        // What lies on the floor: the mystery box (the wheel when empty), drawn as it is, about as big
+        // as a thief (they stand about 0.66 m) and still inside the ring that fills as a player stands on it.
         [SerializeField] private Sprite mysteryBox;
-        [SerializeField] private Material rainbow;
-        [SerializeField, Min(0.2f)] private float wheelWidth = 0.55f;
+        [SerializeField, Min(0.2f)] private float wheelWidth = 0.66f;
         // The stars twinkling round it while it waits, and the ring filling round it as a player
         // stands on it: the players' own select ring, drawn with the radial fill material.
         [SerializeField] private Sprite[] sparkles = new Sprite[0];
@@ -135,7 +158,6 @@ namespace BountyHunter.Thieves
             Sprite onFloor = mysteryBox != null ? mysteryBox : wheel;
             waiting = FloorSwitch.Create(transform, "Lucky Wheel", Spot, onFloor, wheelWidth, null, selectRing, radialFill, selectRingTint, radius,
                 holdSeconds, 0f, players, sparkles);
-            if (rainbow != null && mysteryBox != null) waiting.UsePropMaterial(rainbow);
             waiting.Triggered += OnTriggered;
         }
 
@@ -150,9 +172,19 @@ namespace BountyHunter.Thieves
             Sprite icon = resultIcons != null && index < resultIcons.Length ? resultIcons[index] : null;
             Color colour = resultColours != null && index < resultColours.Length ? resultColours[index] : Color.white;
             Debug.Log($"[LuckyWheel] Player {(player != null ? player.PlayerId : 0)} spins the wheel: {result}", this);
-            // Without a wall to spin on, it lands at once.
-            if (wall != null) LuckyWheelSpin.Play(wall, wheel, pointer, icon, index, ResultCount, spinSeconds, colour, () => Apply(result, player));
-            else Apply(result, player);
+            int segment = segments != null && index < segments.Length ? segments[index] : index;
+            string title = resultTitles != null && index < resultTitles.Length ? resultTitles[index] : result.ToString();
+            string line = resultLines != null && index < resultLines.Length ? resultLines[index] : "";
+            if (wall != null)
+            {
+                LuckyWheelSpin.Play(wall, wheel, pointer, icon, segment, ResultCount, spinSeconds, colour, title, line, captionBack, font, fontMaterial,
+                    () => Apply(result, player));
+            }
+            else
+            {
+                // Without a wall to spin on, it lands at once.
+                Apply(result, player);
+            }
             comingBack = StartCoroutine(BringBoxBack());
         }
 

@@ -1,43 +1,63 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace BountyHunter.Thieves
 {
     // The lucky wheel spinning up on the wall once a player has set it off on the floor (LuckyWheel):
-    // the wall dims, the wheel springs up in its middle, whirls round and slows to a stop with the won
-    // segment under the pointer, then thumps and glows in the segment's colour while the won result's
-    // icon pops up big on a round badge in front of it (Landed is called then), holds a moment and
-    // it all shrinks away. The wheel picture has its segments laid clockwise from the top, each
-    // segmentCount-th of the way round (Tools/MarketArt).
+    // the wheel springs up in the middle of the wall (left as it is, not dimmed), whirls round and
+    // slows to a stop with the won segment under the pointer and thumps. Then the wheel fades away
+    // while the won result's icon pops up big in its place in a glow of the segment's colour (Landed
+    // is called then), with what it is written under it on a dark torn banner: its title and a line
+    // saying what it does, lettered like the wall's other words (the outlined font, the tutorial's
+    // colours). It holds a moment and it all shrinks away. The wheel picture has its segments laid
+    // clockwise round its middle, the first one centred at the top, each segmentCount-th of the way
+    // round; its icons reach out past the disc, whose rim is RimVsWheel of the way out, where the
+    // pointer sits.
     public sealed class LuckyWheelSpin : MonoBehaviour
     {
         private const int Turns = 5;
         private const float AppearSeconds = 0.35f;
-        private const float HoldSeconds = 1.6f;
+        // Long enough after landing to read what was won.
+        private const float HoldSeconds = 2.8f;
         private const float GoneSeconds = 0.35f;
         private const float PopSeconds = 0.4f;
         private const float ThumpSeconds = 0.3f;
-        private const float DimAlpha = 0.55f;
-        // The wheel's height against the wall's, the pointer's and the glow's against the wheel's, and
-        // how much it swells as it thumps to a stop.
+        // The wheel fades away between these times after landing, while the icon pops up.
+        private const float WheelFadeFrom = 0.15f;
+        private const float WheelFadeTo = 0.5f;
+        // The words come in between these times after landing, rising this much of the wall's height.
+        private const float CaptionFrom = 0.25f;
+        private const float CaptionTo = 0.6f;
+        private const float CaptionRise = 0.04f;
+        // The disc's height against the wall's (the icons reaching out past it come on top), the
+        // pointer's and the glow's against the disc's, and how much it swells as it thumps to a stop.
         private const float WheelVsWall = 0.86f;
         private const float PointerVsWheel = 0.2f;
+        private const float RimVsWheel = 0.89f;
         private const float ThumpSize = 0.12f;
-        // The won icon sits on a round badge this wide against the wheel, its longest side this much
-        // of the badge, so it keeps clear of the badge's rim.
-        private const float BadgeVsWheel = 0.62f;
-        private const float IconVsBadge = 0.66f;
-        private const int BadgePixels = 256;
-        private static readonly Color BadgeFill = new Color(1f, 0.97f, 0.88f, 1f);
-        private static readonly Color BadgeInk = new Color(0.16f, 0.1f, 0.08f, 1f);
-        private static Sprite badgeSprite;
         private const float GlowVsWheel = 1.25f;
+        // The won icon: its longest side and how far above the middle it sits, against the wall's
+        // height. The banner, the title and the line on it: their heights and where their middles sit.
+        private const float IconVsWall = 0.5f;
+        private const float IconRaise = 0.1f;
+        private const float BannerVsWall = 0.34f;
+        private const float BannerAt = -0.31f;
+        private const float TitleVsWall = 0.12f;
+        private const float TitleAt = -0.26f;
+        private const float LineVsWall = 0.065f;
+        private const float LineAt = -0.37f;
+        // The tutorial board's title and words colours.
+        private static readonly Color TitleColour = Color.white;
+        private static readonly Color LineColour = new Color(0.82f, 0.86f, 1f, 1f);
 
-        private Image dim;
-        private RectTransform wheel;
-        private RectTransform pointer;
+        private Image wheel;
+        private Image pointer;
         private RectTransform icon;
+        private CanvasGroup caption;
+        private Vector2 captionHome;
+        private float wallHeight;
         private Image glow;
         private float spinSeconds;
         private float endAngle;
@@ -45,10 +65,12 @@ namespace BountyHunter.Thieves
         private Action landed;
         private bool hasLanded;
 
-        // On the wall (wall, the area it fills), stopping on segment (0 at the top, then clockwise)
-        // of segmentCount, showing iconPicture in colour as it lands and calling landed then.
+        // On the wall (wall, the area it fills), stopping on segment (0 centred at the top, then
+        // clockwise) of segmentCount, then showing iconPicture big in colour with title and line (what
+        // it does) under it on banner, lettered in font with fontMaterial, and calling landed.
         public static void Play(RectTransform wall, Sprite wheelPicture, Sprite pointerPicture, Sprite iconPicture,
-            int segment, int segmentCount, float spinSeconds, Color colour, Action landed)
+            int segment, int segmentCount, float spinSeconds, Color colour, string title, string line, Sprite banner,
+            TMP_FontAsset font, Material fontMaterial, Action landed)
         {
             var root = new GameObject("Lucky Wheel Spin", typeof(RectTransform));
             var area = (RectTransform)root.transform;
@@ -63,34 +85,43 @@ namespace BountyHunter.Thieves
             spin.spinSeconds = Mathf.Max(0.1f, spinSeconds);
             spin.landed = landed;
             spin.bornAt = Time.time;
+            spin.wallHeight = wall.rect.height;
             // Turning the wheel by a segment's clockwise angle brings it to the top, under the pointer.
             float segmentAngle = 360f / Mathf.Max(1, segmentCount);
-            spin.endAngle = Turns * 360f + segmentAngle * (segment + 0.5f);
+            spin.endAngle = Turns * 360f + segmentAngle * segment;
 
-            float size = wall.rect.height * WheelVsWall;
-            spin.dim = Picture(area, "Dim", null, Vector2.zero);
-            RectTransform dimRect = spin.dim.rectTransform;
-            dimRect.anchorMin = Vector2.zero;
-            dimRect.anchorMax = Vector2.one;
-            dimRect.sizeDelta = Vector2.zero;
-            spin.dim.color = Color.clear;
-
+            // size is the disc's; the picture is that much bigger again for the icons past its rim.
+            float size = spin.wallHeight * WheelVsWall;
+            float pictureSize = size / RimVsWheel;
             spin.glow = Picture(area, "Glow", PosterSprites.Dot, new Vector2(size * GlowVsWheel, size * GlowVsWheel));
             Color glowColour = colour;
             glowColour.a = 0f;
             spin.glow.color = glowColour;
-            spin.wheel = Picture(area, "Wheel", wheelPicture, new Vector2(size, size)).rectTransform;
-            spin.pointer = Picture(area, "Pointer", pointerPicture, Fit(pointerPicture, size * PointerVsWheel)).rectTransform;
-            spin.pointer.anchoredPosition = new Vector2(0f, size * 0.5f);
-            // The badge pops up carrying the icon; its rim is the won segment's colour.
-            float badgeSize = size * BadgeVsWheel;
-            Image badge = Picture(area, "Won", BadgeSprite(), new Vector2(badgeSize, badgeSize));
-            badge.color = Color.white;
-            Image rim = Picture(badge.rectTransform, "Rim", PosterSprites.Ring, new Vector2(badgeSize * 0.92f, badgeSize * 0.92f));
-            rim.color = colour;
-            Picture(badge.rectTransform, "Icon", iconPicture, Fit(iconPicture, badgeSize * IconVsBadge));
-            spin.icon = badge.rectTransform;
+            spin.wheel = Picture(area, "Wheel", wheelPicture, new Vector2(pictureSize, pictureSize));
+            spin.pointer = Picture(area, "Pointer", pointerPicture, Fit(pointerPicture, size * PointerVsWheel));
+            spin.pointer.rectTransform.anchoredPosition = new Vector2(0f, size * 0.5f);
+
+            spin.icon = Picture(area, "Won", iconPicture, Fit(iconPicture, spin.wallHeight * IconVsWall)).rectTransform;
+            spin.icon.anchoredPosition = new Vector2(0f, spin.wallHeight * IconRaise);
             spin.icon.gameObject.SetActive(false);
+            spin.glow.rectTransform.anchoredPosition = spin.icon.anchoredPosition;
+
+            var words = new GameObject("Caption", typeof(RectTransform), typeof(CanvasGroup));
+            var wordsRect = (RectTransform)words.transform;
+            wordsRect.SetParent(area, false);
+            wordsRect.sizeDelta = new Vector2(wall.rect.width, spin.wallHeight);
+            spin.caption = words.GetComponent<CanvasGroup>();
+            spin.caption.alpha = 0f;
+            spin.captionHome = wordsRect.anchoredPosition;
+            if (banner != null)
+            {
+                float bannerHeight = spin.wallHeight * BannerVsWall;
+                Image back = Picture(wordsRect, "Banner", banner, new Vector2(bannerHeight * banner.rect.width / Mathf.Max(1f, banner.rect.height), bannerHeight));
+                back.rectTransform.anchoredPosition = new Vector2(0f, spin.wallHeight * BannerAt);
+            }
+
+            Label(wordsRect, "Title", title, font, fontMaterial, TitleColour, 2f, spin.wallHeight * TitleVsWall, spin.wallHeight * TitleAt);
+            Label(wordsRect, "Line", line, font, fontMaterial, LineColour, 1f, spin.wallHeight * LineVsWall, spin.wallHeight * LineAt);
             spin.Show();
         }
 
@@ -105,7 +136,7 @@ namespace BountyHunter.Thieves
             float spun = Mathf.Clamp01(elapsed / spinSeconds);
             // Fast at first, easing into its stop.
             float turned = 1f - Mathf.Pow(1f - spun, 3f);
-            wheel.localRotation = Quaternion.Euler(0f, 0f, endAngle * turned);
+            wheel.rectTransform.localRotation = Quaternion.Euler(0f, 0f, endAngle * turned);
             if (spun >= 1f && !hasLanded) Land();
 
             float afterLanding = elapsed - spinSeconds;
@@ -119,21 +150,29 @@ namespace BountyHunter.Thieves
             float appear = EaseOutBack(Mathf.Clamp01(elapsed / AppearSeconds));
             float shrink = 1f - Mathf.SmoothStep(0f, 1f, gone);
             float thump = hasLanded && afterLanding < ThumpSeconds ? ThumpSize * Mathf.Sin(afterLanding / ThumpSeconds * Mathf.PI) : 0f;
-            wheel.localScale = Vector3.one * (appear * shrink * (1f + thump));
+            // After the thump the wheel and its pointer fade away behind the icon.
+            float wheelShown = hasLanded ? 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(WheelFadeFrom, WheelFadeTo, afterLanding)) : 1f;
+            wheel.rectTransform.localScale = Vector3.one * (appear * shrink * (1f + thump));
+            wheel.color = new Color(1f, 1f, 1f, wheelShown);
             // The pointer ticks as segments pass under it, less as the wheel slows.
             float tick = spun < 1f ? 12f * (1f - spun) * Mathf.Sin(endAngle * turned / 90f * Mathf.PI * 2f) : 0f;
-            pointer.localRotation = Quaternion.Euler(0f, 0f, tick);
-            pointer.localScale = Vector3.one * (appear * shrink);
-            dim.color = new Color(0f, 0f, 0f, DimAlpha * Mathf.Clamp01(elapsed / AppearSeconds) * shrink);
+            pointer.rectTransform.localRotation = Quaternion.Euler(0f, 0f, tick);
+            pointer.rectTransform.localScale = Vector3.one * (appear * shrink);
+            pointer.color = new Color(1f, 1f, 1f, wheelShown);
             if (!hasLanded) return;
 
-            // The badge with the icon springs up in front of the wheel in a glow, then settles and goes with it.
+            // The icon springs up big in a glow, then settles and goes with the rest.
             float pop = EaseOutBack(Mathf.Clamp01(afterLanding / PopSeconds));
             icon.localScale = Vector3.one * (Mathf.LerpUnclamped(0.2f, 1f, pop) * shrink);
             Color glowColour = glow.color;
             glowColour.a = 0.8f * Mathf.Clamp01(afterLanding / PopSeconds) * shrink;
             glow.color = glowColour;
             glow.rectTransform.localScale = Vector3.one * (0.9f + 0.1f * Mathf.Sin(afterLanding * 6f));
+
+            // The words rise into place under it.
+            float words = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CaptionFrom, CaptionTo, afterLanding));
+            caption.alpha = words * shrink;
+            ((RectTransform)caption.transform).anchoredPosition = captionHome + Vector2.down * (wallHeight * CaptionRise * (1f - words));
         }
 
         private void Land()
@@ -151,32 +190,27 @@ namespace BountyHunter.Thieves
             return 1f + (overshoot + 1f) * back * back * back + overshoot * back * back;
         }
 
-        // A cream disc with a dark rim, drawn once: the badge under the won icon.
-        private static Sprite BadgeSprite()
+        // One line of words across parent, height tall, its middle at y, letters spacing apart.
+        private static void Label(RectTransform parent, string name, string text, TMP_FontAsset font, Material material, Color colour,
+            float spacing, float height, float y)
         {
-            if (badgeSprite != null) return badgeSprite;
+            if (string.IsNullOrEmpty(text)) return;
 
-            var pixels = new Color32[BadgePixels * BadgePixels];
-            float centre = BadgePixels * 0.5f;
-            float outer = centre - 2f;
-            float ink = BadgePixels * 0.035f;
-            for (int y = 0; y < BadgePixels; y++)
-            {
-                for (int x = 0; x < BadgePixels; x++)
-                {
-                    float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(centre, centre));
-                    float alpha = Mathf.Clamp01(outer - distance + 0.5f);
-                    Color colour = Color.Lerp(BadgeFill, BadgeInk, Mathf.Clamp01(distance - (outer - ink) + 0.5f));
-                    colour.a = alpha;
-                    pixels[y * BadgePixels + x] = colour;
-                }
-            }
-
-            var texture = new Texture2D(BadgePixels, BadgePixels, TextureFormat.RGBA32, false) { name = "Lucky Wheel Badge", wrapMode = TextureWrapMode.Clamp };
-            texture.SetPixels32(pixels);
-            texture.Apply();
-            badgeSprite = Sprite.Create(texture, new Rect(0f, 0f, BadgePixels, BadgePixels), new Vector2(0.5f, 0.5f), 100f);
-            return badgeSprite;
+            var piece = new GameObject(name, typeof(RectTransform));
+            var rect = (RectTransform)piece.transform;
+            rect.SetParent(parent, false);
+            rect.sizeDelta = new Vector2(parent.sizeDelta.x, height * 1.3f);
+            rect.anchoredPosition = new Vector2(0f, y);
+            var label = piece.AddComponent<TextMeshProUGUI>();
+            if (font != null) label.font = font;
+            if (material != null) label.fontSharedMaterial = material;
+            label.text = text;
+            label.fontSize = height;
+            label.color = colour;
+            label.characterSpacing = spacing;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.raycastTarget = false;
         }
 
         // A sprite's size with its longer side this long.

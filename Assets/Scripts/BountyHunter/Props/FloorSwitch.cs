@@ -50,6 +50,17 @@ namespace BountyHunter.Thieves
         // How long it takes to spring up as it is made, and to shrink away (Vanish).
         private const float AppearSeconds = 0.4f;
         private const float VanishSeconds = 0.6f;
+        // Switching on (ShowUsed): it is pressed flat for PressSeconds, its picture swaps at the
+        // bottom with a flash and a burst of stars, then it springs back up past its size and wobbles
+        // to rest over SpringSeconds. How flat it gets, how far it wobbles (degrees), and the flash:
+        // how long, how far out it grows against the prop's width, and its colour.
+        private const float PressSeconds = 0.12f;
+        private const float SpringSeconds = 0.55f;
+        private const float PressSquash = 0.3f;
+        private const float SpringWobble = 8f;
+        private const float FlashSeconds = 0.45f;
+        private const float FlashGrowth = 2.6f;
+        private static readonly Color FlashColour = new Color(0.6f, 1f, 0.65f, 0.85f);
         // The gleam: how often it sweeps across, how long one sweep takes, how wide the band is
         // (share of the prop) and how far it slants (degrees). Over the prop, inside its outline.
         private const float GleamEverySeconds = 2.6f;
@@ -74,6 +85,16 @@ namespace BountyHunter.Thieves
         private float holdSeconds;
         private float cooldownSeconds;
         private float propScale;
+        // Whether it is dimmed while it rests (not once it shows its used picture, ShowUsed).
+        private bool dimWhileResting = true;
+        // Switching on: since when, the picture it swaps to at the bottom of the press (null once
+        // swapped), and the flash that goes off then.
+        private float usedAt = float.MinValue;
+        private Sprite usedPicture;
+        private SpriteRenderer flash;
+        private float flashAt = float.MinValue;
+        // Whether its stars still have to burst as it starts shrinking away (Vanish).
+        private bool burstOnVanish;
         private float progress;
         private float restUntil;
         private float readyAt = float.MinValue;
@@ -131,20 +152,31 @@ namespace BountyHunter.Thieves
             return floorSwitch;
         }
 
-        // Draws the prop with material (such as one that recolours it) instead of the default.
-        public void UsePropMaterial(Material material)
+        // Switches it on: pressed down, it swaps the prop for picture (at the same width; none keeps
+        // it) with a flash and stars, and springs back up. It stays bright while it rests.
+        public void ShowUsed(Sprite picture)
         {
-            if (prop != null && material != null) prop.sharedMaterial = material;
+            if (prop == null) return;
+
+            usedAt = Time.time;
+            usedPicture = picture;
+            dimWhileResting = false;
+            Show();
         }
 
-        // Shrinks away in a burst of stars, then removes itself; it takes no more players meanwhile.
-        public void Vanish()
+        // How long its switching on (ShowUsed) still has to play.
+        public float SecondsLeftSwitching => Mathf.Max(0f, usedAt + PressSeconds + SpringSeconds - Time.time);
+
+        // After afterSeconds (to finish switching on), shrinks away in a burst of stars, then removes
+        // itself; it takes no more players from now on.
+        public void Vanish(float afterSeconds = 0f)
         {
             if (Vanishing) return;
 
-            vanishedAt = Time.time;
+            vanishedAt = Time.time + Mathf.Max(0f, afterSeconds);
             progress = 0f;
-            if (lure != null) lure.Burst(10);
+            someoneWasOn = false;
+            burstOnVanish = true;
             if (ringBack != null) ringBack.gameObject.SetActive(false);
             if (ringFill != null) ringFill.gameObject.SetActive(false);
         }
@@ -155,6 +187,20 @@ namespace BountyHunter.Thieves
         {
             if (Vanishing)
             {
+                // Still finishing what it was doing (switching on) before it goes.
+                if (Time.time < vanishedAt)
+                {
+                    Show();
+                    return;
+                }
+
+                if (burstOnVanish)
+                {
+                    burstOnVanish = false;
+                    if (lure != null) lure.Burst(10);
+                    if (flash != null) flash.enabled = false;
+                }
+
                 float gone = (Time.time - vanishedAt) / VanishSeconds;
                 if (gone >= 1f)
                 {
@@ -172,6 +218,8 @@ namespace BountyHunter.Thieves
 
             if (Resting)
             {
+                // The rock of whoever stood on it eases out rather than stopping dead.
+                Answer(false);
                 Show();
                 return;
             }
@@ -240,12 +288,15 @@ namespace BountyHunter.Thieves
             float lift = HoldLift * eased * (0.4f + 0.6f * progress);
             float twist = StepTwist * bounce + HoldRock * eased * Mathf.Sin(rockPhase);
             float appear = EaseOutBack(Mathf.Clamp01((Time.time - bornAt) / AppearSeconds));
+            Vector3 shape = SwitchingShape(out float wobble);
             if (prop != null)
             {
-                prop.transform.localScale = Vector3.one * (propScale * appear * (swell + StepBounce * bounce + lift + attentionSwell));
-                prop.transform.localRotation = Quaternion.Euler(0f, 0f, resting ? 0f : twist + attentionShake);
-                prop.color = resting ? RestingColour : Color.white;
+                prop.transform.localScale = Vector3.Scale(Vector3.one * (propScale * appear * (swell + StepBounce * bounce + lift + attentionSwell)), shape);
+                prop.transform.localRotation = Quaternion.Euler(0f, 0f, twist + attentionShake + wobble);
+                prop.color = resting && dimWhileResting ? RestingColour : Color.white;
             }
+
+            ShowFlash();
 
             SweepGleam(inviting);
 
@@ -273,6 +324,65 @@ namespace BountyHunter.Thieves
             ringFill.GetPropertyBlock(block);
             block.SetFloat(FillId, Mathf.Clamp01(fill));
             ringFill.SetPropertyBlock(block);
+        }
+
+        // The prop's shape while it switches on (ShowUsed), and how far it wobbles: pressed flat (wider
+        // and shorter), then, once the picture has swapped, springing back up past its size and
+        // settling. Its plain shape otherwise.
+        private Vector3 SwitchingShape(out float wobble)
+        {
+            wobble = 0f;
+            float since = Time.time - usedAt;
+            if (since < 0f || since >= PressSeconds + SpringSeconds) return Vector3.one;
+
+            if (since < PressSeconds)
+            {
+                float pressed = Mathf.SmoothStep(0f, 1f, since / PressSeconds);
+                return new Vector3(1f + PressSquash * 0.5f * pressed, 1f - PressSquash * pressed, 1f);
+            }
+
+            SwapToUsedPicture();
+            float u = (since - PressSeconds) / SpringSeconds;
+            float fade = (1f - u) * (1f - u);
+            // Starts as flat as the press left it (cos 0 = 1), then swings past its size as it dies out.
+            float spring = Mathf.Cos(u * Mathf.PI * 3f) * fade;
+            wobble = SpringWobble * Mathf.Sin(u * Mathf.PI * 2f) * fade;
+            return new Vector3(1f + PressSquash * 0.5f * spring, 1f - PressSquash * spring, 1f);
+        }
+
+        // At the bottom of the press: the new picture (at the same width), a flash and a burst of stars.
+        private void SwapToUsedPicture()
+        {
+            if (usedPicture == null || prop == null) return;
+
+            float width = prop.sprite != null ? prop.sprite.bounds.size.x * propScale : 0f;
+            prop.sprite = usedPicture;
+            if (width > 0f) propScale = width / Mathf.Max(0.01f, usedPicture.bounds.size.x);
+            if (prop.TryGetComponent(out SpriteMask mask)) mask.sprite = usedPicture;
+            usedPicture = null;
+            flashAt = Time.time;
+            if (lure != null) lure.Burst(12);
+        }
+
+        // A soft round flash under the prop as it switches on, growing out and fading.
+        private void ShowFlash()
+        {
+            float t = (Time.time - flashAt) / FlashSeconds;
+            if (t < 0f || t >= 1f)
+            {
+                if (flash != null) flash.enabled = false;
+                return;
+            }
+
+            if (flash == null) flash = Part(transform, "Flash", PosterSprites.Dot, PropOrder - 1);
+
+            float width = prop != null && prop.sprite != null ? prop.sprite.bounds.size.x * propScale : radius;
+            float grown = Mathf.Lerp(1f, FlashGrowth, 1f - (1f - t) * (1f - t));
+            flash.enabled = true;
+            flash.transform.localScale = Vector3.one * (width * grown / Mathf.Max(0.01f, PosterSprites.Dot.bounds.size.x));
+            Color faded = FlashColour;
+            faded.a *= 1f - t;
+            flash.color = faded;
         }
 
         // Every so often a band of light sweeps across the prop, left to right, while it is ready.

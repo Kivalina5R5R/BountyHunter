@@ -1126,6 +1126,7 @@ MonoBehaviour:
   - 1
   - 1
   - 1
+  segments: 03000000000000000200000001000000
   extraSpots: 2
   extraSpotSeconds: 20
   mostThieves: 5
@@ -1138,13 +1139,25 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 63496c5ea84b8e24686ad9d0bf3b6ea3, type: 3}
   - {fileID: 21300000, guid: e4aa098bf8dee854f9196a9ed31c7821, type: 3}
   resultColours:
-  - {r: 0.4, g: 0.85, b: 0.35, a: 1}
-  - {r: 1, g: 0.82, b: 0.2, a: 1}
-  - {r: 0.3, g: 0.6, b: 1, a: 1}
-  - {r: 1, g: 0.3, b: 0.25, a: 1}
+  - {r: 0.76, g: 0.7, b: 0.29, a: 1}
+  - {r: 0, g: 0.72, b: 1, a: 1}
+  - {r: 0.97, g: 0.37, b: 0.45, a: 1}
+  - {r: 0.35, g: 0.92, b: 0.7, a: 1}
+  resultTitles:
+  - MORE HIDING SPOTS
+  - MORE THIEVES!
+  - STUN GUNS FOR ALL
+  - POLICE CARS MOVE
+  resultLines:
+  - Extra hiding boxes pop up for a while
+  - More thieves and passers-by join the round
+  - Every player gets a stun gun
+  - The police cars drive to new spots
+  font: {fileID: 11400000, guid: d4e98a79a56adb245b3f28d26d672faf, type: 2}
+  fontMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
+  captionBack: {fileID: 21300000, guid: 2339ed22ba5447a19887ddc866c4e589, type: 3}
   mysteryBox: {fileID: 21300000, guid: 89558648d85b64c49a8ccfa4f3797844, type: 3}
-  rainbow: {fileID: 2100000, guid: d30aefb6b6fbb7749b0ef287b9833a4c, type: 2}
-  wheelWidth: 0.55
+  wheelWidth: 0.66
   sparkles:
   - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
   - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
@@ -4156,6 +4169,7 @@ MonoBehaviour:
   areaMin: {x: -5.15, y: -2.3}
   areaMax: {x: 5.15, y: 2.3}
   diamondPedestal: {fileID: 21300000, guid: 2753fdab30f40b24b89256f45d5a76d8, type: 3}
+  diamondGlint: {fileID: 21300000, guid: 9caa4d1d93fa4f04b4610206be10f97d, type: 3}
   diamondWidth: 0.9
   stealRing: {fileID: 21300000, guid: 8e2e7c8a2047803448ea7332356dea0e, type: 3}
   radialFill: {fileID: 2100000, guid: c336646ec748937479367356284f07bf, type: 2}
@@ -4164,9 +4178,9 @@ MonoBehaviour:
   stealSeconds: 4
   drainSeconds: 24
   bossSpeeds:
-    Approach: 0.7
-    Sneak: 0.5
-    Disguised: 0.35
+    Approach: 0.95
+    Sneak: 0.7
+    Disguised: 0.42
     BumpRadius: 0.6
   arriveAfterSeconds: 1.5
   sneakSeenWithin: 1.8
@@ -4197,10 +4211,17 @@ MonoBehaviour:
   switchHoldSeconds: 1
   bothSwitchesFromPlayers: 3
   lightSwitch: {fileID: 21300000, guid: 396fbfe1cafe73b4f88077ce52977ba0, type: 3}
+  lightSwitchOn: {fileID: 21300000, guid: a49c0db941904b0eb6bbfcaa78e1f975, type: 3}
   switchWidth: 0.55
   sparkles:
   - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
   - {fileID: 21300000, guid: 99ec6a525a12b144d93f22450bcfb1e6, type: 3}
+  hintBanner: {fileID: 21300000, guid: 2339ed22ba5447a19887ddc866c4e589, type: 3}
+  hintTitle: LIGHTS OUT!
+  hintOneSwitch: STAND ON A LIGHT SWITCH TO TURN THE LIGHTS BACK ON
+  hintBothSwitches: STAND ON BOTH LIGHT SWITCHES TO TURN THE LIGHTS BACK ON
+  hintOneMoreTitle: ONE MORE SWITCH!
+  hintOneMore: STAND ON THE OTHER LIGHT SWITCH
   laserPasses:
   - Upright: 1
     CrossSeconds: 5

@@ -29,8 +29,9 @@ namespace BountyHunter.Thieves
     // first after smokeFirstAt and then every smokeEvery; and the blackout, the first at
     // blackoutFirstAt for blackoutSeconds, then every blackoutEverySeconds from the last. In a
     // blackout two light switches stand in opposite corners (switchSpots); a player who stands on
-    // one for switchHoldSeconds switches it on; with fewer than bothSwitchesFromPlayers players one
-    // switch puts the lights on, with that many or more both must be on (a switch on stays dimmed).
+    // one for switchHoldSeconds switches it on (lightSwitch turns to lightSwitchOn); with fewer than
+    // bothSwitchesFromPlayers players one switch puts the lights on, with that many or more both must be on.
+    // Till then the wall says what to do.
     // Lasers pass across the floor from edge to edge, one pass at a time, and are gone in a
     // blackout (VaultLasers); the boss touching one shakes it,
     // and sets the alarm off (it is seen for revealSeconds, the wall's edge glows red once) at most once
@@ -76,6 +77,8 @@ namespace BountyHunter.Thieves
 
         [Header("Diamond")]
         [SerializeField] private Sprite diamondPedestal;
+        // The sparkle glinting on the diamond now and then (DiamondGlints); none when empty.
+        [SerializeField] private Sprite diamondGlint;
         [SerializeField, Min(0.2f)] private float diamondWidth = 0.9f;
         // The ring round the pedestal filling as the boss steals: the players' select ring, drawn with
         // the radial fill material.
@@ -90,7 +93,7 @@ namespace BountyHunter.Thieves
         // Passers-by stroll at 0.3, so a disguised boss walks only a little faster.
         [SerializeField] private VaultBoss.Speeds bossSpeeds = new VaultBoss.Speeds
         {
-            Approach = 0.7f, Sneak = 0.5f, Disguised = 0.35f, BumpRadius = 0.6f,
+            Approach = 0.95f, Sneak = 0.7f, Disguised = 0.42f, BumpRadius = 0.6f,
         };
         [SerializeField, Min(0f)] private float arriveAfterSeconds = 1.5f;
         [SerializeField, Min(0f)] private float sneakSeenWithin = 1.8f;
@@ -131,9 +134,19 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0.1f)] private float switchHoldSeconds = 1f;
         // From this many players on, both switches must be on to put the lights back.
         [SerializeField, Min(1)] private int bothSwitchesFromPlayers = 3;
+        // The switch while it waits in the dark (off), and once a player has switched it on.
         [SerializeField] private Sprite lightSwitch;
+        [SerializeField] private Sprite lightSwitchOn;
         [SerializeField, Min(0.1f)] private float switchWidth = 0.55f;
         [SerializeField] private Sprite[] sparkles = new Sprite[0];
+        // So the players know to run to a switch, the wall says what to do on a banner
+        // (VaultLightsHint, in the money font) until the lights are back.
+        [SerializeField] private Sprite hintBanner;
+        [SerializeField] private string hintTitle = "LIGHTS OUT!";
+        [SerializeField] private string hintOneSwitch = "STAND ON A LIGHT SWITCH TO TURN THE LIGHTS BACK ON";
+        [SerializeField] private string hintBothSwitches = "STAND ON BOTH LIGHT SWITCHES TO TURN THE LIGHTS BACK ON";
+        [SerializeField] private string hintOneMoreTitle = "ONE MORE SWITCH!";
+        [SerializeField] private string hintOneMore = "STAND ON THE OTHER LIGHT SWITCH";
 
         [Header("Lasers")]
         // Two upright beams passing left or right, one lying beam passing up or down: each crosses
@@ -172,6 +185,7 @@ namespace BountyHunter.Thieves
         private readonly List<GameObject> hiddenSpots = new List<GameObject>();
         private readonly List<VaultSmoke> smokes = new List<VaultSmoke>();
         private readonly List<FloorSwitch> switches = new List<FloorSwitch>();
+        private VaultLightsHint lightsHint;
         private readonly List<Image> wallFrame = new List<Image>();
         private readonly List<Vector3> passerPositions = new List<Vector3>();
         private SpawnerPlayerLocator players;
@@ -244,6 +258,12 @@ namespace BountyHunter.Thieves
             darkness = VaultDarkness.Create(transform, areaMax - areaMin, DarkOrder, darknessMaterial, playerSpawner, flashlightRadius, flashlightLift, lampRadius,
                 darkAlpha);
             built.Add(darkness.gameObject);
+            if (wallBackground != null)
+            {
+                lightsHint = VaultLightsHint.Create(wallBackground, hintBanner, damageFont, damageMaterial);
+                built.Add(lightsHint.gameObject);
+            }
+
             PutBossDown();
             if (npcs != null) npcs.Begin();
             if (timer != null) timer.StartCountdown(phaseHeading, chase.Seconds);
@@ -279,6 +299,7 @@ namespace BountyHunter.Thieves
             }
 
             switches.Clear();
+            lightsHint = null;
             foreach (VaultSmoke smoke in smokes)
             {
                 if (smoke != null) Destroy(smoke.gameObject);
@@ -414,10 +435,12 @@ namespace BountyHunter.Thieves
             {
                 if (lights == null) continue;
                 lights.Triggered -= OnSwitched;
-                lights.Vanish();
+                // One just switched on finishes springing up before it goes.
+                lights.Vanish(lights.SecondsLeftSwitching);
             }
 
             switches.Clear();
+            if (lightsHint != null) lightsHint.Hide();
             LightsChanged?.Invoke(true);
             string who = byPlayer != null ? $"Player {byPlayer.PlayerId} puts" : "Back come";
             Debug.Log($"[BossVault] {who} the lights on", this);
@@ -438,11 +461,13 @@ namespace BountyHunter.Thieves
             }
 
             darkness.SetLamps(spots);
+            if (lightsHint != null) lightsHint.Show(hintTitle, switchesNeeded > 1 ? hintBothSwitches : hintOneSwitch);
         }
 
-        // A switch on rests (dimmed) for the rest of the blackout, so each counts once.
+        // A switch on rests for the rest of the blackout, so each counts once, and shows it is on.
         private void OnSwitched(FloorSwitch lights, UWBPlayerController player)
         {
+            lights.ShowUsed(lightSwitchOn);
             switchesNeeded--;
             if (switchesNeeded <= 0)
             {
@@ -450,6 +475,7 @@ namespace BountyHunter.Thieves
                 return;
             }
 
+            if (lightsHint != null) lightsHint.Show(hintOneMoreTitle, hintOneMore);
             Debug.Log($"[BossVault] Player {player?.PlayerId} switches one on, {switchesNeeded} to go", this);
         }
 
@@ -642,7 +668,7 @@ namespace BountyHunter.Thieves
                 ShowRing();
             }
 
-            Flat("Diamond", diamondPedestal, DiamondOrder, at, diamondWidth);
+            DiamondGlints.Add(Flat("Diamond", diamondPedestal, DiamondOrder, at, diamondWidth), diamondGlint);
         }
 
         private void ShowRing()
