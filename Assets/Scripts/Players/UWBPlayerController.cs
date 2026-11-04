@@ -8,6 +8,12 @@ namespace Fortal.Players
     [RequireComponent(typeof(Rigidbody), typeof(SphereCollider))]
     public sealed class UWBPlayerController : MonoBehaviour
     {
+        // Far beyond any play area; a reading further out than this is garbage.
+        private const float FarthestSensibleMetres = 1000f;
+
+        // No UWB tag yet (a player waiting for UWBPlayerSpawner to give it the next tag that connects).
+        public const int NoTag = -1;
+
         [Header("Identity")]
         [SerializeField, Min(0)] private int playerId = 1;
         [SerializeField, Min(0)] private int tagId = 1;
@@ -98,11 +104,27 @@ namespace Fortal.Players
 
             isTracking = true;
             SetMarkerVisible(true);
+
+            // A garbled reading (a corrupt serial frame, or trilateration from almost-in-line
+            // anchors) can be NaN, infinite or kilometres away; the player stays where it was
+            // instead of taking everything that follows players along with it.
+            if (!IsSensible(measuredPosition2D))
+            {
+                return;
+            }
+
             Vector3 measuredPosition = new Vector3(measuredPosition2D.x, floorHeight, measuredPosition2D.y);
 
             // UWBManager already applies the smoothing configured in UWBConfig.json.
             body.position = measuredPosition;
             RecordControllerPosition(measuredPosition);
+        }
+
+        // Finite and within FarthestSensibleMetres of the arena's origin on both axes.
+        private static bool IsSensible(Vector2 position)
+        {
+            return float.IsFinite(position.x) && float.IsFinite(position.y) &&
+                   Mathf.Abs(position.x) < FarthestSensibleMetres && Mathf.Abs(position.y) < FarthestSensibleMetres;
         }
 
         // Applies the player identity and UWB tag.
@@ -111,12 +133,12 @@ namespace Fortal.Players
             if (body == null) body = GetComponent<Rigidbody>();
             playerId = Mathf.Max(1, newPlayerId);
             SetTagId(newTagId);
-            gameObject.name = $"Player{playerId:00}_Tag{tagId}";
+            NameAfterTag();
         }
 
         public void SetTagId(int newTagId)
         {
-            newTagId = Mathf.Max(0, newTagId);
+            newTagId = newTagId < 0 ? NoTag : newTagId;
             if (tagId == newTagId)
             {
                 return;
@@ -124,7 +146,13 @@ namespace Fortal.Players
 
             UnregisterManager();
             tagId = newTagId;
+            NameAfterTag();
             FindAndRegisterManager();
+        }
+
+        private void NameAfterTag()
+        {
+            gameObject.name = tagId == NoTag ? $"Player{playerId:00}_NoTag" : $"Player{playerId:00}_Tag{tagId}";
         }
 
         // Chooses whether this player reads its position from UWB or stays where it is placed.
@@ -261,7 +289,7 @@ namespace Fortal.Players
                 uwbManager = FindAnyObjectByType<UWBManager>();
             }
 
-            if (uwbManager == null || isRegistered)
+            if (uwbManager == null || isRegistered || tagId == NoTag)
             {
                 return;
             }

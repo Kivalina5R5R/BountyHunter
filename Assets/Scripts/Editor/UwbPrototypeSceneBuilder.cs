@@ -122,6 +122,8 @@ namespace Fortal.Editor
             GameObject kiosk = BuildKioskDisplay(display.transform);
             kioskCamera = kiosk.GetComponentInChildren<Camera>(true);
             kioskCanvas = kiosk.GetComponentInChildren<Canvas>(true);
+            // The kiosk is retired: kept in the scene for its settings, but switched off.
+            kiosk.SetActive(false);
 
             Transform wallRoot = FindOrCreateChild(display.transform, "Display2_Wall");
             wallCamera = FindOrCreateCamera(wallRoot, "SideCamera", out bool wallCreated);
@@ -135,7 +137,7 @@ namespace Fortal.Editor
                 wallCamera.targetDisplay = DisplayOutput.WallDisplayIndex;
             }
 
-            Transform floorRoot = FindOrCreateChild(display.transform, "Display3_Floor");
+            Transform floorRoot = FindOrCreateChild(display.transform, "Display1_Floor");
             floorCamera = FindOrCreateCamera(floorRoot, "FloorCamera", out bool floorCreated);
             if (floorCreated)
             {
@@ -189,7 +191,7 @@ namespace Fortal.Editor
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
             camera.cullingMask = 1 << uiLayer;
-            camera.targetDisplay = DisplayOutput.KioskDisplayIndex;
+            camera.targetDisplay = DisplayOutput.RetiredKioskDisplayIndex;
 
             var canvasObject = new GameObject("KioskCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.layer = uiLayer;
@@ -200,7 +202,7 @@ namespace Fortal.Editor
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             canvas.worldCamera = camera;
-            canvas.targetDisplay = DisplayOutput.KioskDisplayIndex;
+            canvas.targetDisplay = DisplayOutput.RetiredKioskDisplayIndex;
             var scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.referenceResolution = KioskCanvasSize;
             scaler.matchWidthOrHeight = 0.5f;

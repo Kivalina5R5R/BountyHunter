@@ -151,6 +151,9 @@ namespace BountyHunter.Thieves
 
             idle.alpha = 1f;
             if (arrivalImage != null) arrivalImage.enabled = false;
+            // Hidden under the dogs now: its decoder is given back, so the dogs' videos (two each for
+            // their seamless loops) are not decoding alongside it, which some machines cannot handle.
+            if (arrival != null) arrival.Close();
             idling = true;
             Idling?.Invoke();
         }

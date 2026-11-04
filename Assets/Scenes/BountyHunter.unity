@@ -202,7 +202,7 @@ Camera:
     m_Bits: 4294967295
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
-  m_TargetDisplay: 2
+  m_TargetDisplay: 0
   m_TargetEye: 3
   m_HDR: 1
   m_AllowMSAA: 1
@@ -1541,7 +1541,7 @@ GameObject:
   m_Component:
   - component: {fileID: 274949123}
   m_Layer: 0
-  m_Name: Display3_Floor
+  m_Name: Display1_Floor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2729,6 +2729,7 @@ MonoBehaviour:
   kioskCanvases:
   - {fileID: 1377424549}
   kioskDisplayResolution: {x: 1080, y: 1920}
+  kioskMonitorName: 
   sideCamera: {fileID: 1472304789}
   sideCanvases:
   - {fileID: 1144961301}
@@ -2737,7 +2738,7 @@ MonoBehaviour:
   activateSecondDisplayOnAwake: 1
   applyPaperArenaResolutionsInStandalone: 1
   placeOutputsOnMatchingMonitors: 1
-  kioskMonitorName: 
+  floorMonitorName: 
   sideDisplayResolution: {x: 8192, y: 2160}
   floorDisplayResolution: {x: 2944, y: 1408}
   refreshRate: 60
@@ -2855,32 +2856,15 @@ MonoBehaviour:
   playerParent: {fileID: 0}
   spawnOnStart: 1
   playerScale: 0.462
+  playerCount: 4
+  startPositions:
+  - {x: -3.3, y: -1.65}
+  - {x: -1.1, y: -1.65}
+  - {x: 1.1, y: -1.65}
+  - {x: 3.3, y: -1.65}
+  - {x: -4.4, y: -1.65}
+  - {x: 4.4, y: -1.65}
   simulationPlayerCount: 4
-  players:
-  - enabled: 1
-    playerId: 1
-    tagId: 6
-    initialPosition: {x: -3.3, y: -1.65}
-  - enabled: 1
-    playerId: 2
-    tagId: 7
-    initialPosition: {x: -1.1, y: -1.65}
-  - enabled: 1
-    playerId: 3
-    tagId: 8
-    initialPosition: {x: 1.1, y: -1.65}
-  - enabled: 1
-    playerId: 4
-    tagId: 9
-    initialPosition: {x: 3.3, y: -1.65}
-  - enabled: 1
-    playerId: 5
-    tagId: 10
-    initialPosition: {x: -4.4, y: -1.65}
-  - enabled: 1
-    playerId: 6
-    tagId: 11
-    initialPosition: {x: 4.4, y: -1.65}
   disableOfflinePlayersInSerial: 1
 --- !u!4 &594936651
 Transform:
@@ -4211,6 +4195,7 @@ MonoBehaviour:
   - {x: 4.6, y: 1.75}
   switchRadius: 0.6
   switchHoldSeconds: 1
+  bothSwitchesFromPlayers: 3
   lightSwitch: {fileID: 21300000, guid: 396fbfe1cafe73b4f88077ce52977ba0, type: 3}
   switchWidth: 0.55
   sparkles:
@@ -7248,6 +7233,10 @@ PrefabInstance:
     - target: {fileID: 5338963203935216365, guid: 5d58997f9e3dfef40854a49120cf5f35, type: 3}
       propertyPath: m_Name
       value: KioskDisplay
+      objectReference: {fileID: 0}
+    - target: {fileID: 5338963203935216365, guid: 5d58997f9e3dfef40854a49120cf5f35, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7355748951634077905, guid: 5d58997f9e3dfef40854a49120cf5f35, type: 3}
       propertyPath: popup

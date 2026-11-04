@@ -86,6 +86,16 @@ namespace BountyHunter.Thieves
         // cannot be caught, so it gets a fair head start.
         [SerializeField, Min(0f)] private float exitGraceSeconds = 1f;
 
+        [Header("Taking Cover")]
+        // While a stun gun is locking onto it, a thief with a passer-by within coverSearch keeps that
+        // passer-by between itself and the shooter, so the shot hits the passer-by instead. With no
+        // passer-by that near it runs as usual.
+        [SerializeField, Min(0.1f)] private float coverSearch = 1.8f;
+        // How far behind the passer-by (seen from the shooter) it stays.
+        [SerializeField, Min(0.1f)] private float coverBehind = 0.75f;
+        // A player this close sends it running instead.
+        [SerializeField, Min(0f)] private float coverGiveUpDistance = 0.9f;
+
         private IPlayerLocator players;
         private IHidingSpots hidingSpots;
         private IThiefCrowd crowd;
@@ -125,6 +135,12 @@ namespace BountyHunter.Thieves
         private Vector3 entryPoint;
         // Handcuffs the thief instead of catching it outright; null for an outright catch.
         private IThiefCuffs cuffs;
+        // Taking cover: from whom, behind the passer-by last seen here, and until when (a moment past
+        // the last AimedAt, so it lets go soon after the lock does).
+        private const float CoverHoldSeconds = 0.3f;
+        private Transform coverFrom;
+        private Vector3 coverPasserBy;
+        private float coverUntil;
 
         public ThiefState State => state;
         public string TypeName => typeName;
@@ -218,12 +234,38 @@ namespace BountyHunter.Thieves
             if (state == ThiefState.Caught || state == ThiefState.Hidden || state == ThiefState.Cuffed || entering) return false;
 
             stunnedUntil = Time.time + seconds;
+            coverUntil = 0f;
             catchableAt = Mathf.Min(catchableAt, Time.time);
             ReleaseTargetBush();
             hasTarget = false;
             velocity = Vector3.zero;
             if (frames != null) frames.HoldIdle(seconds);
             Debug.Log($"[Thief] {name} is stunned for {seconds:0.0}s", this);
+            return true;
+        }
+
+        // A stun gun is locking onto it from shooter; called every frame the lock holds. With a
+        // passer-by within coverSearch it keeps behind them until the lock lets go. True while it does.
+        public bool AimedAt(Transform shooter)
+        {
+            if (shooter == null || entering || IsStunned) return false;
+
+            if (coverUntil > 0f)
+            {
+                coverFrom = shooter;
+                coverUntil = Time.time + CoverHoldSeconds;
+                return true;
+            }
+
+            if (state != ThiefState.Wander && state != ThiefState.Flee) return false;
+            if (!NearestPasserBy(transform.position, coverSearch, out Vector3 passerBy)) return false;
+
+            ReleaseTargetBush();
+            state = ThiefState.Flee;
+            coverFrom = shooter;
+            coverPasserBy = passerBy;
+            coverUntil = Time.time + CoverHoldSeconds;
+            Debug.Log($"[Thief] {name} takes cover behind a passer-by from the stun gun", this);
             return true;
         }
 
@@ -361,6 +403,14 @@ namespace BountyHunter.Thieves
             if (IsStunned) return;
 
             players.GetAll(playerPositions);
+            if (TakingCover(threatDistance))
+            {
+                SetTarget(CoverSpot());
+                Move();
+                KeepApart();
+                return;
+            }
+
             if (threatDistance <= calmRadius) lastAlarmAt = Time.time;
             bool calm = Time.time - lastAlarmAt >= calmSeconds;
             if (threatened && (state != ThiefState.Flee || Time.time >= nextReplanAt || !TargetStillSafe())) Flee(threat, false);
@@ -483,6 +533,55 @@ namespace BountyHunter.Thieves
             // A fresh scare (or being flushed out) picks its way out anew.
             if (!wasFleeing || flushed) commitUntil = 0f;
             SetTarget(transform.position + RunDirection() * 1.5f);
+        }
+
+        // Still behind its passer-by: still aimed at, the shooter and the passer-by still there, and no
+        // player right on it. Otherwise it stops, and plans its flight afresh at once.
+        private bool TakingCover(float threatDistance)
+        {
+            if (coverUntil <= 0f) return false;
+
+            // A passer-by moves only a little a frame, so the one nearest where it was is the same one.
+            const float passerByStep = 0.5f;
+            bool keep = Time.time < coverUntil && coverFrom != null && threatDistance > coverGiveUpDistance &&
+                NearestPasserBy(coverPasserBy, passerByStep, out coverPasserBy);
+            if (keep) return true;
+
+            coverUntil = 0f;
+            coverFrom = null;
+            nextReplanAt = 0f;
+            commitUntil = 0f;
+            return false;
+        }
+
+        // Just behind the passer-by on the line from the shooter, so the passer-by is in the way.
+        private Vector3 CoverSpot()
+        {
+            Vector3 away = coverPasserBy - coverFrom.position;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.0001f) away = lastMoveDirection;
+            return coverPasserBy + away.normalized * coverBehind;
+        }
+
+        private bool NearestPasserBy(Vector3 from, float within, out Vector3 nearest)
+        {
+            nearest = from;
+            if (bystanders == null) return false;
+
+            bystanderPositions.Clear();
+            bystanders.AddPositions(bystanderPositions, transform);
+            float best = within;
+            bool found = false;
+            foreach (Vector3 position in bystanderPositions)
+            {
+                float distance = SpawnerPlayerLocator.FlatDistance(from, position);
+                if (distance > best) continue;
+                best = distance;
+                nearest = position;
+                found = true;
+            }
+
+            return found;
         }
 
         // A bush stops being safe once a player stands on it or another thief takes it.

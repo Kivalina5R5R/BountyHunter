@@ -17,6 +17,7 @@ namespace BountyHunter.Thieves
         private const int SortingOrder = 3;
         private const int TextureSize = 64;
         private const float FadeInSeconds = 0.06f;
+        private const int MostPrintsPerFrame = 4;
 
         [SerializeField] private UWBPlayerSpawner players;
         // No prints while it shows (the character picking).
@@ -95,12 +96,17 @@ namespace BountyHunter.Thieves
             Vector3 direction = runner.Velocity / speed;
             float stride = runner.Width * strideVsPlayer;
             runner.Travelled += step.magnitude;
-            while (runner.Travelled >= stride)
+            // A few at most a frame: a tag that jumps far in one reading would otherwise leave
+            // thousands at once (and at a huge distance, subtracting a stride no longer changes it,
+            // so the loop would never end).
+            for (int left = MostPrintsPerFrame; left > 0 && runner.Travelled >= stride; left--)
             {
                 runner.Travelled -= stride;
                 runner.LeftFoot = !runner.LeftFoot;
                 Leave(position, direction, runner.LeftFoot, runner.Width);
             }
+
+            if (runner.Travelled >= stride) runner.Travelled = 0f;
         }
 
         private void Leave(Vector3 at, Vector3 direction, bool leftFoot, float playerWidth)

@@ -148,13 +148,22 @@ namespace BountyHunter.Thieves
             shownScale = baseScale;
             float side = Random.value < 0.5f ? -1f : 1f;
             pin.Hide();
-            Hang(PinPoint(), tilt, 0f, 0f);
-            if (delay > 0f) yield return new WaitForSeconds(delay);
+            // Waits rolled up at its spot; the row may change (more posters pinned up, one torn
+            // down) before it goes up, and it must go up at the size and spot it has by then.
+            for (float waited = 0f; waited < delay; waited += Time.deltaTime)
+            {
+                shownScale = baseScale;
+                Hang(PinPoint(), tilt, 0f, 0f);
+                yield return null;
+            }
+
+            shownScale = baseScale;
 
             // The pin is pushed in from in front of the board.
             for (float time = 0f; time < pinSeconds; time += Time.deltaTime)
             {
                 float u = time / pinSeconds;
+                FollowSize();
                 pin.Place(PinPoint(), Mathf.Lerp(1.7f, 1f, u * u), Mathf.Clamp01(u * 3f));
                 yield return null;
             }
@@ -166,6 +175,7 @@ namespace BountyHunter.Thieves
             for (float time = 0f; time < swingSeconds; time += Time.deltaTime)
             {
                 float unroll = BackOut(Mathf.Clamp01(time / unrollSeconds));
+                FollowSize();
                 float u = time / swingSeconds;
                 float swing = side * swingDegrees * Mathf.Cos(u * Mathf.PI * 3f) * (1f - u) * (1f - u);
                 Hang(PinPoint(), tilt + swing, unroll, 1f);
@@ -173,8 +183,17 @@ namespace BountyHunter.Thieves
                 yield return null;
             }
 
+            shownScale = baseScale;
             Hang(PinPoint(), tilt, 1f, 1f);
+            pin.Place(PinPoint(), 1f, 1f);
             playing = null;
+        }
+
+        // A poster going up while the row grows or shrinks eases to the row's new size as it swings,
+        // instead of hanging on at the size it started at (and covering its neighbours).
+        private void FollowSize()
+        {
+            shownScale = Vector3.MoveTowards(shownScale, baseScale, fullScale.magnitude * Time.deltaTime / slideSeconds);
         }
 
         private IEnumerator SlideRoutine(Vector2 from, float delay)
@@ -189,7 +208,8 @@ namespace BountyHunter.Thieves
             {
                 float u = time / slideSeconds;
                 shownScale = Vector3.Lerp(fromScale, baseScale, Mathf.SmoothStep(0f, 1f, u));
-                Vector2 point = PinPoint(Vector2.Lerp(from, to, 1f - Mathf.Pow(1f - u, 3f)));
+                // Toward home as it is now: the row may change again while it glides.
+                Vector2 point = PinPoint(Vector2.Lerp(from, home, 1f - Mathf.Pow(1f - u, 3f)));
                 Hang(point, tilt + lean * Mathf.Sin(u * Mathf.PI), 1f, 1f);
                 pin.Place(point, 1f, 1f);
                 yield return null;

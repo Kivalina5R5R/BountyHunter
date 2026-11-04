@@ -15,6 +15,7 @@ namespace BountyHunter.Thieves
     // of it. A hit stuns the thief for stunSeconds and whoever reaches it first catches it (not
     // necessarily the shooter). A passer-by standing in the line of fire (within npcInTheWay of it)
     // takes the shot instead: it gets angry and the shooter pays a fine (BountyRounds, NpcZapped).
+    // A thief being locked onto with a passer-by near keeps behind them for that (AimedAt).
     // A player carrying shots has a crackling ring round them (StunAura). Everything goes when the
     // floor is cleared or a new stage starts.
     public sealed class StunGuns : MonoBehaviour
@@ -182,6 +183,9 @@ namespace BountyHunter.Thieves
                     else if (gun.Charge <= 0f) LockStarted?.Invoke(gun.Player);
                     gun.Target = inReach;
                 }
+
+                // Being locked onto, a thief near a passer-by keeps behind them (ThiefController).
+                inReach.AimedAt(gun.Player.transform);
 
                 float rate = mud != null ? mud.LockRateAt(gun.Player.transform.position) : 1f;
                 gun.Charge += Time.deltaTime / lockSeconds * rate;

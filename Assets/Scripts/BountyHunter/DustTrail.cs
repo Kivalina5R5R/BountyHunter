@@ -9,6 +9,7 @@ namespace BountyHunter.Thieves
     public sealed class DustTrail : MonoBehaviour
     {
         private const float Height = 0.03f;
+        private const int MostPuffsPerFrame = 4;
 
         // Below this speed (units per second) no dust is kicked up: above a thief's walk (wander
         // speed 0.6, up to 0.72) and its hurried walk onto the floor (1.05), below its run (1.5).
@@ -54,11 +55,14 @@ namespace BountyHunter.Thieves
 
             float interval = spacing / Mathf.Clamp(speed / 0.6f, 1f, 2f);
             travelled += distance;
-            while (travelled >= interval)
+            // A few at most a frame, so a thief moved far in one go (a warp) does not puff all the way.
+            for (int left = MostPuffsPerFrame; left > 0 && travelled >= interval; left--)
             {
                 travelled -= interval;
                 Emit(step / distance, speed);
             }
+
+            if (travelled >= interval) travelled = 0f;
         }
 
         private void Emit(Vector3 direction, float speed)

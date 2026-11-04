@@ -29,7 +29,8 @@ namespace BountyHunter.Thieves
     // first after smokeFirstAt and then every smokeEvery; and the blackout, the first at
     // blackoutFirstAt for blackoutSeconds, then every blackoutEverySeconds from the last. In a
     // blackout two light switches stand in opposite corners (switchSpots); a player who stands on
-    // one for switchHoldSeconds puts the lights on.
+    // one for switchHoldSeconds switches it on; with fewer than bothSwitchesFromPlayers players one
+    // switch puts the lights on, with that many or more both must be on (a switch on stays dimmed).
     // Lasers pass across the floor from edge to edge, one pass at a time, and are gone in a
     // blackout (VaultLasers); the boss touching one shakes it,
     // and sets the alarm off (it is seen for revealSeconds, the wall's edge glows red once) at most once
@@ -128,6 +129,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private Vector2[] switchSpots = { new Vector2(-4.6f, -1.75f), new Vector2(4.6f, 1.75f) };
         [SerializeField, Min(0.1f)] private float switchRadius = 0.6f;
         [SerializeField, Min(0.1f)] private float switchHoldSeconds = 1f;
+        // From this many players on, both switches must be on to put the lights back.
+        [SerializeField, Min(1)] private int bothSwitchesFromPlayers = 3;
         [SerializeField] private Sprite lightSwitch;
         [SerializeField, Min(0.1f)] private float switchWidth = 0.55f;
         [SerializeField] private Sprite[] sparkles = new Sprite[0];
@@ -178,6 +181,8 @@ namespace BountyHunter.Thieves
         private VaultBoss boss;
         private VaultLasers laserBeams;
         private VaultDarkness darkness;
+        // Switches this blackout still needs on before the lights come back.
+        private int switchesNeeded;
         private SpriteRenderer ring;
         private MaterialPropertyBlock ringBlock;
         private float startedAt;
@@ -421,12 +426,13 @@ namespace BountyHunter.Thieves
         private void PutSwitchesDown()
         {
             var spots = new List<Vector3>();
+            switchesNeeded = ActivePlayers() >= bothSwitchesFromPlayers ? switchSpots.Length : Mathf.Min(1, switchSpots.Length);
             foreach (Vector2 spot in switchSpots)
             {
                 var at = new Vector3(spot.x, 0f, spot.y);
                 spots.Add(at);
                 FloorSwitch lights = FloorSwitch.Create(transform, "Light Switch", at, lightSwitch, switchWidth, null, stealRing, radialFill, Color.white, switchRadius,
-                    switchHoldSeconds, 0f, playerSpawner, sparkles);
+                    switchHoldSeconds, blackoutSeconds, playerSpawner, sparkles);
                 lights.Triggered += OnSwitched;
                 switches.Add(lights);
             }
@@ -434,9 +440,30 @@ namespace BountyHunter.Thieves
             darkness.SetLamps(spots);
         }
 
+        // A switch on rests (dimmed) for the rest of the blackout, so each counts once.
         private void OnSwitched(FloorSwitch lights, UWBPlayerController player)
         {
-            LightsOn(player);
+            switchesNeeded--;
+            if (switchesNeeded <= 0)
+            {
+                LightsOn(player);
+                return;
+            }
+
+            Debug.Log($"[BossVault] Player {player?.PlayerId} switches one on, {switchesNeeded} to go", this);
+        }
+
+        private int ActivePlayers()
+        {
+            if (playerSpawner == null) return 0;
+
+            int count = 0;
+            foreach (UWBPlayerController player in playerSpawner.SpawnedPlayers)
+            {
+                if (player != null && player.isActiveAndEnabled) count++;
+            }
+
+            return count;
         }
 
         // The boss touching a beam shakes it every time, and sets the alarm off unless it just rang.

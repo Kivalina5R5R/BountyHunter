@@ -1,36 +1,15 @@
-using System;
 using System.Collections.Generic;
 using Fortal.UWB;
 using UnityEngine;
 
 namespace Fortal.Players
 {
-    // Spawns the player prefab once per configured UWB identity.
+    // Spawns playerCount players, each with no UWB tag at first: a tag that connects goes to the
+    // first player still without one, whatever its number, first come first served, and stays with
+    // that player for the session. Once every player has a tag, any further tag is turned away.
     public sealed class UWBPlayerSpawner : MonoBehaviour
     {
         public const int MaximumPlayers = 6;
-
-        [Serializable]
-        public sealed class PlayerDefinition
-        {
-            [SerializeField] private bool enabled = true;
-            [SerializeField, Min(1)] private int playerId = 1;
-            [SerializeField, Min(0)] private int tagId = 1;
-            [Tooltip("Floor X/Z before the first UWB frame, and the spawn point in standalone Simulation (Vector2.y is world Z).")]
-            [SerializeField] private Vector2 initialPosition;
-
-            public bool Enabled => enabled;
-            public int PlayerId => playerId;
-            public int TagId => tagId;
-            public Vector2 InitialPosition => initialPosition;
-
-            public PlayerDefinition(int playerId, int tagId, Vector2 initialPosition)
-            {
-                this.playerId = playerId;
-                this.tagId = tagId;
-                this.initialPosition = initialPosition;
-            }
-        }
 
         [Header("Player Template")]
         [Tooltip("Player prefab with UWBPlayerController, Rigidbody and SphereCollider.")]
@@ -42,26 +21,31 @@ namespace Fortal.Players
         [Tooltip("Overall scale of every Player, including marker and collider.")]
         [SerializeField, Min(0.05f)] private float playerScale = 0.462f;
 
-        [Header("Simulation")]
-        [Tooltip("Number of simulated players (1-6), taken in order from the enabled Players. Applies to standalone Simulation only.")]
-        [SerializeField, Range(1, MaximumPlayers)] private int simulationPlayerCount = 4;
-
-        [Header("Player ID / UWB Tag Mapping")]
-        [SerializeField] private PlayerDefinition[] players =
+        [Header("Players")]
+        [Tooltip("Players in the game (Player 1 up). Each takes the next UWB tag that connects; tags connecting after that many are turned away.")]
+        [SerializeField, Range(1, MaximumPlayers)] private int playerCount = 4;
+        [Tooltip("Floor X/Z of Player 1, 2, ... before the first UWB frame, and the spawn point in standalone Simulation (Vector2.y is world Z).")]
+        [SerializeField] private Vector2[] startPositions =
         {
-            new PlayerDefinition(1, 6, new Vector2(-3.3f, -1.65f)),
-            new PlayerDefinition(2, 7, new Vector2(-1.1f, -1.65f)),
-            new PlayerDefinition(3, 8, new Vector2(1.1f, -1.65f)),
-            new PlayerDefinition(4, 9, new Vector2(3.3f, -1.65f)),
-            new PlayerDefinition(5, 10, new Vector2(-4.4f, -1.65f)),
-            new PlayerDefinition(6, 11, new Vector2(4.4f, -1.65f))
+            new Vector2(-3.3f, -1.65f),
+            new Vector2(-1.1f, -1.65f),
+            new Vector2(1.1f, -1.65f),
+            new Vector2(3.3f, -1.65f),
+            new Vector2(-4.4f, -1.65f),
+            new Vector2(4.4f, -1.65f)
         };
+
+        [Header("Simulation")]
+        [Tooltip("Number of simulated players (1-6). Applies to standalone Simulation only.")]
+        [SerializeField, Range(1, MaximumPlayers)] private int simulationPlayerCount = 4;
 
         [Header("Serial Presence")]
         [Tooltip("In Serial mode, disable each Player until its UWB tag is receiving fresh data. The tag stays registered so the Player can come back.")]
         [SerializeField] private bool disableOfflinePlayersInSerial = true;
 
         private readonly List<UWBPlayerController> spawnedPlayers = new List<UWBPlayerController>();
+        // Tags turned away (logged once each).
+        private readonly HashSet<int> refusedTags = new HashSet<int>();
         // Once the game has started, only these players may come online; null while anyone may join.
         private HashSet<int> roster;
         private UWBManager uwbManager;
@@ -89,6 +73,7 @@ namespace Fortal.Players
         private void Start()
         {
             uwbManager = standaloneSimulationMode ? null : FindAnyObjectByType<UWBManager>();
+            if (uwbManager != null) uwbManager.TagDetected += OnTagDetected;
             if (spawnOnStart)
             {
                 SpawnPlayers();
@@ -107,13 +92,41 @@ namespace Fortal.Players
                 return;
             }
 
+            uwbManager.TagDetected -= OnTagDetected;
             for (int i = 0; i < spawnedPlayers.Count; i++)
             {
-                if (spawnedPlayers[i] != null)
+                if (spawnedPlayers[i] != null && spawnedPlayers[i].TagId != UWBPlayerController.NoTag)
                 {
                     uwbManager.UnregisterTag(spawnedPlayers[i].TagId);
                 }
             }
+        }
+
+        // A tag was heard. One no player has yet goes to the first player still without a tag; with
+        // none left it is turned away.
+        private void OnTagDetected(int tagId)
+        {
+            if (tagId < 0 || refusedTags.Contains(tagId)) return;
+
+            UWBPlayerController waiting = null;
+            for (int i = 0; i < spawnedPlayers.Count; i++)
+            {
+                UWBPlayerController player = spawnedPlayers[i];
+                if (player == null) continue;
+                if (player.TagId == tagId) return;
+                if (waiting == null && player.TagId == UWBPlayerController.NoTag) waiting = player;
+            }
+
+            if (waiting == null)
+            {
+                refusedTags.Add(tagId);
+                Debug.Log($"[UWBPlayerSpawner] Tag {tagId} turned away: all {spawnedPlayers.Count} players already have a tag", this);
+                return;
+            }
+
+            waiting.SetTagId(tagId);
+            uwbManager.RegisterTag(tagId);
+            Debug.Log($"[UWBPlayerSpawner] Tag {tagId} joins as Player {waiting.PlayerId}", this);
         }
 
         [ContextMenu("Spawn Players")]
@@ -132,33 +145,17 @@ namespace Fortal.Players
             }
 
             ClearSpawnedPlayers();
-            if (players == null)
-            {
-                return;
-            }
-
             Transform targetParent = playerParent != null ? playerParent : transform;
-            int simulationLimit = Mathf.Clamp(simulationPlayerCount, 1, MaximumPlayers);
-            for (int i = 0; i < players.Length; i++)
+            int count = Mathf.Clamp(standaloneSimulationMode ? simulationPlayerCount : playerCount, 1, MaximumPlayers);
+            for (int i = 0; i < count; i++)
             {
-                if (standaloneSimulationMode && spawnedPlayers.Count >= simulationLimit)
-                {
-                    break;
-                }
-
-                PlayerDefinition definition = players[i];
-                if (definition == null || !definition.Enabled)
-                {
-                    continue;
-                }
-
-                spawnedPlayers.Add(SpawnPlayer(definition, targetParent));
+                spawnedPlayers.Add(SpawnPlayer(i + 1, StartPosition(i), targetParent));
             }
+        }
 
-            if (standaloneSimulationMode && spawnedPlayers.Count < simulationLimit)
-            {
-                Debug.LogWarning("[UWBPlayerSpawner] Fewer enabled Players than Simulation Player Count.", this);
-            }
+        private Vector2 StartPosition(int index)
+        {
+            return startPositions != null && index < startPositions.Length ? startPositions[index] : Vector2.zero;
         }
 
         // Closes the game to newcomers: from now on only these players show when their tag is online
@@ -184,18 +181,17 @@ namespace Fortal.Players
             return false;
         }
 
-        private UWBPlayerController SpawnPlayer(PlayerDefinition definition, Transform targetParent)
+        // A player starts with no tag; the spawner registers the tag it is given (OnTagDetected) and
+        // keeps that registration, so a disabled offline player still receives frames.
+        private UWBPlayerController SpawnPlayer(int playerId, Vector2 startPosition, Transform targetParent)
         {
             UWBPlayerController controller = Instantiate(playerPrefab, targetParent);
             controller.gameObject.SetActive(false);
             controller.SetUwbTrackingEnabled(!standaloneSimulationMode);
-            controller.Configure(definition.PlayerId, definition.TagId);
-            controller.SetStandaloneWorldPosition(definition.InitialPosition);
+            controller.Configure(playerId, UWBPlayerController.NoTag);
+            controller.SetStandaloneWorldPosition(startPosition);
             controller.SetPlayerScale(playerScale);
             controller.gameObject.SetActive(true);
-
-            // The spawner keeps its own registration so a disabled offline player still receives frames.
-            uwbManager?.RegisterTag(controller.TagId);
             return controller;
         }
 
@@ -208,12 +204,13 @@ namespace Fortal.Players
                     continue;
                 }
 
-                uwbManager?.UnregisterTag(spawnedPlayers[i].TagId);
+                if (spawnedPlayers[i].TagId != UWBPlayerController.NoTag) uwbManager?.UnregisterTag(spawnedPlayers[i].TagId);
                 spawnedPlayers[i].gameObject.SetActive(false);
                 Destroy(spawnedPlayers[i].gameObject);
             }
 
             spawnedPlayers.Clear();
+            refusedTags.Clear();
         }
 
         private void RefreshSerialPlayerPresence()
@@ -241,36 +238,5 @@ namespace Fortal.Players
                 }
             }
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (players == null)
-            {
-                return;
-            }
-
-            var playerIds = new HashSet<int>();
-            var tagIds = new HashSet<int>();
-            for (int i = 0; i < players.Length; i++)
-            {
-                PlayerDefinition definition = players[i];
-                if (definition == null || !definition.Enabled)
-                {
-                    continue;
-                }
-
-                if (!playerIds.Add(definition.PlayerId))
-                {
-                    Debug.LogWarning($"[UWBPlayerSpawner] Duplicate Player ID {definition.PlayerId}", this);
-                }
-
-                if (!tagIds.Add(definition.TagId))
-                {
-                    Debug.LogWarning($"[UWBPlayerSpawner] Duplicate Tag ID {definition.TagId}", this);
-                }
-            }
-        }
-#endif
     }
 }

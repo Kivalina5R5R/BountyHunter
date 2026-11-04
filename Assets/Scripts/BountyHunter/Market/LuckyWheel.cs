@@ -11,7 +11,8 @@ namespace BountyHunter.Thieves
     // What the lucky wheel can land on, in the order of its segments (clockwise from the top).
     public enum LuckyWheelResult
     {
-        // extraSpots more hiding spots spring up for extraSpotSeconds (good for the thieves).
+        // extraSpots more hiding spots spring up for extraSpotSeconds, sparkling so they stand out
+        // (ExtraSpotMark), then shrink away (good for the thieves).
         MoreHiding,
         // The loudspeaker: more thieves join the round until mostThieves are wanted, and
         // extraPassersBy more passers-by come in.
@@ -89,6 +90,7 @@ namespace BountyHunter.Thieves
         private static readonly int ResultCount = Enum.GetValues(typeof(LuckyWheelResult)).Length;
 
         private readonly List<Coroutine> extraSpotTimers = new List<Coroutine>();
+        private readonly List<ExtraSpotMark> extraSpotMarks = new List<ExtraSpotMark>();
         private FloorSwitch waiting;
         private Coroutine comingBack;
 
@@ -183,20 +185,33 @@ namespace BountyHunter.Thieves
             if (hidingSpots == null) return;
 
             IReadOnlyList<ScatteredBush> added = hidingSpots.AddMore(extraSpots);
+            var marks = new List<ExtraSpotMark>();
             foreach (ScatteredBush bush in added)
             {
-                if (bush.Transform == null || !bush.Transform.TryGetComponent(out BushWalker walker)) continue;
+                if (bush.Transform == null) continue;
+
+                ExtraSpotMark mark = ExtraSpotMark.Create(transform, bush.Transform, bush.Reach * 1.5f, sparkles);
+                marks.Add(mark);
+                extraSpotMarks.Add(mark);
+                if (!bush.Transform.TryGetComponent(out BushWalker walker)) continue;
 
                 walker.KeepClearOf(Spot, Reach);
                 if (cuffs != null) cuffs.KeepClearOfCars(walker);
             }
 
-            extraSpotTimers.Add(StartCoroutine(TakeAwayLater(added)));
+            Debug.Log($"[LuckyWheel] {added.Count} of {extraSpots} more hiding spots for {extraSpotSeconds}s", this);
+            extraSpotTimers.Add(StartCoroutine(TakeAwayLater(added, marks)));
         }
 
-        private IEnumerator TakeAwayLater(IReadOnlyList<ScatteredBush> added)
+        private IEnumerator TakeAwayLater(IReadOnlyList<ScatteredBush> added, List<ExtraSpotMark> marks)
         {
             yield return new WaitForSeconds(extraSpotSeconds);
+            foreach (ExtraSpotMark mark in marks)
+            {
+                if (mark != null) mark.Finish();
+                extraSpotMarks.Remove(mark);
+            }
+
             foreach (ScatteredBush bush in added)
             {
                 if (bush.Transform != null) hidingSpots.Remove(bush.Transform);
@@ -256,6 +271,12 @@ namespace BountyHunter.Thieves
             }
 
             extraSpotTimers.Clear();
+            foreach (ExtraSpotMark mark in extraSpotMarks)
+            {
+                if (mark != null) Destroy(mark.gameObject);
+            }
+
+            extraSpotMarks.Clear();
             if (waiting != null)
             {
                 waiting.Triggered -= OnTriggered;

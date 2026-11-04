@@ -4,33 +4,36 @@ using UnityEngine;
 
 namespace Fortal.Display
 {
-    // Routes the installation outputs: Display 1 is the main window on the touch kiosk,
-    // Display 2 is the wall and Display 3 is the LED floor.
+    // Routes the installation outputs: Display 1 (the main window) is the LED floor and Display 2 is
+    // the wall. The touch kiosk is retired: its camera and canvases stay wired for their settings but
+    // are switched off and never drawn, and no window opens on its monitor.
     [DefaultExecutionOrder(-200)]
     public sealed class DisplayManager : MonoBehaviour
     {
-        [Header("Display 1 - Kiosk (Touch Launcher Screen)")]
+        [Header("Retired - Kiosk (kept for its settings, never shown)")]
         [SerializeField] private Camera kioskCamera;
         [SerializeField] private Canvas[] kioskCanvases;
         [SerializeField] private Vector2Int kioskDisplayResolution = new Vector2Int(1080, 1920);
+        [SerializeField] private string kioskMonitorName = "";
 
         [Header("Display 2 - Wall")]
         [SerializeField] private Camera sideCamera;
         [SerializeField] private Canvas[] sideCanvases;
 
-        [Header("Display 3 - LED Floor")]
+        [Header("Display 1 - LED Floor (main window)")]
         [SerializeField] private Camera floorCamera;
         [SerializeField] private Canvas[] floorCanvases;
 
         [Header("Options")]
-        // Activates the wall and floor outputs on startup.
+        // Activates the wall output on startup.
         [SerializeField] private bool activateSecondDisplayOnAwake = true;
         [SerializeField] private bool applyPaperArenaResolutionsInStandalone = true;
-        // In a build, keep the main window on the kiosk monitor and send the wall and floor
-        // to the monitors whose shape matches their resolutions.
+        // In a build, move the main window to the floor monitor and send the wall to the monitor
+        // whose shape matches its resolution.
         [SerializeField] private bool placeOutputsOnMatchingMonitors = true;
-        // Optional part of the kiosk monitor name as printed in Player.log. Leave empty to use the Windows main display.
-        [SerializeField] private string kioskMonitorName = "";
+        // Optional part of the floor monitor name as printed in Player.log. Leave empty to pick the
+        // monitor whose shape matches floorDisplayResolution.
+        [SerializeField] private string floorMonitorName = "";
         [SerializeField] private Vector2Int sideDisplayResolution = new Vector2Int(8192, 2160);
         [SerializeField] private Vector2Int floorDisplayResolution = new Vector2Int(2944, 1408);
         [SerializeField, Min(30)] private int refreshRate = 60;
@@ -42,10 +45,10 @@ namespace Fortal.Display
         private int floorOutputWidth;
         private int floorOutputHeight;
         private int wallDisplayIndex = DisplayOutput.WallDisplayIndex;
-        private int floorDisplayIndex = DisplayOutput.FloorDisplayIndex;
 
         private void Awake()
         {
+            RetireKiosk();
             ConfigureOutputs();
 
             if (placeOutputsOnMatchingMonitors && !Application.isEditor)
@@ -54,11 +57,23 @@ namespace Fortal.Display
                 return;
             }
 
-            ApplyKioskResolution();
+            ApplyFloorResolution();
 
             if (activateSecondDisplayOnAwake)
             {
                 ActivateDisplays();
+            }
+        }
+
+        // The kiosk's camera and canvases stay in the scene with their settings but draw nothing.
+        private void RetireKiosk()
+        {
+            if (kioskCamera != null) kioskCamera.enabled = false;
+            if (kioskCanvases == null) return;
+
+            foreach (Canvas canvas in kioskCanvases)
+            {
+                if (canvas != null) canvas.enabled = false;
             }
         }
 
@@ -72,15 +87,16 @@ namespace Fortal.Display
             for (int i = 0; i < layout.Count; i++)
             {
                 Debug.Log($"[DisplayManager] Monitor {i}: \"{layout[i].name}\" {layout[i].width}x{layout[i].height}, " +
-                    $"workArea={layout[i].workArea}, primary={IsPrimary(layout[i])}", this);
+                    $"workArea={layout[i].workArea}", this);
             }
 
-            // Unity reopens on the monitor it last used, so bring the main window back to the kiosk every launch.
-            int kioskMonitor = FindKioskMonitor(layout);
-            if (kioskMonitor >= 0 && !layout[kioskMonitor].Equals(Screen.mainWindowDisplayInfo))
+            // Unity reopens on the monitor it last used (or the Windows main display, which may be the
+            // old kiosk), so bring the main window to the floor every launch.
+            int floorMonitor = FindFloorMonitor(layout);
+            if (floorMonitor >= 0 && !layout[floorMonitor].Equals(Screen.mainWindowDisplayInfo))
             {
-                DisplayInfo target = layout[kioskMonitor];
-                Debug.Log($"[DisplayManager] Moving main window to kiosk monitor {kioskMonitor} \"{target.name}\"", this);
+                DisplayInfo target = layout[floorMonitor];
+                Debug.Log($"[DisplayManager] Moving main window to floor monitor {floorMonitor} \"{target.name}\"", this);
 
                 // Moving a fullscreen window is unreliable, so move it as a window and go fullscreen afterwards.
                 if (Screen.fullScreenMode != FullScreenMode.Windowed)
@@ -92,11 +108,11 @@ namespace Fortal.Display
                 yield return null;
             }
 
-            ApplyKioskResolution();
+            ApplyFloorResolution();
             yield return null;
-            Debug.Log($"[DisplayManager] Kiosk (main window) is on \"{Screen.mainWindowDisplayInfo.name}\"", this);
+            Debug.Log($"[DisplayManager] Floor (main window) is on \"{Screen.mainWindowDisplayInfo.name}\"", this);
 
-            FindSecondaryOutputs();
+            FindWallOutput();
             ConfigureOutputs();
 
             if (activateSecondDisplayOnAwake)
@@ -107,10 +123,10 @@ namespace Fortal.Display
             StartCoroutine(KeepGameWindowsOnTop());
         }
 
-        private void ApplyKioskResolution()
+        private void ApplyFloorResolution()
         {
             if (!applyPaperArenaResolutionsInStandalone || Application.isEditor) return;
-            Screen.SetResolution(kioskDisplayResolution.x, kioskDisplayResolution.y,
+            Screen.SetResolution(floorDisplayResolution.x, floorDisplayResolution.y,
                 FullScreenMode.FullScreenWindow, TargetRefreshRate);
         }
 
@@ -130,31 +146,27 @@ namespace Fortal.Display
             }
         }
 
-        private int FindKioskMonitor(List<DisplayInfo> layout)
+        // By name when floorMonitorName is set, otherwise the monitor shaped most like the floor.
+        private int FindFloorMonitor(List<DisplayInfo> layout)
         {
-            if (!string.IsNullOrWhiteSpace(kioskMonitorName))
+            if (!string.IsNullOrWhiteSpace(floorMonitorName))
             {
                 for (int i = 0; i < layout.Count; i++)
                 {
                     if (layout[i].name != null &&
-                        layout[i].name.IndexOf(kioskMonitorName.Trim(), System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        layout[i].name.IndexOf(floorMonitorName.Trim(), System.StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         return i;
                     }
                 }
-                Debug.LogWarning($"[DisplayManager] No monitor name contains \"{kioskMonitorName}\"; using the Windows main display", this);
-            }
-
-            for (int i = 0; i < layout.Count; i++)
-            {
-                if (IsPrimary(layout[i])) return i;
+                Debug.LogWarning($"[DisplayManager] No monitor name contains \"{floorMonitorName}\"; matching by shape", this);
             }
 
             int best = -1;
             float bestScore = float.MaxValue;
             for (int i = 0; i < layout.Count; i++)
             {
-                float score = MatchScore(layout[i].width, layout[i].height, kioskDisplayResolution);
+                float score = MatchScore(layout[i].width, layout[i].height, floorDisplayResolution);
                 if (score < bestScore)
                 {
                     bestScore = score;
@@ -164,9 +176,9 @@ namespace Fortal.Display
             return best;
         }
 
-        // Display.displays[0] is the main window (kiosk). The floor picks first from the other outputs,
-        // then the wall takes the closest remaining shape.
-        private void FindSecondaryOutputs()
+        // Display.displays[0] is the main window (floor). The wall takes the other output closest to
+        // its shape, so a still-connected kiosk monitor is passed over.
+        private void FindWallOutput()
         {
             var displays = UnityEngine.Display.displays;
             for (int i = 0; i < displays.Length; i++)
@@ -174,18 +186,16 @@ namespace Fortal.Display
                 Debug.Log($"[DisplayManager] Unity display {i}: {displays[i].systemWidth}x{displays[i].systemHeight}", this);
             }
 
-            floorDisplayIndex = FindOutput(floorDisplayResolution, -1);
-            wallDisplayIndex = FindOutput(sideDisplayResolution, floorDisplayIndex);
+            wallDisplayIndex = FindOutput(sideDisplayResolution);
         }
 
-        private static int FindOutput(Vector2Int resolution, int excludedIndex)
+        private static int FindOutput(Vector2Int resolution)
         {
             var displays = UnityEngine.Display.displays;
             int best = -1;
             float bestScore = float.MaxValue;
             for (int i = 1; i < displays.Length; i++)
             {
-                if (i == excludedIndex) continue;
                 float score = MatchScore(displays[i].systemWidth, displays[i].systemHeight, resolution);
                 if (score < bestScore)
                 {
@@ -194,12 +204,6 @@ namespace Fortal.Display
                 }
             }
             return best;
-        }
-
-        // The Windows main display starts at the desktop origin; the work area only loses the taskbar.
-        private static bool IsPrimary(DisplayInfo display)
-        {
-            return Mathf.Abs(display.workArea.x) < display.width / 4 && Mathf.Abs(display.workArea.y) < display.height / 4;
         }
 
         // Lower is better. Aspect ratio decides the role; exact size only breaks ties.
@@ -215,9 +219,7 @@ namespace Fortal.Display
         private void LateUpdate()
         {
             if (Application.isEditor || !applyPaperArenaResolutionsInStandalone || floorCamera == null) return;
-            var displays = UnityEngine.Display.displays;
-            if (floorDisplayIndex < 0 || floorDisplayIndex >= displays.Length || !displays[floorDisplayIndex].active) return;
-            UnityEngine.Display floor = displays[floorDisplayIndex];
+            UnityEngine.Display floor = UnityEngine.Display.displays[DisplayOutput.FloorDisplayIndex];
             int width = floor.renderingWidth;
             int height = floor.renderingHeight;
             if (width <= 0 || height <= 0 || floorDisplayResolution.x <= 0 || floorDisplayResolution.y <= 0) return;
@@ -242,44 +244,42 @@ namespace Fortal.Display
             floorCamera.aspect = referenceAspect;
             Debug.Log($"[DisplayManager] Floor requested={floorDisplayResolution.x}x{floorDisplayResolution.y}, " +
                 $"rendering={width}x{height}, monitor={floor.systemWidth}x{floor.systemHeight}, " +
-                $"display={floorDisplayIndex}, displays={displays.Length}, viewport={viewport}", this);
+                $"display={DisplayOutput.FloorDisplayIndex}, displays={UnityEngine.Display.displays.Length}, viewport={viewport}", this);
         }
 
         [ContextMenu("Configure Camera And Canvas Outputs")]
         public void ConfigureOutputs()
         {
-            // Role constants describe the editor preview; a build may move the wall and floor
-            // to the Unity displays that match their monitors.
-            if (kioskCamera != null)
-            {
-                kioskCamera.targetDisplay = DisplayOutput.KioskDisplayIndex;
-            }
-
+            // The floor is always the main window; a build may move the wall to whichever Unity
+            // display matches its monitor.
             if (floorCamera != null)
             {
-                floorCamera.targetDisplay = OutputIndex(floorDisplayIndex, DisplayOutput.FloorDisplayIndex);
+                floorCamera.targetDisplay = DisplayOutput.FloorDisplayIndex;
             }
 
             if (sideCamera != null)
             {
-                sideCamera.targetDisplay = OutputIndex(wallDisplayIndex, DisplayOutput.WallDisplayIndex);
+                sideCamera.targetDisplay = WallIndex;
                 sideCamera.clearFlags = CameraClearFlags.SolidColor;
                 sideCamera.backgroundColor = sideDisplayBackground;
             }
 
-            SetCanvasDisplay(kioskCanvases, DisplayOutput.KioskDisplayIndex);
-            // The kiosk's screen (its rain, its drops) is only for the kiosk: it never shows past the
-            // edge of the wall or the floor, however wide those screens are.
+            // The retired kiosk is pointed at a display that is never activated, in case it is ever
+            // switched back on by hand.
+            if (kioskCamera != null)
+            {
+                kioskCamera.targetDisplay = DisplayOutput.RetiredKioskDisplayIndex;
+            }
+
+            SetCanvasDisplay(kioskCanvases, DisplayOutput.RetiredKioskDisplayIndex);
+            // The kiosk's screen (its rain, its drops) never shows past the edge of the wall or the floor.
             HideFrom(sideCamera, kioskCanvases, sideCanvases);
             HideFrom(floorCamera, kioskCanvases, floorCanvases);
-            SetCanvasDisplay(floorCanvases, OutputIndex(floorDisplayIndex, DisplayOutput.FloorDisplayIndex));
-            SetCanvasDisplay(sideCanvases, OutputIndex(wallDisplayIndex, DisplayOutput.WallDisplayIndex));
+            SetCanvasDisplay(floorCanvases, DisplayOutput.FloorDisplayIndex);
+            SetCanvasDisplay(sideCanvases, WallIndex);
         }
 
-        private static int OutputIndex(int foundIndex, int roleIndex)
-        {
-            return foundIndex >= 0 ? foundIndex : roleIndex;
-        }
+        private int WallIndex => wallDisplayIndex >= 1 ? wallDisplayIndex : DisplayOutput.WallDisplayIndex;
 
         [ContextMenu("Activate Displays")]
         public void ActivateDisplays()
@@ -291,7 +291,6 @@ namespace Fortal.Display
             }
 
             ActivateOutput(wallDisplayIndex, sideDisplayResolution, "Wall");
-            ActivateOutput(floorDisplayIndex, floorDisplayResolution, "Floor");
         }
 
         private void ActivateOutput(int displayIndex, Vector2Int resolution, string role)

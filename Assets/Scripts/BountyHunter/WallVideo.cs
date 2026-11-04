@@ -17,6 +17,9 @@ namespace BountyHunter.Thieves
     // flush the decoder, which fails once several videos are open and freezes the picture): a loop
     // that reaches its end (a seamless one with no spare ready) stops and starts again instead. A
     // player that reports an error is restarted the same way, so a character never stays frozen.
+    // Restarts never happen inside the video player's own callbacks (doing so can crash the decoder
+    // on some machines): they wait for the next Update, and after an error they wait longer each
+    // time, giving up after MostRetries in a row and keeping the last frame.
     [RequireComponent(typeof(RawImage))]
     public sealed class WallVideo : MonoBehaviour
     {
@@ -38,6 +41,10 @@ namespace BountyHunter.Thieves
 
         // Frames of the video before its end at which the waiting player takes over.
         private const float HandOverFrames = 2.5f;
+        // The wait before the first restart after an error, doubling with each error in a row.
+        private const float FirstRetrySeconds = 1f;
+        private const int MostRetries = 5;
+        private const float NoRetry = -1f;
 
         private RawImage image;
         private VideoPlayer player;
@@ -52,6 +59,11 @@ namespace BountyHunter.Thieves
         private bool wanted;
         private ScenePreload.Ticket preparation;
         private ScenePreload.Ticket sparePreparation;
+        // When (unscaled time) the playing player and the spare start over; NoRetry when they need not.
+        private float playerRestartAt = NoRetry;
+        private float spareRestartAt = NoRetry;
+        // Errors since the video last played through cleanly.
+        private int failures;
 
         // The video frame once it is playing, else null. Raised with the frame when playback starts.
         public RenderTexture Frame { get; private set; }
@@ -63,7 +75,19 @@ namespace BountyHunter.Thieves
         // Raised when a video that does not loop reaches its end; its last frame stays.
         public event Action<WallVideo> Finished;
 
-        private bool UsesSpare => loop && seamlessLoop;
+        // Set by the first decoder error in any wall video: this machine cannot keep so many videos
+        // open, so every seamless loop gives up its second player (halving the videos open) and
+        // loops by starting over instead, with a short stall at the loop point.
+        private static bool decodersStruggling;
+
+        private bool UsesSpare => loop && seamlessLoop && !decodersStruggling;
+
+        // Play mode can start without reloading the scripts, which would keep the flag from the last run.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStruggling()
+        {
+            decodersStruggling = false;
+        }
 
         private void Awake()
         {
@@ -104,7 +128,7 @@ namespace BountyHunter.Thieves
 
         private IEnumerator PrepareSpare()
         {
-            if (!isActiveAndEnabled || player == null) yield break;
+            if (!isActiveAndEnabled || player == null || !UsesSpare) yield break;
             if (spare == null) spare = CreatePlayer("Video Spare");
             spare.Prepare();
             float deadline = Time.realtimeSinceStartup + 8f;
@@ -155,7 +179,8 @@ namespace BountyHunter.Thieves
             // having no spare ready).
             if (loop)
             {
-                if (source == player && !handingOver) Restart(source);
+                failures = 0;
+                if (source == player && !handingOver) playerRestartAt = Time.unscaledTime;
                 return;
             }
 
@@ -214,6 +239,8 @@ namespace BountyHunter.Thieves
         // Starts the waiting player a moment before the end, so its first frame is ready in time.
         private void Update()
         {
+            RestartWhenDue();
+            if (decodersStruggling && spare != null && !handingOver) DropSpare();
             if (!UsesSpare || handingOver || player == null || !player.isPlaying || spare == null || !spare.isPrepared) return;
 
             double framesLeft = (clip.length - player.time) * clip.frameRate;
@@ -241,6 +268,7 @@ namespace BountyHunter.Thieves
             // Ready again well before the next hand-over, without waiting in the preload queue.
             finished.Prepare();
             handingOver = false;
+            failures = 0;
         }
 
         // The playing player's end and error events follow it as the two players swap.
@@ -254,26 +282,68 @@ namespace BountyHunter.Thieves
             to.errorReceived += OnError;
         }
 
-        // The decoder failed: the player starts over from a clean stop if it should be playing; a
-        // failed spare is only made ready again.
+        // The decoder failed: after a wait, the player starts over from a clean stop if it should be
+        // playing, and a failed spare is only made ready again.
         private void OnError(VideoPlayer source, string message)
         {
-            Debug.LogWarning($"[WallVideo] {name}: {message}; restarting it", this);
-            if (source == player)
-            {
-                if (wanted && isActiveAndEnabled) Restart(source);
-                return;
-            }
-
-            if (handingOver)
+            if (source == spare && handingOver)
             {
                 source.frameReady -= OnSpareFrame;
                 source.sendFrameReadyEvents = false;
                 handingOver = false;
             }
 
-            source.Stop();
-            source.Prepare();
+            if (!decodersStruggling)
+            {
+                decodersStruggling = true;
+                Debug.LogWarning("[WallVideo] A video decoder failed: seamless loops are off from now on, to keep fewer videos open", this);
+            }
+
+            failures++;
+            if (failures > MostRetries)
+            {
+                playerRestartAt = NoRetry;
+                spareRestartAt = NoRetry;
+                if (failures == MostRetries + 1) Debug.LogWarning($"[WallVideo] {name}: {message}; giving up after {MostRetries} restarts, keeping the last frame", this);
+                return;
+            }
+
+            float wait = FirstRetrySeconds * (1 << (failures - 1));
+            Debug.LogWarning($"[WallVideo] {name}: {message}; restarting it in {wait:0}s", this);
+            if (source == player) playerRestartAt = Time.unscaledTime + wait;
+            else spareRestartAt = Time.unscaledTime + wait;
+        }
+
+        private void RestartWhenDue()
+        {
+            float now = Time.unscaledTime;
+            if (playerRestartAt != NoRetry && now >= playerRestartAt)
+            {
+                playerRestartAt = NoRetry;
+                if (wanted && player != null) Restart(player);
+            }
+
+            if (spareRestartAt != NoRetry && now >= spareRestartAt)
+            {
+                spareRestartAt = NoRetry;
+                if (spare != null && !handingOver)
+                {
+                    spare.Stop();
+                    spare.Prepare();
+                }
+            }
+        }
+
+        // Gives up the seamless loop's second player and its decoder for good.
+        private void DropSpare()
+        {
+            sparePreparation?.Cancel();
+            spareRestartAt = NoRetry;
+            VideoPlayer dropped = spare;
+            spare = null;
+            dropped.Stop();
+            Release(dropped);
+            Destroy(dropped);
         }
 
         // Stop releases the decoder (no flush); Play then gets it ready again and starts from the
@@ -282,6 +352,33 @@ namespace BountyHunter.Thieves
         {
             source.Stop();
             source.Play();
+        }
+
+        // Stops the video for good and gives its decoders back (for a video no longer shown, such as
+        // the intro once the dogs cover it); Play starts it again.
+        public void Close()
+        {
+            wanted = false;
+            playWhenPrepared = false;
+            playerRestartAt = NoRetry;
+            spareRestartAt = NoRetry;
+            preparation?.Cancel();
+            sparePreparation?.Cancel();
+            if (handingOver && spare != null)
+            {
+                spare.frameReady -= OnSpareFrame;
+                spare.sendFrameReadyEvents = false;
+                handingOver = false;
+            }
+
+            if (player != null) player.Stop();
+            if (spare != null) spare.Stop();
+            prepared = false;
+            if (player != null)
+            {
+                player.prepareCompleted -= OnPrepared;
+                player.prepareCompleted += OnPrepared;
+            }
         }
 
         private void OnDestroy()
