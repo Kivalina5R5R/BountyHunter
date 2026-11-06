@@ -102,6 +102,8 @@ namespace BountyHunter.Thieves
         // What lies on the floor: the mystery box (the wheel when empty), drawn as it is, about as big
         // as a thief (they stand about 0.66 m) and still inside the ring that fills as a player stands on it.
         [SerializeField] private Sprite mysteryBox;
+        // The light behind the box, lit for as long as it lies there.
+        [SerializeField] private Sprite boxGlow;
         [SerializeField, Min(0.2f)] private float wheelWidth = 0.66f;
         // The stars twinkling round it while it waits, and the ring filling round it as a player
         // stands on it: the players' own select ring, drawn with the radial fill material.
@@ -158,6 +160,7 @@ namespace BountyHunter.Thieves
             Sprite onFloor = mysteryBox != null ? mysteryBox : wheel;
             waiting = FloorSwitch.Create(transform, "Lucky Wheel", Spot, onFloor, wheelWidth, null, selectRing, radialFill, selectRingTint, radius,
                 holdSeconds, 0f, players, sparkles);
+            waiting.UseGlow(boxGlow);
             waiting.Triggered += OnTriggered;
         }
 

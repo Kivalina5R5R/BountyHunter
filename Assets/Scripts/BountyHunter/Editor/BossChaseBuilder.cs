@@ -314,7 +314,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= FillSprite(target.FindProperty("boss.water.ring"), Water + "WaterRing.png");
             changed |= FillSprite(target.FindProperty("boss.water.streak"), Water + "WaterStreak.png");
             changed |= FillSprite(target.FindProperty("boss.water.impact"), Water + "WaterImpact.png");
-            changed |= FillSprites(target.FindProperty("boss.water.bolts"), Water + "Lightning1.png", Water + "Lightning2.png");
+            changed |= FillSprite(target.FindProperty("boss.water.splash"), Water + "WaterSplash.png");
             if (changed) target.ApplyModifiedPropertiesWithoutUndo();
             return changed;
         }
@@ -377,23 +377,6 @@ namespace BountyHunter.Thieves.EditorTools
 
             property.objectReferenceValue = sprite;
             return true;
-        }
-
-        // Fills an empty list with the pictures found at paths (missing ones are left out).
-        private static bool FillSprites(SerializedProperty list, params string[] paths)
-        {
-            if (list == null || !list.isArray || list.arraySize > 0) return false;
-
-            foreach (string path in paths)
-            {
-                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-                if (sprite == null) continue;
-
-                list.InsertArrayElementAtIndex(list.arraySize);
-                list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = sprite;
-            }
-
-            return list.arraySize > 0;
         }
 
         private static bool SetFinale(MapSwitcher switcher, BossChase chase)

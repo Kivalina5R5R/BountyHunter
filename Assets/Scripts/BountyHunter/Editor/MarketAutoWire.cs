@@ -26,8 +26,9 @@ namespace BountyHunter.Thieves.EditorTools
         private const string CaptionBack = Art + "LuckyWheelCaptionBack.png";
         private const string Font = "Assets/Front/BebasNeue-Regular SDF.asset";
         private const string FontMaterial = "Assets/Front/BebasNeue-Regular SDF - Outline.mat";
-        // The mystery box lying on the floor.
+        // The mystery box lying on the floor, and the light behind it.
         private const string MysteryBox = Art + "MysteryBox.png";
+        private const string BoxGlow = Art + "MysteryBoxGlow.png";
         // In LuckyWheelResult order.
         private static readonly string[] ResultIcons =
         {
@@ -46,7 +47,7 @@ namespace BountyHunter.Thieves.EditorTools
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
-            foreach (string path in new[] { PoliceCar, Handcuffs, Wheel, WheelPointer, MysteryBox, CaptionBack }) ImportAsSprite(path);
+            foreach (string path in new[] { PoliceCar, Handcuffs, Wheel, WheelPointer, MysteryBox, BoxGlow, CaptionBack }) ImportAsSprite(path);
             foreach (string path in ResultIcons) ImportAsSprite(path);
 
             var rounds = Object.FindFirstObjectByType<BountyRounds>(FindObjectsInactive.Include);
@@ -114,6 +115,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(fields, "wheel", AssetDatabase.LoadAssetAtPath<Sprite>(Wheel));
             changed |= Fill(fields, "pointer", AssetDatabase.LoadAssetAtPath<Sprite>(WheelPointer));
             changed |= Fill(fields, "mysteryBox", AssetDatabase.LoadAssetAtPath<Sprite>(MysteryBox));
+            changed |= Fill(fields, "boxGlow", AssetDatabase.LoadAssetAtPath<Sprite>(BoxGlow));
             changed |= Fill(fields, "captionBack", AssetDatabase.LoadAssetAtPath<Sprite>(CaptionBack));
             changed |= Fill(fields, "font", AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(Font));
             changed |= Fill(fields, "fontMaterial", AssetDatabase.LoadAssetAtPath<Material>(FontMaterial));

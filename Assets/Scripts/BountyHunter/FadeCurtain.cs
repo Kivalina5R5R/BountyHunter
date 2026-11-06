@@ -25,6 +25,9 @@ namespace BountyHunter.Thieves
             Set(0f);
         }
 
+        // True while the wall is wholly dark, so whoever wants it dark need not fade it again.
+        public bool IsClosed => wall != null && wall.enabled && wall.color.a >= 1f;
+
         public IEnumerator Close(float seconds)
         {
             yield return Fade(0f, 1f, seconds, true);

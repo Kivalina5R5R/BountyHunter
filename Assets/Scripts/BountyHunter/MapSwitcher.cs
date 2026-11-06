@@ -116,7 +116,7 @@ namespace BountyHunter.Thieves
             if (Keyboard.current == null) return;
             if (Keyboard.current.mKey.wasPressedThisFrame) JumpToInterlude();
             if (!Keyboard.current.nKey.wasPressedThisFrame) return;
-            if (playing != null) playing.Skip();
+            if (playing != null) playing.SkipStep();
             else Advance(false);
         }
 

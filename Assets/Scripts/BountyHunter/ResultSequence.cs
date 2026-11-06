@@ -59,7 +59,8 @@ namespace BountyHunter.Thieves
 
         private IEnumerator ShowResult()
         {
-            if (curtain != null) yield return curtain.Close(fadeOutSeconds);
+            // The boss's escape film may have left the screen dark already.
+            if (curtain != null && !curtain.IsClosed) yield return curtain.Close(fadeOutSeconds);
 
             if (hideOnResult != null)
             {

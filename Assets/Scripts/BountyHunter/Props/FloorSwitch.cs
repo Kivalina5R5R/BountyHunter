@@ -152,6 +152,12 @@ namespace BountyHunter.Thieves
             return floorSwitch;
         }
 
+        // Lights the prop from behind with picture, in place of the yellow glow it draws players in with.
+        public void UseGlow(Sprite picture)
+        {
+            if (lure != null && picture != null) lure.UseSteadyGlow(picture);
+        }
+
         // Switches it on: pressed down, it swaps the prop for picture (at the same width; none keeps
         // it) with a flash and stars, and springs back up. It stays bright while it rests.
         public void ShowUsed(Sprite picture)

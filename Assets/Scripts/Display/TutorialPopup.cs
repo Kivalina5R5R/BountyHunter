@@ -88,6 +88,12 @@ namespace Fortal.Display
         private void Awake()
         {
             group = GetComponent<CanvasGroup>();
+
+            // With the kiosk switched off its remote never wakes up and cannot be shown; the pages
+            // then just turn by themselves.
+            Transform remoteKiosk = remote != null ? remote.transform.parent : null;
+            if (remoteKiosk != null && !remoteKiosk.gameObject.activeInHierarchy) remote = null;
+
             if (remote != null)
             {
                 remote.BackPressed += Back;
@@ -99,6 +105,9 @@ namespace Fortal.Display
             if (body != null) bodyRest = body.rectTransform.anchoredPosition.y;
             MakeDots();
         }
+
+        // False from the moment it starts to drop away.
+        public bool IsOpen => gameObject.activeInHierarchy && group != null && group.interactable;
 
         public void Open()
         {

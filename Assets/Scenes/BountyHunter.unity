@@ -1157,6 +1157,7 @@ MonoBehaviour:
   fontMaterial: {fileID: 2100000, guid: ba7aada5ab4287b478f894e8210a4181, type: 2}
   captionBack: {fileID: 21300000, guid: 2339ed22ba5447a19887ddc866c4e589, type: 3}
   mysteryBox: {fileID: 21300000, guid: 89558648d85b64c49a8ccfa4f3797844, type: 3}
+  boxGlow: {fileID: 21300000, guid: 7605964f998d469a85e9f5d614857a70, type: 3}
   wheelWidth: 0.66
   sparkles:
   - {fileID: 21300000, guid: 3f2248143131e3b4388c33c099bbebd3, type: 3}
@@ -2434,7 +2435,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a5cbe7cedcdad94b8cdf8ee83b84661, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Fortal.UWB.UWBManager
-  transportMode: 2
+  transportMode: 0
   connectOnStart: 1
   autoReconnect: 1
   reconnectDelaySeconds: 2
@@ -4267,7 +4268,23 @@ MonoBehaviour:
   chase: {fileID: 1105797308}
   curtain: {fileID: 1680354128}
   fadeOutSeconds: 0.6
-  fadeInSeconds: 0.6
+  fadeInSeconds: 0.8
+  phaseChangeClip:
+    name: BossSteal
+    pages: 10
+    frames: 113
+    columns: 2
+    rows: 6
+    framesPerSecond: 30
+    soundVolume: 1
+  escapeClip:
+    name: BossEscape
+    pages: 19
+    frames: 217
+    columns: 2
+    rows: 6
+    framesPerSecond: 30
+    soundVolume: 1
 --- !u!4 &863286021
 Transform:
   m_ObjectHideFlags: 0
@@ -5872,9 +5889,7 @@ MonoBehaviour:
     water:
       ring: {fileID: 21300000, guid: 7ad36b7f7d0d1524182c3c6c043fcda7, type: 3}
       streak: {fileID: 21300000, guid: 306d258cb5ceabe4e9338f5ee2a8fb87, type: 3}
-      bolts:
-      - {fileID: 21300000, guid: 756e4332446647548a41991f60f78624, type: 3}
-      - {fileID: 21300000, guid: 4e391a10cec0f3041ab6af3a18c94179, type: 3}
+      splash: {fileID: 21300000, guid: 756e4332446647548a41991f60f78624, type: 3}
       impact: {fileID: 21300000, guid: 7939303dcc80ada45a1c449ef9b967e2, type: 3}
     smokeFrames: {x: 20, y: 76}
     vanishAtFrame: 40
@@ -6130,6 +6145,7 @@ GameObject:
   - component: {fileID: 1131790405}
   - component: {fileID: 1131790406}
   - component: {fileID: 1131790407}
+  - component: {fileID: 1131790408}
   m_Layer: 0
   m_Name: Intro
   m_TagString: Untagged
@@ -6215,6 +6231,18 @@ MonoBehaviour:
   groundBand: {x: 0.02, y: 0.24}
   ripplesPerSecond: 12
   rippleSize: {x: 0.02, y: 0.06}
+--- !u!114 &1131790408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1131790404}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1bc85bbd6fa6c740a4de7339cd387f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.ArenaRemoteLink
 --- !u!1 &1144961297
 GameObject:
   m_ObjectHideFlags: 0

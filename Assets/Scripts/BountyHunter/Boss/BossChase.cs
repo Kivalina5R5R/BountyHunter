@@ -243,6 +243,14 @@ namespace BountyHunter.Thieves
                 yield break;
             }
 
+            // Skipped: it just stops, without the run off and its sound under what plays next.
+            if (skipping)
+            {
+                if (timer != null) timer.Stop();
+                chased.Finish();
+                yield break;
+            }
+
             chased.RunOff();
             BossRunningOff?.Invoke();
             float giveUp = Time.time + mostRunOffSeconds;

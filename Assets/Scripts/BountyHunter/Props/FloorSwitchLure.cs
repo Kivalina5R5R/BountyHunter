@@ -22,6 +22,9 @@ namespace BountyHunter.Thieves
         // How long it takes to fade in or out as it is turned on or off.
         private const float FadeSeconds = 0.3f;
         private static readonly Color Yellow = new Color(1f, 0.85f, 0.2f, 1f);
+        // A glow picture of its own (UseSteadyGlow): how wide against the prop, and how little it breathes.
+        private const float SteadyGlowVsProp = 2.6f;
+        private const float SteadyGlowBreath = 0.12f;
 
         private sealed class Star
         {
@@ -41,6 +44,10 @@ namespace BountyHunter.Thieves
         private float width;
         private float shown;
         private float owed;
+        // A glow picture of its own stays lit, even with someone on the prop, until the Burst.
+        private bool hasSteadyGlow;
+        private bool steadyGlowOn;
+        private float steadyShown;
 
         // Whether it is drawing the players in now.
         public bool Inviting { get; set; }
@@ -59,11 +66,23 @@ namespace BountyHunter.Thieves
             return lure;
         }
 
-        // A ring of stars flying out from the prop and the glow gone at once.
+        // Draws picture in its own colours under the prop instead of the breathing yellow dot, lit all
+        // the time the prop is there.
+        public void UseSteadyGlow(Sprite picture)
+        {
+            glow.sprite = picture;
+            glow.transform.localScale = Vector3.one * (width * SteadyGlowVsProp / SizeOf(picture));
+            hasSteadyGlow = true;
+            steadyGlowOn = true;
+        }
+
+        // A ring of stars flying out from the prop and the yellow glow gone at once; a steady glow
+        // fades out instead.
         public void Burst(int count)
         {
             Inviting = false;
             shown = 0f;
+            steadyGlowOn = false;
             for (int i = 0; i < count; i++)
             {
                 float angle = (i + Random.value * 0.5f) / count * Mathf.PI * 2f;
@@ -76,9 +95,17 @@ namespace BountyHunter.Thieves
         {
             shown = Mathf.MoveTowards(shown, Inviting ? 1f : 0f, Time.deltaTime / FadeSeconds);
             float breath = 0.6f + 0.4f * Mathf.Sin(Time.time * BreathsPerSecond * Mathf.PI * 2f);
-            Color glowColour = Yellow;
-            glowColour.a = GlowAlpha * breath * shown;
-            glow.color = glowColour;
+            if (hasSteadyGlow)
+            {
+                steadyShown = Mathf.MoveTowards(steadyShown, steadyGlowOn ? 1f : 0f, Time.deltaTime / FadeSeconds);
+                glow.color = new Color(1f, 1f, 1f, steadyShown * (1f - SteadyGlowBreath * (1f - breath)));
+            }
+            else
+            {
+                Color glowColour = Yellow;
+                glowColour.a = GlowAlpha * breath * shown;
+                glow.color = glowColour;
+            }
 
             if (Inviting)
             {

@@ -33,7 +33,10 @@ namespace BountyHunter.Thieves
         // score tags can take what was won).
         public abstract void End();
 
-        // Cuts Run short (N, for trying the game out).
+        // Cuts Run short, all of it.
         public abstract void Skip();
+
+        // N, for trying the game out: on to whatever comes next. All of Run unless it has steps of its own.
+        public virtual void SkipStep() => Skip();
     }
 }

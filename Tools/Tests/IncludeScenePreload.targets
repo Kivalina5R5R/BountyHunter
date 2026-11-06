@@ -1,0 +1,9 @@
+<Project>
+  <!-- Unity regenerates its project files on refresh. Include the new script for CLI checks before that refresh. -->
+  <Target Name="IncludeScenePreloadForCheck" BeforeTargets="CoreCompile" Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <ItemGroup>
+      <Compile Remove="Assets/Scripts/BountyHunter/ScenePreload.cs;Assets\Scripts\BountyHunter\ScenePreload.cs;$(MSBuildProjectDirectory)\Assets\Scripts\BountyHunter\ScenePreload.cs" />
+      <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\BountyHunter\ScenePreload.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
