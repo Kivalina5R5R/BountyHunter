@@ -110,12 +110,18 @@ MonoBehaviour:
   - {r: 0.62, g: 0.32, b: 0.95, a: 1}
   - {r: 1, g: 0.9, b: 0.2, a: 1}
   - {r: 1, g: 1, b: 1, a: 1}
-  tapesSound:
-    clip: {fileID: 8300000, guid: 4c5ba229d3a6bf04d890d3085801a1a4, type: 3}
+  riseSound:
+    clip: {fileID: 8300000, guid: bf05ee1fa1104a339b8e03c5422779f3, type: 3}
+    volume: 0.6
+  streakSound:
+    clip: {fileID: 8300000, guid: b3782489abd540b6b9eb8c3811345a0d, type: 3}
     volume: 0.55
+  tapesSound:
+    clip: {fileID: 8300000, guid: 9f58f9dbf15340b695a55013026912a2, type: 3}
+    volume: 0.5
   slamSound:
-    clip: {fileID: 8300000, guid: a5939a0cb50df3a4bb6592944d17b35a, type: 3}
-    volume: 0.8
+    clip: {fileID: 8300000, guid: 8cfb6c26887d450584f64dcfee830f30, type: 3}
+    volume: 0.85
   outSound:
     clip: {fileID: 8300000, guid: b42ec8dd988f35646a2899ebdfb8a02c, type: 3}
     volume: 0.5

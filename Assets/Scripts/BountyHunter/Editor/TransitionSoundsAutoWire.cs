@@ -25,24 +25,20 @@ namespace BountyHunter.Thieves.EditorTools
             {
                 ("passSound", "SFX_Police_Pass"),
             }),
-            (BossTransitionBuilder.PrefabPath, typeof(BossTransition), new[]
-            {
-                ("feathersSound", "SFX_Boss_Feathers"),
-                ("strikeSound", "SFX_Boss_Strike"),
-                ("bossSound", "SFX_Boss_Reveal"),
-                ("pigeonsSound", "SFX_Boss_Pigeons"),
-                ("outSound", "SFX_Boss_Out"),
-            }),
             (MinigameCutInBuilder.LineupPrefabPath, typeof(MinigameCutIn), new[]
             {
-                ("tapesSound", "SFX_Cage_Slide"),
-                ("slamSound", "SFX_Cage_Slam"),
+                ("riseSound", "SFX_CutIn_Rise"),
+                ("streakSound", "SFX_CutIn_Streak"),
+                ("tapesSound", "SFX_CutIn_Tape"),
+                ("slamSound", "SFX_CutIn_Logo"),
                 ("outSound", "SFX_Boss_Out"),
             }),
             (MinigameCutInBuilder.CctvPrefabPath, typeof(MinigameCutIn), new[]
             {
-                ("tapesSound", "SFX_Cage_Slide"),
-                ("slamSound", "SFX_Cage_Slam"),
+                ("riseSound", "SFX_CutIn_Rise"),
+                ("streakSound", "SFX_CutIn_Streak"),
+                ("tapesSound", "SFX_CutIn_Tape"),
+                ("slamSound", "SFX_CutIn_Logo"),
                 ("outSound", "SFX_Boss_Out"),
             }),
         };

@@ -135,6 +135,8 @@ namespace BountyHunter.Thieves
             if (!showing) return;
 
             showing = false;
+            // Anyone still without a character (started by key, or never stepped on a card) gets a free one.
+            if (characterSelect != null) characterSelect.PickForTheRest();
             Leaving?.Invoke();
             StartCoroutine(Transition());
         }
@@ -178,6 +180,8 @@ namespace BountyHunter.Thieves
             {
                 yield return curtain.Open(fadeInSeconds);
             }
+
+            if (rounds != null) rounds.Reveal();
         }
 
         // The players who picked a character play; tags that connect from now on are kept out. When

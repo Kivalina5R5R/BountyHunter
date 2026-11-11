@@ -91,14 +91,7 @@ namespace BountyHunter.Thieves
         [SerializeField, Range(0f, 40f)] private float flyTilt = 15f;
         [SerializeField, Min(0f)] private float bossBob = 5f;
 
-        [Header("Sounds")]
-        // Feathers fluttering down over the stage, the streak striking in, the boss's sting as he
-        // pops up, the pigeons' wings as they fly in, and everything sweeping back out.
-        [SerializeField] private TransitionSound feathersSound = new TransitionSound(0.4f);
-        [SerializeField] private TransitionSound strikeSound = new TransitionSound(0.6f);
-        [SerializeField] private TransitionSound bossSound = new TransitionSound(0.65f);
-        [SerializeField] private TransitionSound pigeonsSound = new TransitionSound(0.45f);
-        [SerializeField] private TransitionSound outSound = new TransitionSound(0.45f);
+        // It plays silently: the boss's cut-in has no sounds of its own.
 
         private enum Stage { Hidden, Opening, Holding, Closing, FeathersOnly }
 
@@ -115,7 +108,6 @@ namespace BountyHunter.Thieves
         private Vector3[] pigeonSizes;
         private Image[] pigeonPictures;
         private bool measured;
-        private AudioSource voice;
         private bool pigeonsHeard;
         private bool skyFeathersBack;
         // The streak runs across on its own (the spotlight's way in), and the boss and pigeons wait
@@ -160,7 +152,6 @@ namespace BountyHunter.Thieves
                 if (!dotsStarted && since >= WipeStart)
                 {
                     if (dots != null) dots.StartPopping();
-                    strikeSound.Play(voice);
                     dotsStarted = true;
                 }
 
@@ -174,10 +165,8 @@ namespace BountyHunter.Thieves
             if (!dotsStarted)
             {
                 if (dots != null) dots.StartPopping();
-                strikeSound.Play(voice);
             }
 
-            bossSound.Play(voice);
             Hold();
         }
 
@@ -190,7 +179,6 @@ namespace BountyHunter.Thieves
             if (spotlight != null && spotlight.IsSetUp)
             {
                 stage = Stage.Closing;
-                outSound.Play(voice);
                 // Behind the sweeping bands everything but the feathers goes; the chase shows as they pass.
                 yield return spotlight.PlayOut(ClearAway);
                 LeaveFeathers();
@@ -200,7 +188,6 @@ namespace BountyHunter.Thieves
             stage = Stage.Closing;
             float held = Time.unscaledTime - coveredAt;
             if (dots != null) dots.PopAll();
-            outSound.Play(voice);
             float start = Time.unscaledTime;
             while (Time.unscaledTime - start < CloseLength)
             {
@@ -226,7 +213,6 @@ namespace BountyHunter.Thieves
             {
                 if (!pigeonsHeard && now - coveredAt >= PigeonsStart)
                 {
-                    pigeonsSound.Play(voice);
                     pigeonsHeard = true;
                 }
 
@@ -267,8 +253,6 @@ namespace BountyHunter.Thieves
                 bossAfter = streakRunSeconds * (1f - Mathf.Pow(0.5f, 1f / 3f));
                 PoseStreak(0f);
                 if (dots != null) dots.StartPopping();
-                strikeSound.Play(voice);
-                bossSound.Play(voice);
                 Hold();
             });
         }
@@ -304,7 +288,6 @@ namespace BountyHunter.Thieves
         private void StartFeathers()
         {
             if (feathers != null) feathers.StartFalling();
-            feathersSound.Play(voice);
         }
 
         // The wall is covered: no new feathers come in (those in the air fall on out) until the
@@ -355,7 +338,6 @@ namespace BountyHunter.Thieves
             if (measured) return;
 
             measured = true;
-            voice = TransitionSound.SourceOn(gameObject);
             // The rooftop fades rather than wipes, so it is always drawn whole.
             background.type = Image.Type.Simple;
             backgroundAlpha = background.color.a;

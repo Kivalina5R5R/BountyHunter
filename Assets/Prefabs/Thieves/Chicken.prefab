@@ -49,7 +49,7 @@ MonoBehaviour:
   body: {fileID: 6819908755611673384}
   artFacesRight: 0
   wanderSpeed: 0.6
-  fleeSpeed: 1.5
+  fleeSpeed: 1.3
   acceleration: 2.5
   wanderTurnDegrees: 200
   fleeTurnDegrees: 720

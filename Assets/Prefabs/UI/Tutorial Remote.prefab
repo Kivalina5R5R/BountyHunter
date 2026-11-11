@@ -976,6 +976,12 @@ MonoBehaviour:
   closeWord: CLOSE
   lastWord: LET'S GO!
   counterWords: PAGE {0} / {1}
+  thaiNextWord: "ถัดไป"
+  thaiBackWord: "ย้อนกลับ"
+  thaiCloseWord: "ปิด"
+  thaiLastWord: "ไปกันเลย!"
+  thaiCounterWords: "หน้า {0} / {1}"
+  thaiFont: {fileID: 12800000, guid: dc1e50503e3d44fc9355ea8dadb9ec1c, type: 3}
   openRise: 240
 --- !u!1 &8923108446044560911
 GameObject:

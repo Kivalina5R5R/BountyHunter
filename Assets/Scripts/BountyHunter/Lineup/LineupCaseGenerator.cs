@@ -8,7 +8,7 @@ namespace BountyHunter.Thieves
     // MostItems random things (a hat, disguises, the money bag), no two carrying the very same things,
     // no more than MostFullRows carrying the most and at least one carrying a single thing. The
     // witness's four clues start broad and close in step by step, so only the last one makes the
-    // answer sure: after the first clue 4 or 5 suspects still fit, after the second 3, after the
+    // answer sure: after the first clue 4 suspects still fit, after the second 3, after the
     // third 2 and after the fourth exactly one. Two clues say the culprit has a thing and two that it
     // has not, in any order, so the cards mix ticks and crosses. The first two clues are about
     // whether the culprit has a thing at all; the last two may name the kind of hat. At most one clue
@@ -236,7 +236,7 @@ namespace BountyHunter.Thieves
         {
             switch (step)
             {
-                case 0: return after == 4 || after == 5;
+                case 0: return after == 4;
                 case 1: return after == 3;
                 case 2: return after == 2;
                 default: return after == 1;

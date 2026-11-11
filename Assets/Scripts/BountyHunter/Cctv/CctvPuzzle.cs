@@ -70,8 +70,8 @@ namespace BountyHunter.Thieves
         [Header("Picking")]
         [SerializeField, Min(0.1f)] private float holdSeconds = 1.5f;
         // A player counts as on a ring from enterRadius and off it only past exitRadius (metres).
-        [SerializeField, Min(0.1f)] private float enterRadius = 0.6f;
-        [SerializeField, Min(0.1f)] private float exitRadius = 0.75f;
+        [SerializeField, Min(0.1f)] private float enterRadius = 0.9f;
+        [SerializeField, Min(0.1f)] private float exitRadius = 1.05f;
 
         [Header("Money")]
         [SerializeField] private int rightPay = 15;
@@ -103,6 +103,7 @@ namespace BountyHunter.Thieves
         private LineupAnswers answers;
         private bool answersOpen;
         private float answersCloseAt;
+        private float answersOpenedAt;
         // The clock is counting down: from the thieves jumping in until picks close.
         private bool clockRunning;
         private bool skipping;
@@ -115,6 +116,9 @@ namespace BountyHunter.Thieves
         public event Action AnswerLocked;
         public event Action AnswersClosed;
         public event Action<int> Settled;
+        // After the reveal, for every player in play: their number and how long they took to pick the
+        // right bin (the whole time to pick when wrong or none), for the result's tie-break.
+        public event Action<int, float> AnswerTimed;
 
         public override void Begin()
         {
@@ -170,6 +174,7 @@ namespace BountyHunter.Thieves
 
             wall.ShowLines(askHeading, askLine);
             answersOpen = true;
+            answersOpenedAt = Time.time;
             Coroutine shuffling = StartCoroutine(Shuffle());
             yield return Until(answersCloseAt);
             if (shuffling != null) StopCoroutine(shuffling);
@@ -315,6 +320,20 @@ namespace BountyHunter.Thieves
             }
 
             Settled?.Invoke(rightAnswers);
+            TimeAnswers();
+        }
+
+        // Every player's time to the right bin, for the result's tie-break.
+        private void TimeAnswers()
+        {
+            if (scoreTags == null) return;
+
+            float window = Mathf.Max(0f, answersCloseAt - answersOpenedAt);
+            foreach (PlayerScoreTag tag in scoreTags)
+            {
+                if (tag == null || !tag.InPlay) continue;
+                AnswerTimed?.Invoke(tag.PlayerNumber, answers.SecondsToAnswer(tag.PlayerNumber, clip.Answer, answersOpenedAt, window));
+            }
         }
 
         private PlayerScoreTag TagOf(int playerId)

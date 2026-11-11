@@ -64,9 +64,12 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Art = "Assets/ART/Minigame/Cctv/";
         private static readonly string[] ArtPictures = { "CctvBG", "TitleStrip", "Note", "TimePanel", "BananaPeel", "Bin1", "Bin2", "Bin3", "Bin4" };
 
-        private const float RingRadius = 0.7f;
+        // Halfway between CctvPuzzle's enter (0.9 m) and exit (1.05 m) radii, so six players fit in one ring.
+        private const float RingRadius = 0.975f;
+        private const float SpotlightSize = 2.8f;
         private const int Bins = 4;
-        private const float FloorSpacing = 2f;
+        // At least twice the exit radius, so two rings never overlap.
+        private const float FloorSpacing = 2.2f;
         private const int Thieves = 3;
         // The monitor's screen in the background picture (wall units), which the camera's clip plays in.
         private static readonly Vector2 ScreenSpot = new Vector2(-76f, -20f);
@@ -223,7 +226,7 @@ namespace BountyHunter.Thieves.EditorTools
 
             SpriteRenderer spotlight = Picture("Spotlight", root.transform, Load<Sprite>(LineupArt + "Spotlight.png"), 2);
             spotlight.color = new Color(1f, 0.93f, 0.55f, 0.75f);
-            Fit(spotlight, RingRadius * 4f);
+            Fit(spotlight, SpotlightSize);
             spotlight.gameObject.SetActive(false);
             SpriteRenderer back = Picture("Ring Back", root.transform, LoadGuid<Sprite>(LineupPrefabBuilder.RingBackGuid), 3);
             Fit(back, RingRadius * 2f);

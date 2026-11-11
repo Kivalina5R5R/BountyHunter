@@ -23,7 +23,7 @@ namespace Fortal.Players
 
         [Header("Players")]
         [Tooltip("Players in the game (Player 1 up). Each takes the next UWB tag that connects; tags connecting after that many are turned away.")]
-        [SerializeField, Range(1, MaximumPlayers)] private int playerCount = 4;
+        [SerializeField, Range(1, MaximumPlayers)] private int playerCount = MaximumPlayers;
         [Tooltip("Floor X/Z of Player 1, 2, ... before the first UWB frame, and the spawn point in standalone Simulation (Vector2.y is world Z).")]
         [SerializeField] private Vector2[] startPositions =
         {
@@ -37,7 +37,7 @@ namespace Fortal.Players
 
         [Header("Simulation")]
         [Tooltip("Number of simulated players (1-6). Applies to standalone Simulation only.")]
-        [SerializeField, Range(1, MaximumPlayers)] private int simulationPlayerCount = 4;
+        [SerializeField, Range(1, MaximumPlayers)] private int simulationPlayerCount = MaximumPlayers;
 
         [Header("Serial Presence")]
         [Tooltip("In Serial mode, disable each Player until its UWB tag is receiving fresh data. The tag stays registered so the Player can come back.")]

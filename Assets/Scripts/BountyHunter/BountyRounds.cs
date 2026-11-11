@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Fortal.Players;
 using TMPro;
@@ -28,11 +29,12 @@ namespace BountyHunter.Thieves
         [SerializeField] private PlayerScoreTag[] scoreTags;
         [SerializeField] private BombSquad bombs;
         [SerializeField] private NpcCrowd npcs;
-        // A stun gun's bolt hitting a passer-by costs npcFine like grabbing one; may be empty.
-        [SerializeField] private StunGuns stunGuns;
         // The market's handcuffs (stage 3): there a thief counts once it is led to a police car, not
         // when it is reached; may be empty.
         [SerializeField] private PoliceCuffs cuffs;
+        // The rest before each stage, its rules on the wall while the clock waits and no thief is out;
+        // may be empty, for no rest.
+        [SerializeField] private WallTutorial tutorial;
         // Handing a thief over at a police car pays deliveryBonus on top of its bounty; handing two or
         // more over at once multiplies the lot by severalAtOnce. Still being led when the clock runs
         // out pays strandedShare of the bounty and no bonus.
@@ -53,6 +55,10 @@ namespace BountyHunter.Thieves
         // puts up this many again, until the stage's clock runs out (MapSwitcher then moves on).
         [FormerlySerializedAs("roundsPerStage")]
         [SerializeField, Min(1)] private int mostPosters = 3;
+        // With at least crowdPlayers in play, every round puts up crowdExtraPosters more (2 / 3 / 4
+        // thieves instead of 1 / 2 / 3), so a big group has enough thieves to go round.
+        [SerializeField, Min(1)] private int crowdPlayers = 5;
+        [SerializeField, Min(0)] private int crowdExtraPosters = 1;
         // The posters go up this long after the stage title has finished rolling to the new number.
         [SerializeField, Min(0f)] private float postersAfterTitle = 0.2f;
         // Each thief comes out of hiding (or walks onto the floor) this long after its poster starts going up.
@@ -72,15 +78,24 @@ namespace BountyHunter.Thieves
         private bool waitingForIntro;
         // Set once the game is over: no more rounds, catches or fines.
         private bool stopped;
+        // The rest before the stage now starting, until its first round.
+        private Coroutine briefing;
+        // Set once the transition into the stage has finished (Reveal), so the rest starts with the
+        // stage in sight rather than under the transition.
+        private bool revealed;
+        // The most the rest waits for Reveal, should a way into a stage never call it.
+        private const float MostRevealWaitSeconds = 8f;
 
         // A new stage (map) starting its first round, with its number (1 first).
         public event System.Action<int> StageStarted;
         // The thieves, bombs and passers-by taken off the floor (a mini game, the finale or the end).
         public event System.Action FloorCleared;
+        // A player was paid for this many thieves (caught, or handed over at a police car), for the
+        // result's tie-break.
+        public event System.Action<UWBPlayerController, int> ThievesCaught;
 
         private void Start()
         {
-            if (stunGuns != null) stunGuns.NpcZapped += OnNpcBumped;
             if (spawner != null) spawner.ThiefCaught += OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed += OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped += OnNpcBumped;
@@ -90,7 +105,12 @@ namespace BountyHunter.Thieves
                 cuffs.Stranded += OnStranded;
             }
 
-            if (round == 0 && !waitingForIntro) StartStage(stage);
+            if (round == 0 && !waitingForIntro)
+            {
+                // Started without the intro (and its transition), so the stage is already in sight.
+                StartStage(stage);
+                Reveal();
+            }
         }
 
         // Every thief still free long enough is worth more.
@@ -153,7 +173,6 @@ namespace BountyHunter.Thieves
             if (spawner != null) spawner.ThiefCaught -= OnThiefCaught;
             if (bombs != null) bombs.PlayerBombed -= OnPlayerBombed;
             if (npcs != null) npcs.NpcBumped -= OnNpcBumped;
-            if (stunGuns != null) stunGuns.NpcZapped -= OnNpcBumped;
             if (cuffs == null) return;
 
             cuffs.Delivered -= OnDelivered;
@@ -170,11 +189,46 @@ namespace BountyHunter.Thieves
             if (waitingForIntro) return;
 
             CancelInvoke(nameof(NextRound));
+            StopBriefing();
+            revealed = false;
             // A new stage (a new map) sends the passers-by in afresh, over an edge or out of a hiding
             // spot of the new layout, so the change of stage shows; StartRound's Begin brings them.
             if (npcs != null) npcs.Clear();
+            briefing = StartCoroutine(BriefThenStart());
+        }
+
+        // The transition into the stage has finished and the stage is in sight: its rest can begin.
+        public void Reveal()
+        {
+            revealed = true;
+        }
+
+        // The stage's rules on the wall for the rest (once the stage is in sight), then its first round.
+        private IEnumerator BriefThenStart()
+        {
+            float giveUp = Time.unscaledTime + MostRevealWaitSeconds;
+            while (!revealed && !stopped && Time.unscaledTime < giveUp) yield return null;
+
+            if (tutorial != null)
+            {
+                if (timer != null) timer.ShowStage(stage);
+                yield return tutorial.Brief(TutorialPage.StagePart(stage), () => stopped);
+            }
+
+            briefing = null;
+            if (stopped) yield break;
+
             StartRound(1);
             StageStarted?.Invoke(stage);
+        }
+
+        private void StopBriefing()
+        {
+            if (briefing == null) return;
+
+            StopCoroutine(briefing);
+            briefing = null;
+            if (tutorial != null) tutorial.Clear();
         }
 
         // Ends the game: the thieves and bombs go and nothing starts again.
@@ -192,6 +246,7 @@ namespace BountyHunter.Thieves
         public void ClearFloor()
         {
             CancelInvoke(nameof(NextRound));
+            StopBriefing();
             wanted.Clear();
             freeFor.Clear();
             if (board != null) board.TakeDownNow();
@@ -227,7 +282,7 @@ namespace BountyHunter.Thieves
             }
 
             float postersDelay = timer != null ? timer.TitleRollSeconds + postersAfterTitle : 0f;
-            IReadOnlyList<WantedPoster> posters = board.PutUp(Mathf.Min(round, mostPosters), postersDelay);
+            IReadOnlyList<WantedPoster> posters = board.PutUp(PostersFor(round), postersDelay);
             for (int i = 0; i < posters.Count; i++)
             {
                 float entrance = postersDelay + i * board.PinStagger + thiefAfterPoster;
@@ -240,6 +295,32 @@ namespace BountyHunter.Thieves
             Debug.Log($"[BountyRounds] Stage {stage}-{round}: {wanted.Count} wanted", this);
         }
 
+        // How many players have a character in play (their score tag on the wall).
+        public int PlayersInPlay
+        {
+            get
+            {
+                if (scoreTags == null) return 0;
+
+                int count = 0;
+                foreach (PlayerScoreTag tag in scoreTags)
+                {
+                    if (tag != null && tag.InPlay) count++;
+                }
+
+                return count;
+            }
+        }
+
+        // Whether enough players are in play to count as a big group (more thieves, no extra passers-by).
+        public bool IsCrowd => PlayersInPlay >= crowdPlayers;
+
+        private int PostersFor(int roundNumber)
+        {
+            int posters = Mathf.Min(roundNumber, mostPosters);
+            return IsCrowd ? posters + crowdExtraPosters : posters;
+        }
+
         private void OnThiefCaught(ThiefController thief, UWBPlayerController catcher)
         {
             if (!wanted.TryGetValue(thief, out WantedPoster poster)) return;
@@ -247,6 +328,7 @@ namespace BountyHunter.Thieves
             wanted.Remove(thief);
             freeFor.Remove(thief);
             Pay(catcher, poster.Bounty);
+            ThievesCaught?.Invoke(catcher, 1);
             if (board != null) board.MarkCaught(poster);
             if (wanted.Count > 0) return;
 
@@ -277,6 +359,7 @@ namespace BountyHunter.Thieves
 
             if (count > 1) total = Mathf.RoundToInt(total * severalAtOnce);
             Pay(leader, total);
+            ThievesCaught?.Invoke(leader, count);
             if (wanted.Count == 0) Invoke(nameof(NextRound), nextRoundDelay);
         }
 

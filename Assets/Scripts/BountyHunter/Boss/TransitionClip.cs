@@ -1,9 +1,11 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
-    // A short film played over the wall with its background cut out, as sprite sheet pages and a sound
+    // A short film played over the wall with its background cut out, as sprite sheet pages (silent:
+    // the boss's cutscenes play without sound)
     // in Assets/Resources/Transition (Tools/BossVideoArt/make_video_sheet.py): frames laid left to
     // right and top to bottom, page after page. The pages are big, so they are in memory only from
     // Load until Unload rather than with the scene.
@@ -14,23 +16,25 @@ namespace BountyHunter.Thieves
         private const int Rows = 6;
         private const float FramesPerSecond = 60f;
 
-        // Its pages are named name_0, name_1, ... and its sound name_Sound.
+        // Its pages are named name_0, name_1, ...
         private readonly string name;
         private readonly int pages;
         private readonly int frames;
+        // Stretches of frames (first to last, both kept out) skipped while playing, such as white flashes.
+        private readonly (int First, int Last)[] cuts;
 
         private Texture2D[] loaded;
-        private AudioClip sound;
 
-        public TransitionClip(string name, int pages, int frames)
+        // cuts: stretches of frames to skip while playing, each from its first to its last frame.
+        public TransitionClip(string name, int pages, int frames, params (int First, int Last)[] cuts)
         {
             this.name = name;
             this.pages = pages;
             this.frames = frames;
+            this.cuts = cuts ?? Array.Empty<(int, int)>();
         }
 
         public float Seconds => frames / FramesPerSecond;
-        public AudioClip Sound => sound;
 
         // True once every page is in memory.
         public bool IsLoaded { get; private set; }
@@ -41,7 +45,7 @@ namespace BountyHunter.Thieves
         // One frame's width against its height.
         public float Aspect => IsLoaded ? loaded[0].width * Rows / (float)(loaded[0].height * Columns) : 1f;
 
-        // Loads the pages and the sound without holding up the game; a missing page is logged and
+        // Loads the pages without holding up the game; a missing page is logged and
         // leaves it unloaded, so the caller goes without the film.
         public IEnumerator Load()
         {
@@ -61,9 +65,6 @@ namespace BountyHunter.Thieves
                 yield break;
             }
 
-            ResourceRequest clip = Resources.LoadAsync<AudioClip>($"{Folder}{name}_Sound");
-            yield return clip;
-            sound = clip.asset as AudioClip;
             loaded = textures;
             IsLoaded = true;
             IsLoading = false;
@@ -82,8 +83,18 @@ namespace BountyHunter.Thieves
             }
 
             loaded = null;
-            if (sound != null) Resources.UnloadAsset(sound);
-            sound = null;
+        }
+
+        // seconds moved on past any cut it falls in (unchanged when it is in none).
+        public float SkipCuts(float seconds)
+        {
+            int frame = Mathf.FloorToInt(seconds * FramesPerSecond);
+            foreach ((int first, int last) in cuts)
+            {
+                if (frame >= first && frame <= last) return (last + 1) / FramesPerSecond;
+            }
+
+            return seconds;
         }
 
         // The page holding the frame (past the end, the last frame), and where on it the frame is. The

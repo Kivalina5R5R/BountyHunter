@@ -8,7 +8,8 @@ namespace BountyHunter.Thieves
     // and stops for a while now and then. It neither runs from the players nor hides, but it never
     // walks into one either: it only sets off along paths that keep clear of them, and stops and
     // picks another way when one steps in front of it. It keeps off the hiding spots and out of the
-    // way of a thief running to hide, and does not stand about right next to others. So a bump is
+    // way of a thief running to hide, and does not stand about right next to others; meeting a thief or
+    // another passer-by in its path, it steps aside and lets them by rather than pressing into them. So a bump is
     // always the player walking into it, an innocent officer grabbed by mistake: it raises Bumped
     // once and NpcCrowd hides it in the scuffle cloud; after that it is back on the same spot in
     // its angry act (GetAngry) before it strolls on. Leave sends it off the floor over the closest
@@ -51,6 +52,13 @@ namespace BountyHunter.Thieves
         // Standing still, it walks on when a thief or another passer-by is closer than this, and trips
         // avoid ending this close to one.
         [SerializeField, Min(0f)] private float restSpacing = 1.3f;
+        // Someone this close in front while it walks makes it give way: it steps aside off their line
+        // by sidestepDistance (away from the side they are on; keeping right when they are dead ahead)
+        // and lets them pass, instead of the two pressing into each other face to face.
+        [SerializeField, Min(0.1f)] private float giveWayDistance = 1f;
+        [SerializeField, Min(0.1f)] private float sidestepDistance = 0.9f;
+        // How long it waits on the side before strolling on.
+        [SerializeField, Min(0f)] private float giveWayPauseSeconds = 0.5f;
 
         [Header("Hiding spots")]
         // Trips never end this close to a hiding spot's leaves, and when a thief runs for a spot it
@@ -86,6 +94,8 @@ namespace BountyHunter.Thieves
         private bool entering;
         private bool leaving;
         private bool bumped;
+        // Walking aside to let someone pass; no further giving way until it gets there.
+        private bool sidestepping;
         // Until when it stands in its angry act, and until when it cannot be bumped.
         private float angryUntil = float.MinValue;
         private float safeUntil = float.MinValue;
@@ -260,7 +270,7 @@ namespace BountyHunter.Thieves
 
             foreach (HidingBush bush in hidingSpots.Bushes)
             {
-                if (bush != null && FlatDistance(point, bush.Center) < bush.Radius + bushClearance) return true;
+                if (bush != null && bush.isActiveAndEnabled && FlatDistance(point, bush.Center) < bush.Radius + bushClearance) return true;
             }
 
             return false;
@@ -313,9 +323,19 @@ namespace BountyHunter.Thieves
                     return;
                 }
 
-                walking = false;
-                restUntil = Time.time + UnityEngine.Random.Range(pauseSeconds.x, pauseSeconds.y);
+                StopHere();
                 return;
+            }
+
+            // Its goal is taken by someone standing there: it stops short rather than pushing in.
+            if (!entering && !leaving && toGoal.magnitude < personalSpace * 1.5f)
+            {
+                GatherWalkers();
+                if (NearestWalker(goal) < personalSpace)
+                {
+                    StopHere();
+                    return;
+                }
             }
 
             // Gives way to a player in front rather than walking into them (not while coming in from
@@ -327,11 +347,64 @@ namespace BountyHunter.Thieves
                 return;
             }
 
+            // Someone coming the other way or standing in its path: it steps aside and lets them by.
+            if (!entering && !leaving && !sidestepping && TryWalkerAhead(toGoal.normalized, out Vector3 blocker))
+            {
+                SidestepFrom(blocker, toGoal.normalized);
+                return;
+            }
+
             // Eases off over the last stretch instead of stopping dead, and walks round thieves and
             // other passers-by ahead (fading out near the goal so it still gets there).
             float speed = walkSpeed * Mathf.Clamp01(toGoal.magnitude / 0.3f + 0.3f);
             Vector3 heading = AvoidWalkers(toGoal.normalized, Mathf.Clamp01(toGoal.magnitude / 0.5f));
             Steer(heading * speed);
+        }
+
+        // Stands still where it is: briefly after stepping aside, otherwise for one of its usual pauses.
+        private void StopHere()
+        {
+            walking = false;
+            restUntil = Time.time + (sidestepping ? giveWayPauseSeconds : UnityEngine.Random.Range(pauseSeconds.x, pauseSeconds.y));
+            sidestepping = false;
+        }
+
+        // The closest thief or passer-by within giveWayDistance in front of heading.
+        private bool TryWalkerAhead(Vector3 heading, out Vector3 blocker)
+        {
+            GatherWalkers();
+            Vector3 position = transform.position;
+            blocker = position;
+            float closest = giveWayDistance;
+            foreach (Vector3 other in walkerPositions)
+            {
+                Vector3 toOther = other - position;
+                toOther.y = 0f;
+                float distance = toOther.magnitude;
+                if (distance >= closest || distance < 0.0001f) continue;
+                if (Vector3.Dot(toOther / distance, heading) < 0.5f) continue;
+
+                closest = distance;
+                blocker = other;
+            }
+
+            return closest < giveWayDistance;
+        }
+
+        // Walks sidestepDistance off the line to blocker, to the side away from it, then pauses there.
+        private void SidestepFrom(Vector3 blocker, Vector3 heading)
+        {
+            var right = new Vector3(heading.z, 0f, -heading.x);
+            Vector3 toBlocker = blocker - transform.position;
+            Vector3 side = Vector3.Dot(right, toBlocker) > 0.05f ? -right : right;
+            Vector3 spot = Clamped(transform.position + side * sidestepDistance, 0f);
+            // Pressed against an edge on that side: the other side instead.
+            if (FlatDistance(spot, transform.position) < sidestepDistance * 0.5f)
+                spot = Clamped(transform.position - side * sidestepDistance, 0f);
+
+            goal = spot;
+            walking = true;
+            sidestepping = true;
         }
 
         // Bends a heading away from thieves and passers-by within avoidDistance, most for those ahead;
@@ -435,6 +508,7 @@ namespace BountyHunter.Thieves
 
             goal = best;
             walking = true;
+            sidestepping = false;
         }
 
         // Off the floor over the closest edge whose way out keeps pathClearance from the players (the
@@ -533,7 +607,8 @@ namespace BountyHunter.Thieves
         }
 
         // The closest any thief or passer-by in walkerPositions is to the straight path from a to b,
-        // leaving out ones right beside its start (it is walking away from those).
+        // leaving out ones right beside its start that the path leads away from (one beside it but
+        // in front still counts, so it does not set off straight into them).
         private float WalkerPathClearance(Vector3 a, Vector3 b)
         {
             float clearance = float.MaxValue;
@@ -542,7 +617,7 @@ namespace BountyHunter.Thieves
             foreach (Vector3 walker in walkerPositions)
             {
                 Vector2 point = new Vector2(walker.x, walker.z);
-                if (Vector2.Distance(point, start) < personalSpace) continue;
+                if (Vector2.Distance(point, start) < personalSpace && Vector2.Dot(end - start, point - start) <= 0f) continue;
                 clearance = Mathf.Min(clearance, DistanceToSegment(point, start, end));
             }
 

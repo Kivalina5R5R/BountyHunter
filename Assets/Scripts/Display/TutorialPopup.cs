@@ -23,10 +23,13 @@ namespace Fortal.Display
             [SerializeField] private Sprite picture;
             [SerializeField] private string title;
             [SerializeField, TextArea(2, 4)] private string body;
+            // The same in Thai, shown while the game is in Thai (GameLanguage); empty keeps the English.
+            [SerializeField] private string thaiTitle;
+            [SerializeField, TextArea(2, 4)] private string thaiBody;
 
             public Sprite Picture => picture;
-            public string Title => title;
-            public string Body => body;
+            public string Title => GameLanguage.Pick(title, thaiTitle);
+            public string Body => GameLanguage.Pick(body, thaiBody);
         }
 
         [SerializeField] private Page[] pages = Array.Empty<Page>();
@@ -44,6 +47,9 @@ namespace Fortal.Display
         [SerializeField] private TMP_Text step;
         // {0} is the page on show and {1} how many there are.
         [SerializeField] private string stepWords = "STEP {0} / {1}";
+        [SerializeField] private string thaiStepWords = "ขั้นที่ {0} / {1}";
+        // Draws the Thai words (made into a dynamic TMP font, falling back to each text's own font).
+        [SerializeField] private Font thaiFont;
         // One copy of this dot is made per page, side by side under its parent.
         [SerializeField] private Image dotTemplate;
 
@@ -85,9 +91,15 @@ namespace Fortal.Display
         // How long the page on show has been fully in; counts towards pageSeconds.
         private float pageTime;
 
+        private readonly LanguageFonts fonts = new LanguageFonts();
+
         private void Awake()
         {
             group = GetComponent<CanvasGroup>();
+            fonts.Add(title, thaiFont);
+            fonts.Add(body, thaiFont);
+            fonts.Add(step, thaiFont);
+            GameLanguage.Changed += OnLanguageChanged;
 
             // With the kiosk switched off its remote never wakes up and cannot be shown; the pages
             // then just turn by themselves.
@@ -104,6 +116,17 @@ namespace Fortal.Display
             if (picture != null) pictureRest = picture.rectTransform.anchoredPosition.y;
             if (body != null) bodyRest = body.rectTransform.anchoredPosition.y;
             MakeDots();
+        }
+
+        private void OnDestroy()
+        {
+            GameLanguage.Changed -= OnLanguageChanged;
+        }
+
+        // The page on show (and the remote's words) swap to the new language in place.
+        private void OnLanguageChanged()
+        {
+            if (gameObject.activeInHierarchy) ShowPage(current);
         }
 
         // False from the moment it starts to drop away.
@@ -214,9 +237,10 @@ namespace Fortal.Display
                 picture.enabled = page.Picture != null;
             }
 
+            fonts.Apply();
             if (title != null) title.text = page.Title;
             if (body != null) body.text = page.Body;
-            if (step != null) step.text = string.Format(stepWords, index + 1, pages.Length);
+            if (step != null) step.text = string.Format(GameLanguage.Pick(stepWords, thaiStepWords), index + 1, pages.Length);
             ShowControls(index);
         }
 

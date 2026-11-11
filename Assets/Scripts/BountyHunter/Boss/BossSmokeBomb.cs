@@ -34,6 +34,8 @@ namespace BountyHunter.Thieves
         private readonly Func<bool> tryHide;
         private readonly BossMoments moments;
         private bool allowHiding;
+        // This warp comes out on the floor's edge (the samples round the edge only).
+        private bool toEdge;
         // The bomb has gone down and its cloud burst, this throw or warp.
         private bool burst;
         public bool Hid { get; private set; }
@@ -65,13 +67,15 @@ namespace BountyHunter.Thieves
             if (!catchableWindup) moments.RaiseSmokeLit();
         }
 
-        // Skill preparation can require extra room from every player at the destination.
-        public void Warp(float playerClearance = 0f, bool allowHiding = true)
+        // Skill preparation can require extra room from every player at the destination; toEdge
+        // makes it come out on the floor's edge, as far from the players as it can.
+        public void Warp(float playerClearance = 0f, bool allowHiding = true, bool toEdge = false)
         {
             body.DropDisguise();
             Begin(false);
             this.playerClearance = playerClearance;
             this.allowHiding = allowHiding;
+            this.toEdge = toEdge;
             body.Animator.Play(smoke.Frames, smoke.FramesPerSecond, new Vector2Int(body.Settings.WarpFromFrame, body.Settings.SmokeFrames.y), false);
         }
 
@@ -132,6 +136,7 @@ namespace BountyHunter.Thieves
             allowHiding = !arrived;
             catchableWindup = false;
             playerClearance = 0f;
+            toEdge = false;
             teleported = arrived;
             betweenClouds = false;
             cloudLingering = false;
@@ -164,13 +169,19 @@ namespace BountyHunter.Thieves
             float bestScore = float.MinValue;
             bool foundFar = false;
             int gridSamples = FloorSamplesPerAxis * FloorSamplesPerAxis;
-            for (int i = 0; i < gridSamples + FarSpotTries; i++)
+            int tries = toEdge ? gridSamples : gridSamples + FarSpotTries;
+            for (int i = 0; i < tries; i++)
             {
                 Vector3 spot;
                 if (i < gridSamples)
                 {
-                    float x = (i % FloorSamplesPerAxis) / (float)(FloorSamplesPerAxis - 1);
-                    float z = (i / FloorSamplesPerAxis) / (float)(FloorSamplesPerAxis - 1);
+                    int column = i % FloorSamplesPerAxis;
+                    int row = i / FloorSamplesPerAxis;
+                    bool onEdge = column == 0 || row == 0 || column == FloorSamplesPerAxis - 1 || row == FloorSamplesPerAxis - 1;
+                    if (toEdge && !onEdge) continue;
+
+                    float x = column / (float)(FloorSamplesPerAxis - 1);
+                    float z = row / (float)(FloorSamplesPerAxis - 1);
                     spot = body.KeepOnFloor(new Vector3(
                         Mathf.Lerp(body.AreaMin.x, body.AreaMax.x, x), BossBody.Height,
                         Mathf.Lerp(body.AreaMin.y, body.AreaMax.y, z)));

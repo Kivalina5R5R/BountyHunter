@@ -175,6 +175,8 @@ namespace BountyHunter.Thieves
 
             current = (current + 1) % maps.Length;
             SwitchTo(maps[current]);
+            // A straight switch has no transition to wait for.
+            if (rounds != null) rounds.Reveal();
         }
 
         // The mini game after the current map, between two fades, then the next map.
@@ -219,6 +221,8 @@ namespace BountyHunter.Thieves
             {
                 yield return curtain.Open(fadeInSeconds);
             }
+
+            if (rounds != null) rounds.Reveal();
         }
 
         // The way out starts wiping the mini game's wall panel off at once, the stage's wall pieces
@@ -239,6 +243,7 @@ namespace BountyHunter.Thieves
             interlude.End();
             playing = null;
             if (curtain != null) yield return curtain.OpenFloor(fadeInSeconds);
+            if (rounds != null) rounds.Reveal();
         }
 
         // The game is past the intro (the clock lives on the game wall).

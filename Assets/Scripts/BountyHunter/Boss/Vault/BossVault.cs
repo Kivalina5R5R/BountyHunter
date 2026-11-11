@@ -17,7 +17,8 @@ namespace BountyHunter.Thieves
     // stolenFine (or what they have). Holding out to the end secures it: every player earns
     // securedReward. Either way the chase follows at once. The boss comes in at a random spot along
     // the floor's edge (as far from the players as it can) and makes for the diamond. A player who
-    // catches it (touches it) earns bumpReward, and it warps in a puff of smoke to another random
+    // catches it (touches it) earns diamondBumpReward if it was on the diamond (within stealRadius),
+    // else bumpReward, and it warps in a puff of smoke to another random
     // spot along the edge and comes back in another look than before: as one of the passers-by or
     // thieves (any kind, out on the floor or not) for disguiseSeconds, or as itself. In a blackout
     // it cannot be caught at all: the lights must go back on first.
@@ -41,9 +42,12 @@ namespace BountyHunter.Thieves
     public sealed class BossVault : StageInterlude
     {
         // The diamond and its ring lie on the floor under the characters (thieves 8, players 20), who
-        // walk over it; the dark sheet and the lasers go over the characters.
-        private const int RingOrder = 5;
+        // walk over it; the ring goes over the diamond so the pedestal never hides it. The dark sheet
+        // and the lasers go over the characters.
         private const int DiamondOrder = 6;
+        private const int RingOrder = 7;
+        // The ring's hole is this many times the diamond's width, so the whole pedestal sits inside it.
+        private const float RingVsDiamond = 1.95f;
         private const int DarkOrder = 24;
         private const int LaserOrder = 25;
         private const int SmokeOrder = 21;
@@ -62,6 +66,8 @@ namespace BountyHunter.Thieves
         // The market's hiding spots, put away while the vault plays (there are none in a vault).
         [SerializeField] private ThiefSpawner hidingSpots;
         [SerializeField] private StageTimer timer;
+        // The rest before the phase, its rules on the wall; may be empty, for no rest.
+        [SerializeField] private WallTutorial tutorial;
         // The chase that follows: the boss's look and settings, and how the wall is cleared.
         [SerializeField] private BossChase chase;
 
@@ -80,8 +86,8 @@ namespace BountyHunter.Thieves
         // The sparkle glinting on the diamond now and then (DiamondGlints); none when empty.
         [SerializeField] private Sprite diamondGlint;
         [SerializeField, Min(0.2f)] private float diamondWidth = 0.9f;
-        // The ring round the pedestal filling as the boss steals: the players' select ring, drawn with
-        // the radial fill material.
+        // The ring round the pedestal filling as the boss steals: the players' select ring in white
+        // (StealRing.png, so stealColour tints it true), drawn with the radial fill material.
         [SerializeField] private Sprite stealRing;
         [SerializeField] private Material radialFill;
         [SerializeField] private Color stealColour = new Color(1f, 0.25f, 0.2f, 1f);
@@ -167,6 +173,9 @@ namespace BountyHunter.Thieves
 
         [Header("Money")]
         [SerializeField, Min(0)] private int bumpReward = 5;
+        // Paid instead of bumpReward for catching the boss while it stands on the diamond, so guarding
+        // it pays better than chasing the boss about the floor.
+        [SerializeField, Min(0)] private int diamondBumpReward = 10;
         [SerializeField, Min(0)] private int securedReward = 10;
         [SerializeField, Min(0)] private int stolenFine = 10;
         [SerializeField] private Color gainColor = new Color(1f, 0.82f, 0.25f, 1f);
@@ -220,7 +229,6 @@ namespace BountyHunter.Thieves
 
         private Vector3 Diamond => new Vector3((areaMin.x + areaMax.x) * 0.5f, 0f, (areaMin.y + areaMax.y) * 0.5f);
 
-        private float Elapsed => Time.time - startedAt;
 
         private void Awake()
         {
@@ -240,9 +248,6 @@ namespace BountyHunter.Thieves
             touchingBeam = -1;
             revealedUntil = 0f;
             alarmReadyAt = 0f;
-            startedAt = Time.time + arriveAfterSeconds;
-            nextSmokeAt = startedAt + smokeFirstAt;
-            nextBlackoutAt = startedAt + blackoutFirstAt;
             lightsBackAt = float.MaxValue;
             ready = chase != null;
             if (!ready)
@@ -266,14 +271,26 @@ namespace BountyHunter.Thieves
 
             PutBossDown();
             if (npcs != null) npcs.Begin();
-            if (timer != null) timer.StartCountdown(phaseHeading, chase.Seconds);
+            if (timer != null) timer.SetHeading(phaseHeading);
             Debug.Log("[BossVault] The vault is open", this);
+        }
+
+        // The phase's clock and the boss's schedule start now, after the rest.
+        private void StartClock()
+        {
+            startedAt = Time.time + arriveAfterSeconds;
+            nextSmokeAt = startedAt + smokeFirstAt;
+            nextBlackoutAt = startedAt + blackoutFirstAt;
+            if (timer != null) timer.StartCountdown(phaseHeading, chase.Seconds);
         }
 
         public override IEnumerator Run()
         {
             if (!ready) yield break;
 
+            // The rest first: the phase's rules on the wall, the clock waiting, the boss not yet in.
+            if (tutorial != null) yield return tutorial.Brief(TutorialPart.BossVault, () => skipping);
+            StartClock();
             while (Time.time < startedAt && !skipping) yield return null;
             if (boss != null) boss.Arrive();
 
@@ -291,6 +308,7 @@ namespace BountyHunter.Thieves
         public override void End()
         {
             StopAllCoroutines();
+            if (tutorial != null) tutorial.Clear();
             if (boss != null) Destroy(boss.gameObject);
             boss = null;
             foreach (FloorSwitch lights in switches)
@@ -550,7 +568,8 @@ namespace BountyHunter.Thieves
         private void OnBumped(UWBPlayerController player)
         {
             BossBumped?.Invoke(player);
-            Pay(player, bumpReward);
+            bool onDiamond = Flat(boss.Position, Diamond) <= stealRadius;
+            Pay(player, onDiamond ? diamondBumpReward : bumpReward);
 
             smokes.Add(VaultSmoke.Throw(transform, boss.Position, warpPuffRadius, warpPuffSeconds, SmokeOrder));
             Component was = boss.Look;
@@ -659,7 +678,7 @@ namespace BountyHunter.Thieves
         private void BuildDiamond()
         {
             Vector3 at = Diamond;
-            ring = Flat("Steal Ring", stealRing, RingOrder, at, stealRadius * 2f + 0.5f);
+            ring = Flat("Steal Ring", stealRing, RingOrder, at, Mathf.Max(stealRadius * 2f + 0.5f, diamondWidth * RingVsDiamond));
             if (ring != null)
             {
                 if (radialFill != null) ring.sharedMaterial = radialFill;

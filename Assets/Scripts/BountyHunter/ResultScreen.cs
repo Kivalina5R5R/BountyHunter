@@ -21,7 +21,9 @@ namespace BountyHunter.Thieves
         // On the winner's stand winnerOffset moves it (UI pixels, x right, y up) from Stand Spot, so
         // each dog can be set to stand just right there; it slides in and sways around that place.
         // Ticking previewOnStand shows that dog on the stand in the prefab while setting it up, moving
-        // as its offset changes (editor only; the game ignores it).
+        // as its offset changes (editor only; the game ignores it). Tint colours its dancing and clapping
+        // pictures; white leaves them as drawn (the placeholder characters borrow another dog's
+        // animations in their own colour until their real art comes).
         [Serializable]
         private sealed class Look
         {
@@ -31,13 +33,18 @@ namespace BountyHunter.Thieves
             [SerializeField, Min(0.01f)] private float size = 0.5f;
             [SerializeField] private Vector2 winnerOffset;
             [SerializeField] private bool previewOnStand;
+            [SerializeField] private Color tint = Color.white;
+            // A still picture shown (not animated) when the character has no animations yet.
+            [SerializeField] private Sprite still;
 
             public string Character => character;
             public RuntimeAnimatorController Animations => animations;
+            public Sprite Still => still;
             public Sprite Face => face;
             public float Size => size;
             public Vector2 WinnerOffset => winnerOffset;
             public bool PreviewOnStand => previewOnStand;
+            public Color Tint => tint;
         }
 
         // One line of the standings; face may be left empty (the winner's line has none).
@@ -68,7 +75,7 @@ namespace BountyHunter.Thieves
         // Where the winner stands on the bench before its own Winner Offset (UI pixels). The Winner
         // picture itself may be anywhere (a preview moves it); the game puts it here.
         [SerializeField] private Vector2 standSpot = new Vector2(16f, 21.125824f);
-        // Clap beside the board, for 2nd, 3rd and 4th place in that order.
+        // Clap beside the board, for 2nd place, 3rd place and so on in that order.
         [SerializeField] private Animator[] clappers;
         [SerializeField] private string rankFormat = "NO. {0}";
         [SerializeField] private string scoreFormat = "{0}";
@@ -214,16 +221,28 @@ namespace BountyHunter.Thieves
             if (spot == null) return;
 
             Look look = character != null ? LookOf(character) : null;
-            bool shown = look != null && look.Animations != null;
+            bool shown = look != null && (look.Animations != null || look.Still != null);
             spot.gameObject.SetActive(shown);
             if (!shown) return;
 
-            spot.runtimeAnimatorController = look.Animations;
-            spot.Play(state, 0, 0f);
-            // Shows the first frame now and sizes the picture to it; every frame of a clip is one size.
-            spot.Update(0f);
-            if (!spot.TryGetComponent(out Image picture) || picture.sprite == null) return;
+            bool animated = look.Animations != null;
+            spot.enabled = animated;
+            if (!spot.TryGetComponent(out Image picture)) return;
+            if (animated)
+            {
+                spot.runtimeAnimatorController = look.Animations;
+                spot.Play(state, 0, 0f);
+                // Shows the first frame now and sizes the picture to it; every frame of a clip is one size.
+                spot.Update(0f);
+            }
+            else
+            {
+                picture.sprite = look.Still;
+            }
 
+            if (picture.sprite == null) return;
+
+            picture.color = look.Tint;
             picture.SetNativeSize();
             picture.rectTransform.sizeDelta *= look.Size;
             if (onStand) StandOnSpot(picture.rectTransform, look.WinnerOffset);
@@ -387,6 +406,7 @@ namespace BountyHunter.Thieves
             if (first == null) return;
 
             picture.sprite = first;
+            picture.color = look.Tint;
             picture.SetNativeSize();
             picture.rectTransform.sizeDelta *= look.Size;
             picture.rectTransform.anchoredPosition = standSpot + look.WinnerOffset;

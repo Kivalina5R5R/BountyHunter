@@ -15,7 +15,7 @@ namespace BountyHunter.Thieves
         [SerializeField] private int bodySortingOrder = 10;
 
         [Header("Running away")]
-        [SerializeField, Min(0.1f)] private float runSpeed = 1.4f;
+        [SerializeField, Min(0.1f)] private float runSpeed = 1.2f;
         // How far one frame of the walk carries it (metres). The walk plays as fast as it moves, so
         // the feet keep up with the floor; at 0.06 a run of 1.4 m/s plays the walk at about 23 frames
         // a second instead of its own 15.

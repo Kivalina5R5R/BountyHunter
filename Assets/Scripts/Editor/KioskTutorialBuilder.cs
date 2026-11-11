@@ -56,23 +56,30 @@ namespace Fortal.Editor
         private static readonly Color PlaqueColour = new Color(0.07f, 0.08f, 0.2f, 1f);
         private static readonly Color DividerColour = new Color(1f, 0.8f, 0.13f, 0.35f);
 
-        // Each page: its picture, title and words.
-        private static readonly (string picture, string title, string body)[] Pages =
+        // Each page: its picture, title and words, then the title and words in Thai.
+        private static readonly (string picture, string title, string body, string thaiTitle, string thaiBody)[] Pages =
         {
             (KioskArt + "KioskRex.png", "PICK YOUR DOG",
-                "PUT ON YOUR TAG AND STEP ONTO THE FLOOR.\nSTAND ON A DOG CARD FOR 2 SECONDS TO PICK IT!"),
+                "PUT ON YOUR TAG AND STEP ONTO THE FLOOR.\nSTAND ON A DOG CARD FOR 2 SECONDS TO PICK IT!",
+                "เลือกน้องหมาของคุณ", "ติดแท็กแล้วเดินเข้ามาในสนาม\nยืนบนการ์ดน้องหมา 2 วินาทีเพื่อเลือก!"),
             ("Assets/ART/Post/Postcat.png", "WANTED!",
-                "THE WALL SHOWS WHO TO CATCH\nAND HOW MUCH THEIR BOUNTY IS."),
+                "THE WALL SHOWS WHO TO CATCH\nAND HOW MUCH THEIR BOUNTY IS.",
+                "ประกาศจับ!", "ผนังจะบอกว่าต้องจับใคร\nและค่าหัวเท่าไหร่"),
             ("Assets/ART/Thif/Cat/Cat.png", "CATCH THE THIEF",
-                "RUN INTO A THIEF TO CATCH IT AND TAKE ITS BOUNTY.\nIT HIDES IN BINS AND BUSHES: STAND GUARD TO FLUSH IT OUT!"),
+                "RUN INTO A THIEF TO CATCH IT AND TAKE ITS BOUNTY.\nIT HIDES IN BINS AND BUSHES: STAND GUARD TO FLUSH IT OUT!",
+                "จับหัวขโมย", "วิ่งชนหัวขโมยเพื่อจับและรับค่าหัว\nมันซ่อนในถังขยะและพุ่มไม้ ยืนเฝ้าไว้ให้มันออกมา!"),
             ("Assets/ART/FX/Bomb/Frames/Bomb_Fuse_01.png", "WATCH OUT!",
-                "GET OUT OF THE RED RING BEFORE THE BOMB GOES OFF.\nBUMPING INTO A PASSER-BY COSTS YOU 5$!"),
+                "GET OUT OF THE RED RING BEFORE THE BOMB GOES OFF.\nBUMPING INTO A PASSER-BY COSTS YOU 5$!",
+                "ระวัง!", "ออกจากวงสีแดงก่อนระเบิดจะทำงาน\nชนคนเดินผ่านโดนปรับ 5$!"),
             ("Assets/ART/StunGun/StunBoltIcon.png", "STUN GUN",
-                "GRAB A STUN GUN AND STAY CLOSE TO A THIEF.\nIT LOCKS ON AND FIRES BY ITSELF!"),
+                "GRAB A STUN GUN AND STAY CLOSE TO A THIEF.\nIT LOCKS ON AND FIRES BY ITSELF!",
+                "ปืนช็อต", "หยิบปืนช็อตแล้วเข้าไปใกล้หัวขโมย\nปืนจะล็อกเป้าและยิงเอง!"),
             ("Assets/ART/Minigame/Cctv/Bin1.png", "MINI GAMES",
-                "BETWEEN STAGES, STAND ON THE RING OF YOUR ANSWER.\nGET IT RIGHT FOR BONUS CASH!"),
+                "BETWEEN STAGES, STAND ON THE RING OF YOUR ANSWER.\nGET IT RIGHT FOR BONUS CASH!",
+                "มินิเกม", "ระหว่างด่าน ให้ยืนบนวงของคำตอบที่เลือก\nตอบถูกรับเงินโบนัส!"),
             ("Assets/ART/Minigame/Boss/BossHat.png", "MOST WANTED",
-                "CATCH THE BOSS IN THE FINAL CHASE.\nTHE MOST CASH AT THE END WINS!"),
+                "CATCH THE BOSS IN THE FINAL CHASE.\nTHE MOST CASH AT THE END WINS!",
+                "ตัวการใหญ่", "จับบอสให้ได้ในการไล่ล่าตอนท้าย\nใครมีเงินมากที่สุดตอนจบเป็นผู้ชนะ!"),
         };
 
         static KioskTutorialBuilder()
@@ -419,6 +426,8 @@ namespace Fortal.Editor
                 page.FindPropertyRelative("picture").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(Pages[i].picture);
                 page.FindPropertyRelative("title").stringValue = Pages[i].title;
                 page.FindPropertyRelative("body").stringValue = Pages[i].body;
+                page.FindPropertyRelative("thaiTitle").stringValue = Pages[i].thaiTitle;
+                page.FindPropertyRelative("thaiBody").stringValue = Pages[i].thaiBody;
             }
         }
 

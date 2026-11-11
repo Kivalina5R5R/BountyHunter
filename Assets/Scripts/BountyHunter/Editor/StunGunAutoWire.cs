@@ -10,8 +10,8 @@ namespace BountyHunter.Thieves.EditorTools
     // pictures crackling round it, StunAura*; the lightning bolt waiting on the floor to be picked
     // up, the star and the lock-on reticle from Tools/StunGunArt), adds StunGuns and StunGunPickups next to the open scene's BountyRounds when
     // they are missing, and fills every reference left empty (the rounds, players, thieves,
-    // passers-by, the art, and the radial fill material for the reticle). Points BountyRounds at the
-    // guns so a bolt into a passer-by is fined. Anything set by hand is kept. Save the scene afterwards.
+    // passers-by, the art, and the radial fill material for the reticle).
+    // Anything set by hand is kept. Save the scene afterwards.
     [InitializeOnLoad]
     public static class StunGunAutoWire
     {
@@ -66,10 +66,6 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(pickupFields, "thieves", thieves);
             changed |= Fill(pickupFields, "icon", AssetDatabase.LoadAssetAtPath<Sprite>(BoltIcon));
             pickupFields.ApplyModifiedPropertiesWithoutUndo();
-
-            var roundFields = new SerializedObject(rounds);
-            changed |= Fill(roundFields, "stunGuns", guns);
-            roundFields.ApplyModifiedPropertiesWithoutUndo();
 
             if (!changed) return;
 

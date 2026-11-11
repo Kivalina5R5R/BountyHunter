@@ -27,6 +27,8 @@ namespace BountyHunter.Thieves
         }
 
         [SerializeField] private Entry[] entries;
+        // Breaks ties in the standings; may be empty, when tied characters keep the order of the entries.
+        [SerializeField] private MatchStats tieBreaks;
 
         private void Awake()
         {
@@ -61,27 +63,36 @@ namespace BountyHunter.Thieves
             }
         }
 
-        // The characters still in play with their scores, best first; a tie keeps the order of the entries.
+        // The characters still in play with their scores, best first. Equal money is settled by
+        // tieBreaks (boss catches, then thieves caught, then mini game answer speed), so only one
+        // stands on the winner's bench; a tie even then keeps the order of the entries.
         public List<ResultStanding> Standings()
         {
-            var standings = new List<ResultStanding>();
-            if (entries == null) return standings;
+            var ranked = new List<ResultStanding>();
+            if (entries == null) return ranked;
 
+            var players = new Dictionary<string, int>();
             foreach (Entry entry in entries)
             {
                 if (entry == null || entry.Tag == null || !entry.Tag.InPlay) continue;
-                standings.Add(new ResultStanding(entry.Character, entry.Tag.Score));
-            }
 
-            // A stable sort, so tied characters stay in entry order.
-            var ranked = new List<ResultStanding>(standings.Count);
-            foreach (ResultStanding standing in standings)
-            {
-                int at = ranked.FindIndex(other => other.Score < standing.Score);
+                var standing = new ResultStanding(entry.Character, entry.Tag.Score);
+                players[entry.Character] = entry.Tag.PlayerNumber;
+                // An insertion sort that keeps entry order among those it cannot tell apart.
+                int at = ranked.FindIndex(other => Compare(standing, other, players) < 0);
                 ranked.Insert(at < 0 ? ranked.Count : at, standing);
             }
 
             return ranked;
+        }
+
+        // Below 0 when a places above b.
+        private int Compare(ResultStanding a, ResultStanding b, IReadOnlyDictionary<string, int> players)
+        {
+            int byMoney = b.Score.CompareTo(a.Score);
+            if (byMoney != 0 || tieBreaks == null) return byMoney;
+
+            return tieBreaks.CompareTied(players[a.Character], players[b.Character]);
         }
 
         private static bool TryGetPlayer(IReadOnlyDictionary<int, string> chosen, string character, out int player)

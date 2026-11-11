@@ -4,7 +4,10 @@ using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
-    // Connects the Fortal web launcher's UDP commands to the HOW TO PLAY board on the wall. The board
+    // Connects the Fortal web launcher's UDP commands to the HOW TO PLAY board on the wall, and the
+    // kiosk's TH/EN button to the game's language (GameLanguage: the rule cards, the HOW TO PLAY
+    // board and its remote all follow it; B in the game swaps it too, and the launcher reads it
+    // back). The board
     // may open only during the intro, and it drops away when the intro gives way to the game. It adds
     // itself next to the intro as the scene loads, so no scene set-up can be left out of a build.
     // Console lines start with [ArenaRemoteLink].
@@ -16,6 +19,11 @@ namespace BountyHunter.Thieves
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
+            // The language works whatever is in the scene.
+            FortalArenaRemote.GetLanguage = () => GameLanguage.Code;
+            FortalArenaRemote.SetLanguage = GameLanguage.Set;
+            Debug.Log("[ArenaRemoteLink] The kiosk's TH/EN switches the game's language");
+
             var intro = FindFirstObjectByType<IntroSequence>(FindObjectsInactive.Include);
             var tutorial = FindFirstObjectByType<TutorialPopup>(FindObjectsInactive.Include);
             if (intro == null || tutorial == null)

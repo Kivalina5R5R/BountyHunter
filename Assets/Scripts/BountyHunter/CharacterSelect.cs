@@ -95,16 +95,24 @@ namespace BountyHunter.Thieves
             waitingForReveal = true;
         }
 
-        // Brings the hidden cards out one after another; they can be picked once each has landed.
+        // Brings the hidden cards out one after another, sweeping across the floor from left to right
+        // (each column's far card, then its near one); they can be picked once each has landed.
         public void Reveal()
         {
             if (!waitingForReveal) return;
 
             waitingForReveal = false;
             if (cards == null) return;
-            for (int i = 0; i < cards.Length; i++)
+            var order = new List<CharacterCard>();
+            foreach (CharacterCard card in cards)
             {
-                if (cards[i] != null) cards[i].Reveal(i * revealStaggerSeconds);
+                if (card != null) order.Add(card);
+            }
+
+            order.Sort(SweepOrder);
+            for (int i = 0; i < order.Count; i++)
+            {
+                order[i].Reveal(i * revealStaggerSeconds);
             }
 
             Debug.Log("[CharacterSelect] Cards are out", this);
@@ -132,6 +140,45 @@ namespace BountyHunter.Thieves
                 Debug.Log($"[CharacterSelect] Player {picker.PlayerId} is {card.Character}", this);
                 CharacterChosen?.Invoke(picker.PlayerId, card.Character);
             }
+        }
+
+        // Gives every player on the floor who has not picked yet one of the free characters, in card
+        // order, so nobody starts the game without a character. Called as the game starts.
+        public void PickForTheRest()
+        {
+            if (playerSpawner == null || cards == null) return;
+
+            foreach (UWBPlayerController player in playerSpawner.SpawnedPlayers)
+            {
+                if (player == null || !player.isActiveAndEnabled || chosen.ContainsKey(player.PlayerId)) continue;
+
+                CharacterCard card = FirstFreeCard();
+                if (card == null) return;
+
+                chosen[player.PlayerId] = card.Character;
+                if (card.isActiveAndEnabled) card.Take();
+                CharacterMarker.Show(player, MarkerFor(card.Character));
+                Debug.Log($"[CharacterSelect] Player {player.PlayerId} had not picked; given {card.Character}", this);
+                CharacterChosen?.Invoke(player.PlayerId, card.Character);
+            }
+        }
+
+        private CharacterCard FirstFreeCard()
+        {
+            foreach (CharacterCard card in cards)
+            {
+                if (card != null && !card.Taken && !chosen.ContainsValue(card.Character)) return card;
+            }
+
+            return null;
+        }
+
+        // Left to right by column (cards less than half a metre apart sideways share one), far before near.
+        private static int SweepOrder(CharacterCard a, CharacterCard b)
+        {
+            float dx = a.StandPoint.x - b.StandPoint.x;
+            if (Mathf.Abs(dx) > 0.5f) return dx < 0f ? -1 : 1;
+            return b.StandPoint.z.CompareTo(a.StandPoint.z);
         }
 
         private Sprite MarkerFor(string character)

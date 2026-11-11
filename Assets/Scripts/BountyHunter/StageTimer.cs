@@ -13,7 +13,8 @@ namespace BountyHunter.Thieves
     {
         [SerializeField] private TMP_Text title;
         [SerializeField] private TMP_Text time;
-        [SerializeField, Min(1f)] private float stageSeconds = 180f;
+        // Each stage's clock, stage 1 first; a stage past the end of the list uses the last one.
+        [SerializeField] private float[] secondsPerStage = { 160f, 170f, 180f };
         // {0} is the stage (map) number, {1} the round within it.
         [SerializeField] private string titleFormat = "STAGE {0}-{1}";
         [SerializeField, Min(0f)] private float warningSeconds = 10f;
@@ -49,8 +50,21 @@ namespace BountyHunter.Thieves
             if (stage == clockStage) return;
 
             clockStage = stage;
-            remaining = stageSeconds;
+            remaining = SecondsFor(stage);
             running = true;
+            shownSeconds = -1;
+            Show();
+        }
+
+        // Shows the stage's title and its full time without starting the clock, for the rest before
+        // it (WallTutorial); StartStage then starts it.
+        public void ShowStage(int stage)
+        {
+            if (title != null) RollingLabel.On(title).Roll(string.Format(titleFormat, stage, 1), titleRollSeconds);
+            running = false;
+            // Forgotten, so StartStage starts the clock afresh after the rest.
+            clockStage = 0;
+            remaining = SecondsFor(stage);
             shownSeconds = -1;
             Show();
         }
@@ -71,6 +85,15 @@ namespace BountyHunter.Thieves
         public void SetHeading(string heading)
         {
             if (title != null) RollingLabel.On(title).Roll(heading, titleRollSeconds);
+        }
+
+        private float SecondsFor(int stage)
+        {
+            const float Fallback = 180f;
+            if (secondsPerStage == null || secondsPerStage.Length == 0) return Fallback;
+
+            int index = Mathf.Clamp(stage - 1, 0, secondsPerStage.Length - 1);
+            return Mathf.Max(1f, secondsPerStage[index]);
         }
 
         // Stops the clock where it is, without raising TimeUp (a mini game between stages); the next

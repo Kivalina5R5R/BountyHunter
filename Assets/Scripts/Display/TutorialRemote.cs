@@ -29,12 +29,21 @@ namespace Fortal.Display
         [SerializeField] private string lastWord = "LET'S GO!";
         // {0} is the page on show and {1} how many there are.
         [SerializeField] private string counterWords = "PAGE {0} / {1}";
+        // The same in Thai, used while the game is in Thai (GameLanguage).
+        [SerializeField] private string thaiNextWord = "ถัดไป";
+        [SerializeField] private string thaiBackWord = "ย้อนกลับ";
+        [SerializeField] private string thaiCloseWord = "ปิด";
+        [SerializeField] private string thaiLastWord = "ไปกันเลย!";
+        [SerializeField] private string thaiCounterWords = "หน้า {0} / {1}";
+        // Draws the Thai words (made into a dynamic TMP font, falling back to each label's own font).
+        [SerializeField] private Font thaiFont;
 
         // How far the board rises from as it springs up.
         [SerializeField, Min(0f)] private float openRise = 240f;
 
         private CanvasGroup group;
         private float boardRest;
+        private LanguageFonts fonts;
 
         public event Action BackPressed;
         public event Action NextPressed;
@@ -74,9 +83,19 @@ namespace Fortal.Display
         // Shows page index (0 first) of count.
         public void ShowPage(int index, int count)
         {
-            if (counter != null) counter.text = string.Format(counterWords, index + 1, count);
-            if (backLabel != null) backLabel.text = index == 0 ? closeWord : backWord;
-            if (nextLabel != null) nextLabel.text = index == count - 1 ? lastWord : nextWord;
+            if (fonts == null)
+            {
+                // Here rather than in Awake: the remote may still be switched off when the first page is set.
+                fonts = new LanguageFonts();
+                fonts.Add(counter, thaiFont);
+                fonts.Add(backLabel, thaiFont);
+                fonts.Add(nextLabel, thaiFont);
+            }
+
+            fonts.Apply();
+            if (counter != null) counter.text = string.Format(GameLanguage.Pick(counterWords, thaiCounterWords), index + 1, count);
+            if (backLabel != null) backLabel.text = index == 0 ? GameLanguage.Pick(closeWord, thaiCloseWord) : GameLanguage.Pick(backWord, thaiBackWord);
+            if (nextLabel != null) nextLabel.text = index == count - 1 ? GameLanguage.Pick(lastWord, thaiLastWord) : GameLanguage.Pick(nextWord, thaiNextWord);
         }
     }
 }

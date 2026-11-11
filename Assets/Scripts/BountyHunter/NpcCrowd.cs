@@ -154,8 +154,35 @@ namespace BountyHunter.Thieves
         // Sends in a kind not out now, the one gone the longest (or never out) first.
         private void SendOne()
         {
-            NpcWalker kind = NextKind();
-            if (kind == null) return;
+            NpcWalker walker = Make(NextKind());
+            if (walker == null) return;
+
+            StartCoroutine(Visit(walker));
+            Debug.Log($"[NpcCrowd] {walker.DisplayName} comes in, {walkers.Count} passer-by out", this);
+        }
+
+        // Someone else was grabbed by mistake (the boss chase's decoy: the boss slipped away and left a
+        // passer-by in its place): a kind not on the floor shows up at point in the mistaken-arrest
+        // scuffle, gets angry, then strolls and leaves like the rest. Nobody is fined. False when
+        // every kind is out already.
+        public bool AppearGrabbedByMistake(Vector3 point)
+        {
+            NpcWalker walker = Make(NextKind());
+            if (walker == null) return false;
+
+            // Stays hidden under the scuffle's cloud until GetAngryAfter brings it out.
+            walker.StepOutAt(point);
+            float scuffle = CatchBrawl.Play(point, mistakeBrawl, transform);
+            StartCoroutine(GetAngryAfter(walker, scuffle));
+            StartCoroutine(Stay(walker));
+            Debug.Log($"[NpcCrowd] {walker.DisplayName} is grabbed by mistake in the boss's place", this);
+            return true;
+        }
+
+        // A passer-by of kind, made but not yet on the floor (off until it comes in); null for no kind.
+        private NpcWalker Make(NpcWalker kind)
+        {
+            if (kind == null) return null;
 
             NpcWalker walker = Instantiate(kind, transform);
             walker.name = kind.name;
@@ -165,8 +192,7 @@ namespace BountyHunter.Thieves
             walkers.Add(walker);
             kindOf[walker] = kind;
             walker.gameObject.SetActive(false);
-            StartCoroutine(Visit(walker));
-            Debug.Log($"[NpcCrowd] {walker.DisplayName} comes in, {walkers.Count} passer-by out", this);
+            return walker;
         }
 
         private NpcWalker NextKind()
@@ -193,6 +219,12 @@ namespace BountyHunter.Thieves
             waiting.Add(walker);
             yield return Enter(walker);
             waiting.Remove(walker);
+            yield return Stay(walker);
+        }
+
+        // Strolls for its stay once fully on the floor, then heads off.
+        private IEnumerator Stay(NpcWalker walker)
+        {
             while (walker != null && walker.IsComingIn) yield return null;
 
             yield return new WaitForSeconds(UnityEngine.Random.Range(staySeconds.x, Mathf.Max(staySeconds.x, staySeconds.y)));
@@ -329,7 +361,8 @@ namespace BountyHunter.Thieves
             {
                 foreach (HidingBush bush in thieves.Bushes)
                 {
-                    if (bush == null || bush.Occupant != null || bush.ReservedBy != null || bush.PlayerIsStandingOn || bush.IsHeldByOther) continue;
+                    // A spot put away (the boss vault hides the market's) is not there to step out of.
+                    if (bush == null || !bush.isActiveAndEnabled || bush.Occupant != null || bush.ReservedBy != null || bush.PlayerIsStandingOn || bush.IsHeldByOther) continue;
                     candidates.Add(new Entrance { Point = new Vector3(bush.Center.x, height, bush.Center.z), Bush = bush });
                 }
             }

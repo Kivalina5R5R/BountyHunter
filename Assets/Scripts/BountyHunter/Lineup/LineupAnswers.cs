@@ -27,17 +27,20 @@ namespace BountyHunter.Thieves
         private readonly HashSet<int> free = new HashSet<int>();
         private readonly float[] fill;
 
-        // suspect: which one they picked; cluesSeen: how many clues were up when they locked in.
+        // suspect: which one they picked; cluesSeen: how many clues were up when they locked in;
+        // lockedAt: when (game time) they last locked in.
         public readonly struct Answer
         {
-            public Answer(int suspect, int cluesSeen)
+            public Answer(int suspect, int cluesSeen, float lockedAt)
             {
                 Suspect = suspect;
                 CluesSeen = cluesSeen;
+                LockedAt = lockedAt;
             }
 
             public int Suspect { get; }
             public int CluesSeen { get; }
+            public float LockedAt { get; }
         }
 
         // standPoint: the centre of ring index on the floor.
@@ -52,6 +55,14 @@ namespace BountyHunter.Thieves
         }
 
         public IReadOnlyDictionary<int, Answer> Locked => locked;
+
+        // How long the player took to give the right answer (right) since answers opened at openedAt;
+        // a wrong answer or none counts as the whole time to answer (window), for the result's tie-break.
+        public float SecondsToAnswer(int player, int right, float openedAt, float window)
+        {
+            if (!locked.TryGetValue(player, out Answer answer) || answer.Suspect != right) return window;
+            return Mathf.Clamp(answer.LockedAt - openedAt, 0f, window);
+        }
 
         // Raised as a player locks in an answer (or changes it), with the player and the suspect.
         public event Action<UWBPlayerController, int> PlayerLocked;
@@ -98,7 +109,7 @@ namespace BountyHunter.Thieves
             fill[ring] = Mathf.Max(fill[ring], hold / holdSeconds);
             if (hold < holdSeconds) return;
 
-            locked[id] = new Answer(ring, cluesSeen);
+            locked[id] = new Answer(ring, cluesSeen, Time.time);
             held[id] = 0f;
             PlayerLocked?.Invoke(player, ring);
         }

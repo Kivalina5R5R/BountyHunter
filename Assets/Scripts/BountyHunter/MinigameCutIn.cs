@@ -132,7 +132,10 @@ namespace BountyHunter.Thieves
         };
 
         [Header("Sounds")]
-        // Each tape whipping in, the logo slamming down, and everything sweeping back out.
+        // The character springing up, the streak shooting along, each tape whipping in, the logo
+        // slamming down, and everything sweeping back out.
+        [SerializeField] private TransitionSound riseSound = new TransitionSound(0.6f);
+        [SerializeField] private TransitionSound streakSound = new TransitionSound(0.55f);
         [SerializeField] private TransitionSound tapesSound = new TransitionSound(0.55f);
         [SerializeField] private TransitionSound slamSound = new TransitionSound(0.8f);
         [SerializeField] private TransitionSound outSound = new TransitionSound(0.5f);
@@ -175,6 +178,8 @@ namespace BountyHunter.Thieves
             int tapesLanded = 0;
             bool characterLanded = false;
             bool slammed = false;
+            bool risen = false;
+            bool streaked = false;
             if (particles != null) particles.Clear();
             if (backdropParticles != null) backdropParticles.Clear();
             if (glitch != null) glitch.Clear();
@@ -194,6 +199,18 @@ namespace BountyHunter.Thieves
                 {
                     CharacterDust();
                     characterLanded = true;
+                }
+
+                if (!risen && since >= characterAfter)
+                {
+                    riseSound.Play(voice);
+                    risen = true;
+                }
+
+                if (!streaked && since >= streakAfter)
+                {
+                    streakSound.Play(voice);
+                    streaked = true;
                 }
 
                 if (tapesHeard < tapes.Length && since >= tapesAfter + tapeGap * tapesHeard)

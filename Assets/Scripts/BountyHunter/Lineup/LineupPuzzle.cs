@@ -82,6 +82,7 @@ namespace BountyHunter.Thieves
         // lock in before the first clue (cluesShown is 0).
         private bool watching;
         private float answersCloseAt;
+        private float answersOpenedAt;
         private bool skipping;
         // False when the floor or the wall is not set up; the mini game then lets the game go on.
         private bool ready;
@@ -96,6 +97,9 @@ namespace BountyHunter.Thieves
         public event Action AnswersClosed;
         public event Action Revealed;
         public event Action<int> Settled;
+        // After the reveal, for every player in play: their number and how long they took to give the
+        // right answer (the whole time to answer when wrong or none), for the result's tie-break.
+        public event Action<int, float> AnswerTimed;
 
         private void Awake()
         {
@@ -149,6 +153,7 @@ namespace BountyHunter.Thieves
             // The first clue is up the moment the lineup is in, and the clock and answers start with it.
             float start = Time.time;
             float closes = start + answerSeconds;
+            answersOpenedAt = start;
             answersCloseAt = closes;
             answersOpen = true;
             ShowClue(0);
@@ -289,6 +294,20 @@ namespace BountyHunter.Thieves
             }
 
             Settled?.Invoke(rightAnswers);
+            TimeAnswers();
+        }
+
+        // Every player's time to the right answer, for the result's tie-break.
+        private void TimeAnswers()
+        {
+            if (scoreTags == null) return;
+
+            float window = answersCloseAt - answersOpenedAt;
+            foreach (PlayerScoreTag tag in scoreTags)
+            {
+                if (tag == null || !tag.InPlay) continue;
+                AnswerTimed?.Invoke(tag.PlayerNumber, answers.SecondsToAnswer(tag.PlayerNumber, lineup.Culprit, answersOpenedAt, window));
+            }
         }
 
         private int Reward(int cluesSeen)

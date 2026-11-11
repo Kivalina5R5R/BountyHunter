@@ -29,7 +29,7 @@ namespace BountyHunter.Thieves
 
         [Header("Movement")]
         [SerializeField, Min(0.1f)] private float wanderSpeed = 0.6f;
-        [SerializeField, Min(0.1f)] private float fleeSpeed = 1.5f;
+        [SerializeField, Min(0.1f)] private float fleeSpeed = 1.3f;
         [SerializeField, Min(0.1f)] private float acceleration = 2.5f;
         // How fast it can change direction; lower values give wider curves.
         [SerializeField, Min(10f)] private float wanderTurnDegrees = 200f;

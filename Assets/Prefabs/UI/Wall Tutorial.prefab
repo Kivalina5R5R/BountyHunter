@@ -165,40 +165,54 @@ MonoBehaviour:
 
       STAND ON A DOG CARD FOR
       2 SECONDS TO PICK IT!'
+    thaiTitle: "เลือกน้องหมาของคุณ"
+    thaiBody: "ติดแท็กแล้วเดินเข้ามาในสนาม\nยืนบนการ์ดน้องหมา 2 วินาทีเพื่อเลือก!"
   - picture: {fileID: 21300000, guid: 8ec4c0095a9258d408014b92a0949365, type: 3}
     title: WANTED!
     body: 'THE WALL SHOWS WHO TO CATCH
 
       AND HOW MUCH THEIR BOUNTY IS.'
+    thaiTitle: "ประกาศจับ!"
+    thaiBody: "ผนังจะบอกว่าต้องจับใคร\nและค่าหัวเท่าไหร่"
   - picture: {fileID: 21300000, guid: 9eed6e7fef695d14fabce2172d16aa1b, type: 3}
     title: CATCH THE THIEF
     body: 'RUN INTO A THIEF TO CATCH IT AND TAKE ITS BOUNTY.
 
       IT HIDES IN BINS
       AND BUSHES: STAND GUARD TO FLUSH IT OUT!'
+    thaiTitle: "จับหัวขโมย"
+    thaiBody: "วิ่งชนหัวขโมยเพื่อจับและรับค่าหัว\nมันซ่อนในถังขยะและพุ่มไม้ ยืนเฝ้าไว้ให้มันออกมา!"
   - picture: {fileID: 21300000, guid: 4f79370f4686fbb4e80263af1d006148, type: 3}
     title: WATCH OUT!
     body: 'GET OUT OF THE RED RING BEFORE THE BOMB GOES OFF.
 
       BUMPING INTO
       A PASSER-BY COSTS YOU 5$!'
+    thaiTitle: "ระวัง!"
+    thaiBody: "ออกจากวงสีแดงก่อนระเบิดจะทำงาน\nชนคนเดินผ่านโดนปรับ 5$!"
   - picture: {fileID: 21300000, guid: dff30d4a1c65c714a9a02a8c38148436, type: 3}
     title: STUN GUN
     body: 'GRAB A STUN GUN AND STAY CLOSE TO A THIEF.
 
       IT LOCKS ON AND FIRES
       BY ITSELF!'
+    thaiTitle: "ปืนช็อต"
+    thaiBody: "หยิบปืนช็อตแล้วเข้าไปใกล้หัวขโมย\nปืนจะล็อกเป้าและยิงเอง!"
   - picture: {fileID: 21300000, guid: 13f50ae9006e6104483139e7fc9c41d2, type: 3}
     title: MINI GAMES
     body: 'BETWEEN STAGES, STAND ON THE RING OF YOUR ANSWER.
 
       GET IT RIGHT
       FOR BONUS CASH!'
+    thaiTitle: "มินิเกม"
+    thaiBody: "ระหว่างด่าน ให้ยืนบนวงของคำตอบที่เลือก\nตอบถูกรับเงินโบนัส!"
   - picture: {fileID: 21300000, guid: b87b3a11a52913f478fe20e4c641974d, type: 3}
     title: MOST WANTED
     body: 'CATCH THE BOSS IN THE FINAL CHASE.
 
       THE MOST CASH AT THE END WINS!'
+    thaiTitle: "ตัวการใหญ่"
+    thaiBody: "จับบอสให้ได้ในการไล่ล่าตอนท้าย\nใครมีเงินมากที่สุดตอนจบเป็นผู้ชนะ!"
   board: {fileID: 547161143580768110}
   pageRoot: {fileID: 7271259974142215675}
   pageGroup: {fileID: 785331984729513563}
@@ -208,6 +222,8 @@ MonoBehaviour:
   body: {fileID: 1090367666416851502}
   step: {fileID: 514323610292431628}
   stepWords: STEP {0} / {1}
+  thaiStepWords: "ขั้นที่ {0} / {1}"
+  thaiFont: {fileID: 12800000, guid: dc1e50503e3d44fc9355ea8dadb9ec1c, type: 3}
   dotTemplate: {fileID: 767089392638546940}
   remote: {fileID: 0}
   pageSeconds: 9

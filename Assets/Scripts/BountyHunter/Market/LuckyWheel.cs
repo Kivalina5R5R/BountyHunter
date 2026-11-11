@@ -16,7 +16,7 @@ namespace BountyHunter.Thieves
         // (ExtraSpotMark), then shrink away (good for the thieves).
         MoreHiding,
         // The loudspeaker: more thieves join the round until mostThieves are wanted, and
-        // extraPassersBy more passers-by come in.
+        // extraPassersBy more passers-by come in (none when a big group plays, BountyRounds.IsCrowd).
         CallOut,
         // Every player on the floor gets a stun gun.
         StunGunsForAll,
@@ -200,7 +200,9 @@ namespace BountyHunter.Thieves
                     break;
                 case LuckyWheelResult.CallOut:
                     if (rounds != null) rounds.CallOutThieves(mostThieves);
-                    if (passersBy != null) passersBy.CallOut(extraPassersBy);
+                    // A big group already fills the floor with thieves, so no passers-by join them.
+                    bool crowd = rounds != null && rounds.IsCrowd;
+                    if (passersBy != null && !crowd) passersBy.CallOut(extraPassersBy);
                     break;
                 case LuckyWheelResult.StunGunsForAll:
                     ArmEveryone();

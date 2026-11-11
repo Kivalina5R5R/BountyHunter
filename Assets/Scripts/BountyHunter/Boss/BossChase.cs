@@ -15,9 +15,11 @@ namespace BountyHunter.Thieves
     // blow across the floor and wall (BossFeatherShower). As they go, on the floor a cloud of smoke
     // puffs up and the boss shows in it and steps out (the smoke bomb's arrival), then up to
     // chaseSeconds of chasing. A touch makes the boss warp
-    // far away (BossController); every one that counts pays catchReward at once (not the very first,
-    // nor one while it is disguised). touchesToCatch of them catch it: the clock stops, it is
-    // caught in a scuffle and the game waits outroSeconds before the result. When the time runs out
+    // far away (BossController); every one that counts pays catchReward at once. The very first is a
+    // decoy: it pays nothing, and a passer-by not on the floor is left where the boss stood, grabbed
+    // by mistake (NpcCrowd). touchesToCatch of them catch it: the clock stops, it is
+    // caught in a scuffle, every player earns goodEndReward, and the game waits outroSeconds (BossFinale
+    // then plays the Good End). When the time runs out
     // first, it runs off the floor and the result comes once it is gone. The wall shows the catches
     // so far on its board (BossChaseBoard), or as the clock's heading without one (headingFormat). Its water (warning circles all over the floor
     // after it shoots) costs shotFine (or what the player has). The passers-by stroll about as in a
@@ -72,6 +74,8 @@ namespace BountyHunter.Thieves
         [SerializeField, Min(0f)] private float featherFloorMargin = 0.35f;
         // Shows the heading and the time left on the wall.
         [SerializeField] private StageTimer timer;
+        // The rest before the chase, its rules on the wall; may be empty, for no rest.
+        [SerializeField] private WallTutorial tutorial;
         // The scuffle played where the boss is caught at the end.
         [SerializeField] private CatchBrawl.Art catchBrawl;
 
@@ -100,6 +104,8 @@ namespace BountyHunter.Thieves
 
         [Header("Money")]
         [SerializeField, Min(0)] private int catchReward = 30;
+        // Paid to every player when the boss is caught (the Good End); the Bad End pays nothing.
+        [SerializeField, Min(0)] private int goodEndReward = 20;
         [SerializeField, Min(0)] private int shotFine = 5;
         [SerializeField] private Color gainColor = new Color(1f, 0.82f, 0.25f, 1f);
         [SerializeField] private Color damageColor = new Color(1f, 0.22f, 0.16f, 1f);
@@ -129,6 +135,8 @@ namespace BountyHunter.Thieves
         public event Action<BossHelicopter> HelicopterFlying;
         public event Action EntranceStarted;
         public event Action BossCaught;
+        // A player's touch that counted (not the decoy), for the tie-breaks at the result.
+        public event Action<UWBPlayerController> BossCatch;
         public event Action BossRunningOff;
 
         private void Awake()
@@ -210,9 +218,10 @@ namespace BountyHunter.Thieves
             if (dustSprites != null && dustSprites.Length > 0) chased.gameObject.AddComponent<DustTrail>().Initialize(dustSprites, chased.Picture);
             if (sounds != null) chased.gameObject.AddComponent<Footsteps>().Initialize(sounds, chased.Picture);
             chased.Touched += OnTouched;
+            chased.Decoyed += OnDecoyed;
             chased.Shot += OnShot;
             BossOnFloor?.Invoke(chased);
-            if (timer != null) timer.StartCountdown(Heading(), entranceSeconds + chaseSeconds);
+            if (timer != null) timer.SetHeading(Heading());
             if (npcs != null) npcs.Begin();
             ShowRooftop();
             Debug.Log("[BossChase] The boss is on the floor", this);
@@ -222,6 +231,9 @@ namespace BountyHunter.Thieves
         {
             if (!ready) yield break;
 
+            // The rest first: the chase's rules on the wall, the clock waiting, the boss not yet in.
+            if (tutorial != null) yield return tutorial.Brief(TutorialPart.BossChase, () => skipping);
+            if (timer != null) timer.StartCountdown(Heading(), entranceSeconds + chaseSeconds);
             float start = Time.time;
             Vector3 middle = Middle();
             Canvas.ForceUpdateCanvases();
@@ -258,20 +270,33 @@ namespace BountyHunter.Thieves
             Debug.Log("[BossChase] The boss got away", this);
         }
 
-        private bool Caught => touches >= touchesToCatch;
+        // Whether the boss was caught (the Good End); false while the chase runs or once it got away.
+        public bool Caught => touches >= touchesToCatch;
 
-        // The clock stops, the boss is caught in a scuffle, then a pause before the result.
+        // The clock stops, the boss is caught in a scuffle and everyone earns the Good End's reward,
+        // then a pause before the Good End (BossFinale).
         private IEnumerator PlayCaught()
         {
             if (timer != null) timer.Stop();
             chased.Finish();
             CatchBrawl.Play(chased.transform.position, catchBrawl, transform);
             BossCaught?.Invoke();
-            Debug.Log("[BossChase] The boss is caught", this);
+            PayEveryone(goodEndReward);
+            Debug.Log($"[BossChase] The boss is caught: Good End, everyone +{goodEndReward}$", this);
             float caughtAt = Time.time;
             yield return Until(caughtAt + CatchBrawl.StampSeconds);
             chased.gameObject.SetActive(false);
             yield return Until(caughtAt + outroSeconds);
+        }
+
+        private void PayEveryone(int amount)
+        {
+            if (scoreTags == null || amount <= 0) return;
+
+            foreach (PlayerScoreTag tag in scoreTags)
+            {
+                if (tag != null && tag.InPlay) tag.SetScore(tag.Score + amount);
+            }
         }
 
         private string Heading()
@@ -283,6 +308,7 @@ namespace BountyHunter.Thieves
         public override void End()
         {
             StopAllCoroutines();
+            if (tutorial != null) tutorial.Clear();
             ClearWater();
             if (wallFeathers != null) Destroy(wallFeathers.gameObject);
             wallFeathers = null;
@@ -290,6 +316,7 @@ namespace BountyHunter.Thieves
             if (chased != null)
             {
                 chased.Touched -= OnTouched;
+                chased.Decoyed -= OnDecoyed;
                 chased.Shot -= OnShot;
                 Destroy(chased.gameObject);
                 chased = null;
@@ -381,8 +408,16 @@ namespace BountyHunter.Thieves
             return new Vector3((areaMin.x + areaMax.x) * 0.5f, 0f, (areaMin.y + areaMax.y) * 0.5f);
         }
 
+        // The first touch was a decoy: the boss warped away and a passer-by not on the floor is left
+        // where it stood, grabbed by mistake (no money, no fine).
+        private void OnDecoyed(UWBPlayerController player, Vector3 where)
+        {
+            if (npcs != null) npcs.AppearGrabbedByMistake(where);
+        }
+
         private void OnTouched(UWBPlayerController player)
         {
+            BossCatch?.Invoke(player);
             touches++;
             if (timer != null) timer.SetHeading(Heading());
             if (board != null) board.SetCaught(Mathf.Min(touches, touchesToCatch));

@@ -27,7 +27,8 @@ namespace BountyHunter.Thieves.EditorTools
         private const string Darkness = Art + "VaultDarkness.mat";
         private const string DarknessShader = "BountyHunter/Vault Darkness";
         private static readonly string[] Sparkles = { "Assets/ART/Park/Sparkle1.png", "Assets/ART/Park/Sparkle2.png" };
-        private const string SelectRing = "Assets/ART/Player/Floor/Load.png";
+        // The select ring in white, so the steal colour tints it true.
+        private const string StealRing = "Assets/ART/Vault/StealRing.png";
         private const string RadialFill = "Assets/ART/Player/Floor/Sprite_RadialFill.mat";
         // The chase's rooftop hiding spots.
         private static readonly string[] RooftopSpots =
@@ -99,7 +100,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(vaultFields, "darknessMaterial", AssetDatabase.LoadAssetAtPath<Material>(Darkness));
             changed |= Fill(vaultFields, "floorPicture", AssetDatabase.LoadAssetAtPath<Texture2D>(VaultFloor));
             changed |= Fill(vaultFields, "wallPicture", AssetDatabase.LoadAssetAtPath<Sprite>(VaultWall));
-            changed |= Fill(vaultFields, "stealRing", AssetDatabase.LoadAssetAtPath<Sprite>(SelectRing));
+            changed |= Fill(vaultFields, "stealRing", AssetDatabase.LoadAssetAtPath<Sprite>(StealRing));
             changed |= Fill(vaultFields, "radialFill", AssetDatabase.LoadAssetAtPath<Material>(RadialFill));
             changed |= FillSprites(vaultFields.FindProperty("sparkles"), Sparkles);
             changed |= FillThieves(vaultFields.FindProperty("thiefKinds"));
