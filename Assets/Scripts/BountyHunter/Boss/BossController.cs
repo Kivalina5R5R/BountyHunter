@@ -10,6 +10,8 @@ namespace BountyHunter.Thieves
     // one at a time (each in its own class, moving the boss through BossBody). It runs about (BossRun)
     // and reacts to the players, the first that fits:
     // - BossShooting when players huddle together (at most once every shootEverySeconds);
+    // - BossDisguising when a player closes in (disguiseWhenPlayerAt; once every disguiseEverySeconds,
+    //   and only once in a row: after a disguise it must shoot or throw the smoke bomb before the next);
     // - BossHiding while chased, with a free hiding spot near that it reaches first (once every
     //   hideEverySeconds);
     // and now and then (moveEverySeconds) throws the smoke bomb anyway (BossSmokeBomb).
@@ -18,9 +20,9 @@ namespace BountyHunter.Thieves
     // (exitGraceSeconds) before it can be caught, so nobody gains by waiting beside it.
     // A player who touches it makes it warp away at once (BossSmokeBomb.Warp); Touched says who.
     // The very first touch of the chase is a decoy: it counts for nothing, the boss warps away and
-    // Decoyed says where, so a passer-by can be left there as the one grabbed by mistake. It no
-    // longer disguises itself on its own (only by key, for trying it out), so after the decoy every
-    // touch counts. Its pictures lie flat on the floor like the thieves'.
+    // Decoyed says where, so a passer-by can be left there as the one grabbed by mistake. A touch
+    // while it is disguised counts for nothing either. Its pictures lie flat on the floor like the
+    // thieves'.
     public sealed class BossController : MonoBehaviour
     {
         private readonly List<UWBPlayerController> nearPlayers = new List<UWBPlayerController>();
@@ -38,6 +40,7 @@ namespace BountyHunter.Thieves
         private BossSkill? skillAfterWarp;
         private float nextSmokeAt;
         private float shootReadyAt;
+        private float disguiseReadyAt;
         private float hideReadyAt;
         private bool firstTouchDodged;
         // It runs about until this before it may do anything else (actionGapSeconds after a move).
@@ -45,6 +48,9 @@ namespace BountyHunter.Thieves
         // It runs off with a head start after any action: nobody can catch it before this.
         private float catchableAt;
         private bool hideEscapePending;
+        // It has disguised itself and done nothing else since: it must shoot or throw the smoke bomb
+        // before it may disguise itself again (hiding does not count).
+        private bool disguisedLast;
 
         // A player caught the boss (touched it, and it counts); it warps away.
         public event Action<UWBPlayerController> Touched;
@@ -259,6 +265,12 @@ namespace BountyHunter.Thieves
                 return Use(BossSkill.Shoot);
             }
 
+            Vector2 closingIn = settings.DisguiseWhenPlayerAt;
+            if (!disguisedLast && now >= disguiseReadyAt && nearby && nearest >= closingIn.x && nearest <= closingIn.y && disguising.CanDisguise)
+            {
+                return Use(BossSkill.Disguise);
+            }
+
             if (now >= hideReadyAt && nearby && nearest < settings.FleeRadius && hiding.TryFind(settings.HideReach))
             {
                 Use(BossSkill.Hide);
@@ -287,6 +299,8 @@ namespace BountyHunter.Thieves
             }
 
             Debug.Log($"[BossController] {skill}", this);
+            if (skill == BossSkill.Disguise) disguisedLast = true;
+            else if (skill != BossSkill.Hide) disguisedLast = false;
             switch (skill)
             {
                 case BossSkill.Shoot:
@@ -299,6 +313,7 @@ namespace BountyHunter.Thieves
                     doing = smokeBomb;
                     break;
                 case BossSkill.Disguise:
+                    disguiseReadyAt = Time.time + settings.DisguiseEverySeconds;
                     disguising.Begin();
                     doing = disguising;
                     break;

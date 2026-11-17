@@ -503,9 +503,9 @@ MonoBehaviour:
     marker: {fileID: 21300000, guid: 83adc868a1bf9594bbbe2c02d3829502, type: 3}
   - character: Simba
     marker: {fileID: 21300000, guid: b8b567bdb80d3b9498487380fca2c291, type: 3}
-  - character: Wink
+  - character: Wick
     marker: {fileID: 21300000, guid: ac736beaee1441109717168927c0e826, type: 3}
-  - character: Max
+  - character: Cigar
     marker: {fileID: 21300000, guid: 62457b1325c54130b37e0b07d751c7ca, type: 3}
   standRadius: 0.8
   holdSeconds: 2
@@ -727,7 +727,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b996995a9826eb4eb86232a55f662fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCard
-  character: Max
+  character: Cigar
   card: {fileID: 891837693}
   button: {fileID: 231151935}
   stamp: {fileID: 913322126}
@@ -955,11 +955,11 @@ MonoBehaviour:
     tag: {fileID: 1804798657}
     dog: {fileID: 628510089}
     face: {fileID: 21300000, guid: 48da410822ed67946ba89cc28ea71009, type: 3}
-  - character: Wink
+  - character: Wick
     tag: {fileID: 1095879387}
     dog: {fileID: 889621063}
     face: {fileID: 21300000, guid: 9ef5d1eb8ffa4f04a0afa4c594356def, type: 3}
-  - character: Max
+  - character: Cigar
     tag: {fileID: 1445163099}
     dog: {fileID: 1310940891}
     face: {fileID: 21300000, guid: 0dd825dbbb3d40dfbc2a7db66e587902, type: 3}
@@ -1566,7 +1566,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6292268782880236087, guid: fb223353b1cb4809b9231c48a17d0199, type: 3}
       propertyPath: m_Name
-      value: Wink
+      value: Wick
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -8283,7 +8283,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5762527491888622525, guid: 8dbe01c0becd4767b321af2b14d9fa6a, type: 3}
       propertyPath: m_Name
-      value: Max
+      value: Cigar
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -9376,7 +9376,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b996995a9826eb4eb86232a55f662fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BountyHunter.Thieves.CharacterCard
-  character: Wink
+  character: Wick
   card: {fileID: 1175199075}
   button: {fileID: 1546063069}
   stamp: {fileID: 1213154757}
