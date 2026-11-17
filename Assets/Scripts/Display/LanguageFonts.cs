@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Swaps a set of texts between their own (English) font and a Thai one as the game's language
     // changes (GameLanguage): Add each text once, then Apply before setting its words.

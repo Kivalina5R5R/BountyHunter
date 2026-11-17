@@ -105,7 +105,7 @@ namespace BountyHunter.Thieves.EditorTools
             changed |= Fill(fields, "rounds", rounds);
             changed |= Fill(fields, "players", Object.FindFirstObjectByType<UWBPlayerSpawner>(FindObjectsInactive.Include));
             changed |= Fill(fields, "thieves", Object.FindFirstObjectByType<ThiefSpawner>(FindObjectsInactive.Include));
-            changed |= Fill(fields, "hidingSpots", Object.FindFirstObjectByType<Fortal.Display.BushScatter>(FindObjectsInactive.Include));
+            changed |= Fill(fields, "hidingSpots", Object.FindFirstObjectByType<Fortal.Displays.BushScatter>(FindObjectsInactive.Include));
             changed |= Fill(fields, "passersBy", Object.FindFirstObjectByType<NpcCrowd>(FindObjectsInactive.Include));
             changed |= Fill(fields, "stunGuns", Object.FindFirstObjectByType<StunGuns>(FindObjectsInactive.Include));
             changed |= Fill(fields, "cuffs", rounds.GetComponent<PoliceCuffs>());

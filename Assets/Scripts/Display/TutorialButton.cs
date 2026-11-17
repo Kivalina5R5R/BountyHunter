@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The kiosk screen's TUTORIAL button: brings up the HOW TO PLAY board (TutorialPopup).
     [RequireComponent(typeof(Button))]

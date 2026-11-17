@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -51,8 +52,8 @@ namespace BountyHunter.Thieves
         private void Update()
         {
             level = Mathf.MoveTowards(level, target, volume / fadeInSeconds * Time.deltaTime);
-            introSource.volume = level;
-            loopSource.volume = level;
+            introSource.volume = level * FortalArenaSettings.Music;
+            loopSource.volume = level * FortalArenaSettings.Music;
         }
 
         private void StartMusic()

@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -86,7 +87,7 @@ namespace BountyHunter.Thieves
             }
 
             float at = Mathf.Min(progress * fillSeconds, loading.length - 0.01f);
-            climb.volume = loadingVolume * (mixer != null ? mixer.ClimbVolumeScale : 1f);
+            climb.volume = loadingVolume * (mixer != null ? mixer.ClimbVolumeScale : 1f) * FortalArenaSettings.Sfx;
             if (!climb.isPlaying)
             {
                 climb.time = at;
@@ -122,8 +123,9 @@ namespace BountyHunter.Thieves
         private void Play(AudioClip clip, float clipVolume)
         {
             if (clip == null) return;
-            if (mixer != null) mixer.PlayOneShot(clip, clipVolume);
-            else oneShots.PlayOneShot(clip, clipVolume);
+            float level = clipVolume * FortalArenaSettings.Sfx;
+            if (mixer != null) mixer.PlayOneShot(clip, level);
+            else oneShots.PlayOneShot(clip, level);
         }
 
         // The mixer shared by all the cards, on their parent; the first card adds it when the scene

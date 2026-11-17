@@ -1,5 +1,5 @@
 using System.Collections;
-using Fortal.Display;
+using Fortal.Displays;
 using Fortal.Players;
 using UnityEngine;
 using UnityEngine.UI;

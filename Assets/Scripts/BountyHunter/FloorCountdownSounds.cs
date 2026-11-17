@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -55,7 +56,7 @@ namespace BountyHunter.Thieves
 
         private void Play(AudioClip clip)
         {
-            if (clip != null) source.PlayOneShot(clip, volume);
+            if (clip != null) source.PlayOneShot(clip, volume * FortalArenaSettings.Sfx);
         }
     }
 }

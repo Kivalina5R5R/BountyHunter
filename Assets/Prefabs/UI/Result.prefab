@@ -2471,17 +2471,17 @@ MonoBehaviour:
     previewOnStand: 0
     tint: {r: 1, g: 1, b: 1, a: 1}
   - character: Wink
-    animations: {fileID: 0}
+    animations: {fileID: 9100000, guid: d7da6c606e5d4c6aa89121a020dfa2a6, type: 2}
     face: {fileID: 21300000, guid: b9dd8da7430c44bdaf61a0b2aa8358b6, type: 3}
-    size: 0.216
+    size: 0.643
     winnerOffset: {x: -30, y: 0}
     previewOnStand: 0
     tint: {r: 1, g: 1, b: 1, a: 1}
     still: {fileID: 21300000, guid: a9d9af7e886b4d81b1d4b521430e1b4c, type: 3}
   - character: Max
-    animations: {fileID: 0}
+    animations: {fileID: 9100000, guid: 1117f75b1e1640558916cbab5591f5ad, type: 2}
     face: {fileID: 21300000, guid: 48aa1203cd1e40e8aefe82e6eb0a94f2, type: 3}
-    size: 0.216
+    size: 0.372
     winnerOffset: {x: -23, y: 0}
     previewOnStand: 0
     tint: {r: 1, g: 1, b: 1, a: 1}

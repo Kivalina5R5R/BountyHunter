@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The kiosk screen's EXIT button: asks first (ExitConfirmDialog), so a stray touch does not close
     // the game; with no dialog set it closes the game at once.

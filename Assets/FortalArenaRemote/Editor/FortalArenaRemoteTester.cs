@@ -12,6 +12,9 @@ namespace Fortal.Arena.EditorTools
     {
         UdpClient launcher, sender;
         string report = "", error = "";
+        float master = 1, music = 1, sfx = 1, brightness = 1;
+        bool mute;
+        int quality = -1;
         double lastReportAt;
 
         [MenuItem("Tools/Fortal/Arena Remote Tester")]
@@ -72,8 +75,24 @@ namespace Fortal.Arena.EditorTools
                 }
             }
             EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Game settings (kit 3.0)", EditorStyles.boldLabel);
+            using (new EditorGUI.DisabledScope(!Application.isPlaying))
+            {
+                master = EditorGUILayout.Slider("All sound", master, 0, 1);
+                music = EditorGUILayout.Slider("Music", music, 0, 1);
+                sfx = EditorGUILayout.Slider("Effects", sfx, 0, 1);
+                mute = EditorGUILayout.Toggle("Mute", mute);
+                brightness = EditorGUILayout.Slider("Brightness", brightness, FortalArenaSettings.MinBrightness, 1);
+                var names = new string[QualitySettings.names.Length + 1];
+                names[0] = "(the build's own)";
+                for (int i = 0; i < QualitySettings.names.Length; i++) names[i + 1] = QualitySettings.names[i];
+                quality = EditorGUILayout.Popup("Quality", quality + 1, names) - 1;
+                if (GUILayout.Button("Send settings"))
+                    Send("settings " + JsonUtility.ToJson(new FortalArenaSettings.Message { master = master, music = music, sfx = sfx, mute = mute ? 1 : 0, brightness = brightness, quality = quality }));
+            }
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField("What the game reports (every 2 s and on every change):", EditorStyles.boldLabel);
-            EditorGUILayout.SelectableLabel(report.Length > 0 ? report : "(nothing yet)", EditorStyles.wordWrappedLabel, GUILayout.Height(60));
+            EditorGUILayout.SelectableLabel(report.Length > 0 ? report : "(nothing yet)", EditorStyles.wordWrappedLabel, GUILayout.Height(90));
         }
     }
 }

@@ -1,4 +1,4 @@
-using Fortal.Display;
+using Fortal.Displays;
 using TMPro;
 using UnityEditor;
 using UnityEngine;

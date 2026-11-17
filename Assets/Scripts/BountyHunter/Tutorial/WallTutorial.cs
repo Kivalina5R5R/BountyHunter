@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Fortal.Display;
+using Fortal.Displays;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -31,7 +31,7 @@ namespace BountyHunter.Thieves
         // The HOW TO PLAY board on the wall (pages that turn by themselves), opened from the kiosk;
         // a rest closes it if it is still up. May be empty.
         [FormerlySerializedAs("launcherBoard")]
-        [SerializeField] private Fortal.Display.TutorialPopup howToPlayBoard;
+        [SerializeField] private Fortal.Displays.TutorialPopup howToPlayBoard;
         [SerializeField] private Font thaiFont;
         [SerializeField] private TMP_FontAsset englishFont;
         [SerializeField, Min(0f)] private float briefSeconds = 10f;

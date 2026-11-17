@@ -1,4 +1,4 @@
-using Fortal.Display;
+using Fortal.Displays;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;

@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -39,11 +40,20 @@ namespace BountyHunter.Thieves
         private void OnEnable()
         {
             if (binCrash != null) binCrash.Crashed += OnCrashed;
+            FortalArenaSettings.Changed += FollowLauncherLevels;
         }
 
         private void OnDisable()
         {
             if (binCrash != null) binCrash.Crashed -= OnCrashed;
+            FortalArenaSettings.Changed -= FollowLauncherLevels;
+        }
+
+        // The launcher's music or effects level changed while the tracks play.
+        private void FollowLauncherLevels()
+        {
+            if (effectsSource.isPlaying) effectsSource.volume = effectsVolume * FortalArenaSettings.Sfx;
+            if (originalSource.isPlaying) originalSource.volume = originalVolume * FortalArenaSettings.Music;
         }
 
         // Starts the tracks with the video, at the point it has reached, so they stay in step.
@@ -53,8 +63,9 @@ namespace BountyHunter.Thieves
 
             started = true;
             float at = (float)arrival.PlaybackTime;
-            PlayFrom(effectsSource, effects, effectsVolume, at);
-            PlayFrom(originalSource, original, originalVolume, at);
+            PlayFrom(effectsSource, effects, effectsVolume * FortalArenaSettings.Sfx, at);
+            // The untouched track has the intro music in it, so it counts as music.
+            PlayFrom(originalSource, original, originalVolume * FortalArenaSettings.Music, at);
         }
 
         private static void PlayFrom(AudioSource source, AudioClip clip, float volume, float at)
@@ -69,7 +80,7 @@ namespace BountyHunter.Thieves
 
         private void OnCrashed()
         {
-            if (crash != null) oneShots.PlayOneShot(crash, crashVolume);
+            if (crash != null) oneShots.PlayOneShot(crash, crashVolume * FortalArenaSettings.Sfx);
         }
 
         // A plain 2D source (the wall has no place in the room to sound from).

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Where the drawn part of a sprite lies, from its tight outline, leaving out its transparent
     // padding: a box in the sprite's own units, round its pivot. Pictures differ in how much empty

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Fortal.Display;
+using Fortal.Displays;
 using Fortal.Players;
 using UnityEngine;
 using Random = UnityEngine.Random;

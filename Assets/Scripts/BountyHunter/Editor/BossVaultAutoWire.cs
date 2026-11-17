@@ -77,7 +77,7 @@ namespace BountyHunter.Thieves.EditorTools
             }
 
             var chaseFields = new SerializedObject(chase);
-            changed |= Fill(chaseFields, "spotScatter", Object.FindFirstObjectByType<Fortal.Display.BushScatter>(FindObjectsInactive.Include));
+            changed |= Fill(chaseFields, "spotScatter", Object.FindFirstObjectByType<Fortal.Displays.BushScatter>(FindObjectsInactive.Include));
             changed |= FillSprites(chaseFields.FindProperty("rooftopSpots"), RooftopSpots);
             chaseFields.ApplyModifiedPropertiesWithoutUndo();
             var vaultFields = new SerializedObject(vault);

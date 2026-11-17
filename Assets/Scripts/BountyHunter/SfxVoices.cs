@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -44,7 +45,7 @@ namespace BountyHunter.Thieves
             }
 
             source.pitch = pitch;
-            source.PlayOneShot(clip, volume);
+            source.PlayOneShot(clip, volume * FortalArenaSettings.Sfx);
         }
     }
 }

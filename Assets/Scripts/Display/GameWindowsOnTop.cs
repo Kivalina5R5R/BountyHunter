@@ -3,7 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 #endif
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Keeps every game window above other apps, so the kiosk window covers the touch launcher.
     // Each window sits on its own monitor, so this never hides one game output behind another.

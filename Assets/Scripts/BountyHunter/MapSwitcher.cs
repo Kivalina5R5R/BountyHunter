@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using Fortal.Display;
+using Fortal.Displays;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;

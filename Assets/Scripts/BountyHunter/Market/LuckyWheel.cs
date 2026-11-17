@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Fortal.Display;
+using Fortal.Displays;
 using Fortal.Players;
 using TMPro;
 using UnityEngine;

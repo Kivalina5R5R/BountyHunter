@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Keeps the log of a run that crashed. Unity overwrites Player.log on every start (keeping only
     // one older copy), so after a crash and a couple of restarts the reason is gone. A marker file is

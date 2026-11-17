@@ -1,4 +1,4 @@
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Unity display slots for each installation role (Game view Display 1, 2).
     // Display 1 is the main window, on the LED floor; Display 2 is the wall.

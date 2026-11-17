@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -53,7 +54,7 @@ namespace BountyHunter.Thieves
             if (!applauseVoice.isPlaying) return;
 
             float left = applauseEndSeconds - applauseVoice.time;
-            applauseVoice.volume = applauseVolume * Mathf.Clamp01(left / applauseFadeSeconds);
+            applauseVoice.volume = applauseVolume * Mathf.Clamp01(left / applauseFadeSeconds) * FortalArenaSettings.Sfx;
             if (left <= 0f) applauseVoice.Stop();
         }
 
@@ -77,7 +78,7 @@ namespace BountyHunter.Thieves
 
             lastTick = Time.time;
             tickVoice.pitch = Mathf.Lerp(1f, tickTopPitch, progress);
-            tickVoice.PlayOneShot(tick, tickVolume);
+            tickVoice.PlayOneShot(tick, tickVolume * FortalArenaSettings.Sfx);
         }
 
         // place: the row whose score landed (1 is the winner).
@@ -85,7 +86,7 @@ namespace BountyHunter.Thieves
         {
             if (place != 1 || applause == null) return;
 
-            applauseVoice.volume = applauseVolume;
+            applauseVoice.volume = applauseVolume * FortalArenaSettings.Sfx;
             applauseVoice.time = Mathf.Min(applauseStartSeconds, applause.length - 0.01f);
             applauseVoice.Play();
         }

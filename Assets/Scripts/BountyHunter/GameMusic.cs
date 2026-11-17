@@ -1,3 +1,4 @@
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -67,7 +68,7 @@ namespace BountyHunter.Thieves
                 FadeTo(volume, settleSeconds);
             }
 
-            source.volume = Mathf.MoveTowards(source.volume, target, rate * Time.deltaTime);
+            source.volume = Mathf.MoveTowards(source.volume, target * FortalArenaSettings.Music, rate * Time.deltaTime);
             if (target <= 0f && source.volume <= 0f && source.isPlaying) source.Stop();
         }
 

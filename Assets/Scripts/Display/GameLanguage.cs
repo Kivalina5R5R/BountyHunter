@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The one language the game's words are shown in, English or Thai: set by the kiosk's TH/EN
     // button (the Fortal launcher's UDP "language" command, through ArenaRemoteLink) or B on the
@@ -29,6 +29,8 @@ namespace Fortal.Display
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
+            // The game always opens in English; only the kiosk's TH/EN (or B) switches it to Thai,
+            // and nothing is remembered between runs.
             IsThai = false;
             Changed = null;
             thaiAssets.Clear();

@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The kiosk's "exit the game?" question: the screen dims, the board pops up with a little
     // overshoot and a wobble, and offers EXIT (closes the game) or CANCEL (the board drops away

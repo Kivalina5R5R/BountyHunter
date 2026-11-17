@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Routes the installation outputs: Display 1 (the main window) is the LED floor and Display 2 is
     // the wall. The touch kiosk is retired: its camera and canvases stay wired for their settings but

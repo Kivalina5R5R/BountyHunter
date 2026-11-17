@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Fortal.Arena;
 using Fortal.Players;
 using UnityEngine;
 
@@ -203,7 +204,7 @@ namespace BountyHunter.Thieves
             if (clip == null || source == null || runner == null) return;
 
             source.pitch = UnityEngine.Random.Range(0.93f, 1.07f);
-            source.PlayOneShot(clip, runVolume);
+            source.PlayOneShot(clip, runVolume * FortalArenaSettings.Sfx);
         }
 
         // Thieves and hiding spots appear during the game; their sounds are hooked up here.
@@ -298,7 +299,7 @@ namespace BountyHunter.Thieves
             }
 
             float at = Mathf.Min(bush.FlushProgress * flushBuild.length, flushBuild.length - 0.01f);
-            voice.volume = flushVolume;
+            voice.volume = flushVolume * FortalArenaSettings.Sfx;
             if (!voice.isPlaying)
             {
                 voice.time = at;
@@ -395,7 +396,7 @@ namespace BountyHunter.Thieves
             AudioSource fuse = CreateSource("Fuse");
             fuse.clip = bombFuse;
             fuse.loop = true;
-            fuse.volume = fuseVolume;
+            fuse.volume = fuseVolume * FortalArenaSettings.Sfx;
             fuse.Play();
             Destroy(fuse.gameObject, Mathf.Max(0.05f, fuseSeconds));
         }
@@ -463,7 +464,7 @@ namespace BountyHunter.Thieves
             }
 
             source.pitch = pitch;
-            source.PlayOneShot(clip, volume);
+            source.PlayOneShot(clip, volume * FortalArenaSettings.Sfx);
         }
 
         private AudioSource CreateSource(string label)

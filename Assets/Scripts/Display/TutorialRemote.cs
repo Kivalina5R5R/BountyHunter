@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The kiosk's remote for the HOW TO PLAY board on the wall (TutorialPopup): a small board on the
     // dimmed kiosk telling the players to look at the wall, which page it is on, and BACK and NEXT.

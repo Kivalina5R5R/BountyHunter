@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // One bush on the floor: its transform, the radius of the leaves a player can stand inside and
     // how far the bush reaches from its centre at any turn.

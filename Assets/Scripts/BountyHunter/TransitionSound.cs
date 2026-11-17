@@ -1,4 +1,5 @@
 using System;
+using Fortal.Arena;
 using UnityEngine;
 
 namespace BountyHunter.Thieves
@@ -20,7 +21,7 @@ namespace BountyHunter.Thieves
 
         public void Play(AudioSource source)
         {
-            if (clip != null && source != null) source.PlayOneShot(clip, volume);
+            if (clip != null && source != null) source.PlayOneShot(clip, volume * FortalArenaSettings.Sfx);
         }
 
         // The transition's own voice: from both speakers alike, and it plays while the game is frozen

@@ -1,4 +1,4 @@
-using Fortal.Display;
+using Fortal.Displays;
 using UnityEngine;
 
 namespace BountyHunter.Thieves

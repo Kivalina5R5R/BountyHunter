@@ -1,5 +1,5 @@
 using Fortal.Configuration;
-using Fortal.Display;
+using Fortal.Displays;
 using Fortal.Players;
 using Fortal.UWB;
 using System.Linq;

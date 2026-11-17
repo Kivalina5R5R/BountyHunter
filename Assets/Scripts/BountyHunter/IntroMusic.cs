@@ -1,5 +1,6 @@
-using UnityEngine;
+using Fortal.Arena;
 using UnityEngine.InputSystem;
+using UnityEngine;
 
 namespace BountyHunter.Thieves
 {
@@ -77,7 +78,7 @@ namespace BountyHunter.Thieves
             for (int i = 0; i < sources.Length; i++)
             {
                 AudioSource source = sources[i];
-                source.volume = Mathf.MoveTowards(source.volume, targets[i], Mathf.Max(volume, otherSongVolume) / fadeSeconds * Time.deltaTime);
+                source.volume = Mathf.MoveTowards(source.volume, targets[i] * FortalArenaSettings.Music, Mathf.Max(volume, otherSongVolume) / fadeSeconds * Time.deltaTime);
                 if (targets[i] <= 0f && source.volume <= 0f && source.isPlaying) source.Stop();
             }
         }

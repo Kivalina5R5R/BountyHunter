@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // A soft drop shadow under a picture lying on the floor (a bush or bin, a thief, a passer-by): the
     // same picture in see-through black, just under it and pushed a little toward the bottom right of

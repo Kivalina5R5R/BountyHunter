@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // The HOW TO PLAY board on the wall, worked from the kiosk. The wall dims and the wide board
     // springs up from below with a little overshoot and a wobble, then shows the pages one at a time:

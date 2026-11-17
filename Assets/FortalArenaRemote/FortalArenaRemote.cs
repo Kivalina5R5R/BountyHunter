@@ -138,6 +138,7 @@ namespace Fortal.Arena
         {
             KeyValuePair message;
             while (inbox.TryDequeue(out message)) Handle(message.action, message.payload);
+            CheckWiring();
             reportIn -= Time.unscaledDeltaTime;
             checkIn -= Time.unscaledDeltaTime;
             if (checkIn > 0f && lastReport != null && reportIn > 0f) return;
@@ -164,6 +165,9 @@ namespace Fortal.Arena
                         var lang = JsonUtility.FromJson<LanguageMessage>(payload).lang;
                         if (SetLanguage != null && (lang == "th" || lang == "en")) SetLanguage(lang);
                         break;
+                    case "settings":   // sound / brightness / quality (FortalArenaSettings, kit 3.0)
+                        FortalArenaSettings.Set(JsonUtility.FromJson<FortalArenaSettings.Message>(payload));
+                        break;
                     case "arena_status":
                         break;
                     default:
@@ -180,6 +184,17 @@ namespace Fortal.Arena
             catch (Exception e) { Debug.LogException(e); return false; }
         }
 
+        // Nothing connected = the launcher can never open the tutorial, and nothing else in the game would show it. So it is said loudly,
+        // once, in the Console and the log, and the report tells the launcher page.
+        static bool Wired() { return IsTutorialOpen != null && CanOpenTutorial != null && OpenTutorial != null && CloseTutorial != null; }
+        bool wiringChecked;
+        void CheckWiring()
+        {
+            if (wiringChecked || Time.unscaledTime < 5f) return;
+            wiringChecked = true;
+            if (!Wired()) Debug.LogError("[FortalArenaRemote] The tutorial is NOT connected: the launcher's TUTORIAL button cannot work. Add FortalArenaRemoteBridge to an active object in the scene and set it up (README_TH.md), or set the Func / Action fields from your own script.");
+        }
+
         string Report()
         {
             bool tutorial = Ask(IsTutorialOpen);
@@ -188,12 +203,14 @@ namespace Fortal.Arena
             sb.Append(SceneManager.GetActiveScene().name.Replace("\"", ""));
             sb.Append("\",\"tutorial\":").Append(tutorial ? "true" : "false");
             sb.Append(",\"tutorialAllowed\":").Append(allowed ? "true" : "false");
+            sb.Append(",\"tutorialWired\":").Append(Wired() ? "true" : "false");
             if (GetLanguage != null)
             {
                 string lang = null;
                 try { lang = GetLanguage(); } catch (Exception e) { Debug.LogException(e); }
                 if (lang == "th" || lang == "en") sb.Append(",\"lang\":\"").Append(lang).Append('"');
             }
+            sb.Append(",\"settings\":").Append(FortalArenaSettings.ReportJson());
             return sb.Append("}}").ToString();
         }
 

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // A resolution-independent filled circle UI Image, tinted and sized in the authored prefab.
     public sealed class TagCircle : Image

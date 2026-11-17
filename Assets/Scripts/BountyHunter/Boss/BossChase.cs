@@ -59,7 +59,7 @@ namespace BountyHunter.Thieves
         // The rooftop's own hiding spots (Assets/ART/BG/MapBoss/BossHide*), laid out by the hiding
         // spots' scatter in place of the last map's, turned at most rooftopSpotTilt degrees either way
         // and sized against the player like a map's (MapSwitcher). Empty keeps the last map's.
-        [SerializeField] private Fortal.Display.BushScatter spotScatter;
+        [SerializeField] private Fortal.Displays.BushScatter spotScatter;
         [SerializeField] private Sprite[] rooftopSpots;
         [SerializeField, Range(0f, 180f)] private float rooftopSpotTilt = 20f;
         [SerializeField] private Vector2 rooftopSpotSize = new Vector2(1.1f, 1.35f);

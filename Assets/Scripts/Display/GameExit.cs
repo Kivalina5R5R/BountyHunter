@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Fortal.Display
+namespace Fortal.Displays
 {
     // Closes the game so the kiosk's touch launcher shows again (stops Play mode in the editor).
     public static class GameExit

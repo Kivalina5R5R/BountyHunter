@@ -19,6 +19,8 @@ namespace BountyHunter.Thieves
         [SerializeField] private Image source;
         // The character's video, if it has one; leave empty for a still character.
         [SerializeField] private WallVideo video;
+        // The character's sprite sheet loop, if it has one instead of a video.
+        [SerializeField] private WallSheetLoop sheetLoop;
         [SerializeField] private Shader rimShader;
         // How far the light reaches in from the edge, in pixels of the still picture.
         [SerializeField, Min(1f)] private float rimWidth = 22f;
@@ -49,6 +51,25 @@ namespace BountyHunter.Thieves
         private void OnDisable()
         {
             if (video != null) video.Playing -= FollowVideo;
+        }
+
+        // Covers the sheet loop and shows its current frame, so the lit edge moves with the character.
+        private void LateUpdate()
+        {
+            if (material == null || sheetLoop == null || !sheetLoop.IsShowing) return;
+
+            var rect = (RectTransform)transform;
+            var loopRect = (RectTransform)sheetLoop.transform;
+            rect.anchorMin = loopRect.anchorMin;
+            rect.anchorMax = loopRect.anchorMax;
+            rect.pivot = loopRect.pivot;
+            rect.anchoredPosition = loopRect.anchoredPosition;
+            rect.sizeDelta = loopRect.sizeDelta;
+            image.texture = sheetLoop.Sheet;
+            image.uvRect = sheetLoop.FrameRect;
+            // The width is set in still-picture pixels; a sheet frame has its own pixel size.
+            float framePixelsPerUnit = sheetLoop.FrameRect.width * sheetLoop.Sheet.width / Mathf.Max(1f, loopRect.rect.width);
+            material.SetFloat(RimWidthId, rimWidth * framePixelsPerUnit);
         }
 
         private void OnDestroy()

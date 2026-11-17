@@ -1,4 +1,5 @@
 using System.Collections;
+using Fortal.Arena;
 using Fortal.Players;
 using UnityEngine;
 
@@ -128,7 +129,7 @@ namespace BountyHunter.Thieves
                 return;
             }
 
-            rotor.volume = helicopterVolume * Mathf.Sin(Mathf.PI * across);
+            rotor.volume = helicopterVolume * Mathf.Sin(Mathf.PI * across) * FortalArenaSettings.Sfx;
         }
 
         private void OnBossOnFloor(BossController next)
